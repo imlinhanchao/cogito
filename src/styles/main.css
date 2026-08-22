@@ -1,0 +1,21 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: oklch(98% 0.01 240);
+}
+
+::selection {
+  background: color-mix(in oklab, oklch(58% 0.19 262) 28%, transparent);
+}
