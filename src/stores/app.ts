@@ -10,7 +10,7 @@ interface NavItem {
 export const useAppStore = defineStore('app', {
   state: () => ({
     brand: 'Haide UI',
-    theme: 'light' as ThemeName,
+    theme: localStorage.getItem('theme') as ThemeName || 'light' as ThemeName,
     navItems: [
       {
         label: '概览',
@@ -20,6 +20,14 @@ export const useAppStore = defineStore('app', {
         label: '组件预览',
         path: '/playground',
       },
+      {
+        label: '故事编辑器',
+        path: '/story-editor',
+      },
+      {
+        label: '故事播放',
+        path: '/story-play/current',
+      },
     ] as NavItem[],
   }),
   getters: {
@@ -28,6 +36,7 @@ export const useAppStore = defineStore('app', {
   actions: {
     toggleTheme() {
       this.theme = this.theme === 'light' ? 'dark' : 'light'
+      localStorage.setItem('theme', this.theme)
     },
   },
 })

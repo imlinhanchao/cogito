@@ -1,0 +1,61 @@
+{
+  "js/ts.tsdk.path": "node_modules/typescript/lib",
+  "sqltools.connections": [
+    {
+      "mysqlOptions": {
+        "authProtocol": "default",
+        "enableSsl": "Disabled"
+      },
+      "ssh": "Disabled",
+      "previewLimit": 50,
+      "server": "time-pack.com",
+      "port": 3306,
+      "driver": "MySQL",
+      "name": "time-pack",
+      "database": "app",
+      "username": "hancel",
+      "password": "root_`1qw23"
+    },
+    {
+      "mysqlOptions": {
+        "authProtocol": "default",
+        "enableSsl": "Disabled"
+      },
+      "ssh": "Disabled",
+      "previewLimit": 50,
+      "server": "localhost",
+      "port": 3306,
+      "driver": "MySQL",
+      "name": "local",
+      "database": "app",
+      "username": "hancel",
+      "password": "root_`1qw23"
+    },
+    {
+      "mysqlOptions": {
+        "authProtocol": "default",
+        "enableSsl": "Disabled"
+      },
+      "ssh": "Disabled",
+      "previewLimit": 50,
+      "server": "192.168.50.175",
+      "port": 3306,
+      "driver": "MariaDB",
+      "name": "ds",
+      "database": "app",
+      "username": "hancel",
+      "password": "`1Qw23112358"
+    },
+    {
+      "ssh": "Disabled",
+      "previewLimit": 50,
+      "server": "localhost",
+      "port": 5432,
+      "driver": "PostgreSQL",
+      "name": "pg",
+      "database": "appdb",
+      "username": "hancel",
+      "password": "root_`1qw23"
+    }
+  ]
+}

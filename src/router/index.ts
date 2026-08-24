@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 import HomeView from '@/views/HomeView.vue'
 import PlaygroundView from '@/views/PlaygroundView.vue'
+import StoryEditorView from '@/views/StoryEditorView.vue'
+import StoryPlayView from '@/views/StoryPlayView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -15,11 +17,19 @@ const router = createRouter({
       },
     },
     {
-      path: '/playground',
-      name: 'playground',
-      component: PlaygroundView,
+      path: '/story-editor',
+      name: 'story-editor',
+      component: StoryEditorView,
       meta: {
-        title: '组件预览',
+        title: '故事编辑器',
+      },
+    },
+    {
+      path: '/story-play/:storyId?',
+      name: 'story-play',
+      component: StoryPlayView,
+      meta: {
+        title: '故事播放',
       },
     },
   ],

@@ -11,7 +11,7 @@
         class="theme-controller toggle toggle-sm"
         type="checkbox"
         value="dark"
-        @change="toggleTheme"
+        @change="useAppStore().toggleTheme()"
       />
       <span class="hidden sm:inline">{{ themeLabel }}</span>
     </label>
@@ -19,12 +19,10 @@
 </template>
 
 <script setup lang="ts">
+import { useAppStore } from '@/stores/app';
+
 defineProps<{
   theme: 'light' | 'dark'
   themeLabel: string
-}>()
-
-defineEmits<{
-  toggleTheme: []
 }>()
 </script>
