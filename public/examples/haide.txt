@@ -1,0 +1,663 @@
+:: Start
+(set: $wisdom to 0)
+(set: $hasFood to false)
+(set: $hungry to false)
+(set: $innTries to 0)
+(set: $innSolved to false)
+(set: $passedGate to false)
+(set: $sawArgument to false)
+(set: $lookedAtSign to false)
+(set: $talkedToMcLee to false)
+(set: $metQueuer to false)
+(set: $hasStone to false)
+(set: $hasBottle to false)
+(set: $hasTeaFruit to false)
+(set: $day to 1)
+(set: $puzzleLeft to "羊,狼,菜")
+(set: $puzzleRight to "")
+(set: $puzzleBoat to "none")
+(set: $puzzleBoatPos to "left")
+(set: $puzzleFail to false)
+(set: $puzzleFailReason to "")
+
+(fn:"addWisdom")[
+  vars.wisdom = (Number(vars.wisdom)||0) + 1;
+  return vars.wisdom
+]
+
+(fn:"hungerCheck")[
+  if (vars.hungry) {
+    return '（你饿得有点发晕，脚步虚浮地走着。）'
+  } else {
+    return '（肚子还饱着，能再逛一会儿。）'
+  }
+]
+
+(fn:"innJudge")[
+  var tries = Number(vars.innTries) || 0;
+  if (tries <= 2) {
+    return '店主看了你一眼，没说话。'
+  } else if (tries <= 4) {
+    return '店主的手指在柜台上轻轻敲了两下。'
+  } else {
+    return '店主把书放下了，安静地看着你。'
+  }
+]
+
+我和麦力把马拴在山脚下的时候，太阳已经偏西了。
+
+眼前是一道望不到头的[[石阶|Steps]]，一级一级地往上延伸，直到隐没在云里。我仰头看着，脖子都酸了。“这得有多少级？”
+
+“一千一百一十一。”麦力拍了拍马背，“所以我才说租马。”
+
+“骑马上去？”
+
+“这些马从小就在这儿跑，比人稳当。”他翻身上马，“你要是害怕，可以自己走。”
+
+我看了看那几乎垂直的石阶，又看了看麦力胯下那匹正在甩尾巴的马。“马兄，你稳着点。”
+
+马很稳。它踢踢踏踏地往上走，节奏均匀，像是走了一辈子台阶。我慢慢放松下来，甚至敢回头看一眼——然后立刻后悔了。地面已经变得很小，风从耳边刮过去，带着一股干草的味儿。
+
+快到顶的时候，马忽然往上一跃。风声嗖地掠过，然后“啪”一声，我整个人摔在[[平台|Platform]]上，浑身骨头都像散了架。
+
+
+:: Steps
+我坐在台阶上歇了一会儿，麦力也坐了下来。风从山下吹上来，带着远处草木的味道。我往下看了一眼，来时的路已经成了一条细线。
+
+“你以前来过？”
+
+“来过几次。”麦力说，“第一次也摔了。”
+
+“比我惨？”
+
+“比你惨。马把我摔下来后自己跑了上去，我追了半座山。”
+
+我摸了摸脚下的石阶，每一级都磨得发亮，边角圆润，像是被无数双脚踩过。
+
+旁边几级台阶下面坐着一个[[中年人|ManOnSteps]]，灰外套，低头看着膝上的一张纸，眉头皱着。他的行李不多，看起来像是赶了很远的路。
+
+我看了他一眼，他抬头冲我点了点头，又低头看他的纸去了。
+
+[[站起来，继续往上走|Platform]]
+
+
+:: ManOnSteps
+我走过去，在他旁边坐下。“也是进城的？”
+
+“嗯。”他把纸折起来收好，“不过遇到了点麻烦。”
+
+“什么麻烦？”
+
+“通行证办了一半。说要进城才能换正式的，可进不去就换不了。”他苦笑了一下，“你说这叫什么规矩？”
+
+“那你怎么打算？”
+
+他看了看天色：“再等等吧，说不定晚些时候守门的会换人。”他站起来拍了拍裤子，“总不能永远进不去。”
+
+他往平台方向走了。我坐在台阶上又待了一会儿，然后[[站起来跟上去|Platform]]。
+
+
+:: Platform
+麦力把我拉起来。我拍了拍身上的灰，环顾四周。平台比想象中宽阔，石面平整，缝隙里长着细密的青苔。远处是城墙的轮廓，在暮色里显得格外沉。
+
+平台上零星歇着几个人。城门左侧的墙上挂着一块褪色的[[木牌|WoodSign]]，字迹模糊。城门右边有一个小小的[[茶水摊|TeaStall]]，一个老人坐在摊后，慢悠悠地扇着蒲扇。平台边缘有一块形状很奇怪的[[石头|PlatformStone]]，比我膝盖高一点，像一个不规则的卵。
+
+我站了一会儿，目光在这几样东西之间转了一圈。麦力站在不远处，正在打量城门的方向。
+
+我朝城门走了几步，经过那块石头时放慢了脚步。石头的表面光滑得不像天然形成的，我蹲下来摸了摸——掌心贴上去之后，能感觉到一种极其微弱的温度变化，像是石头在呼吸。我绕到背面，上面刻着一行字：“石头的内部也是石头。”
+
+我蹲在那儿琢磨这句话。麦力走过来看了一眼：“这石头据说和城堡一样老。”
+
+“谁放这儿的？”
+
+“没人知道。”他说，“但来这儿的人都会摸一下。有人说摸完之后进城会顺利一些。”
+
+他顿了顿，“不过也有人摸了之后没进去。”
+
+我站起身来，掌心还留着一丝微凉的感觉。
+
+(if: $wisdom < 4)[
+[[摸过石头，转身去看那块木牌|WoodSign]](call:"addWisdom")
+] (else:)[
+[[转身去看那块木牌|WoodSign]]
+]
+
+
+:: WoodSign
+木牌挂在城门左侧的墙上，位置不高，像是专门让人走近看的。漆掉得差不多了，露出底下灰白的木头，但字还能辨认：
+
+“凡进城者，须自备一个问题。无问题者，不得入城。”
+
+我愣了一下。告示明明写着要通行证，这块木牌又说要自备问题——到底以哪个为准？
+
+我正想着，旁边一个路过的本地人看了我一眼：“那牌子很久了，比告示老得多。”
+
+“那现在到底要通行证还是问题？”
+
+他笑了笑：“你进去了就知道了。”然后头也不回地走了。
+
+我站在木牌前又看了一会儿，觉得这句话的口气和城门告示不太一样。告示像规矩，这个像……提醒。
+
+[[走向茶水摊|TeaStall]](call:"addWisdom")
+
+
+:: TeaStall
+茶水摊很小，一张矮桌，两个小板凳。老人坐在摊后，手里的蒲扇慢悠悠地摇着。桌上放着两个粗瓷碗，茶汤颜色很深，冒着热气。
+
+“坐。”他说。
+
+我在小板凳上坐下，端起一碗喝了一口——不烫，微苦，咽下去之后舌根泛出一丝甜。
+
+“第一次来？”
+
+“嗯。”
+
+他点了点头，没再说话。风从平台那边吹过来，把摊上的茶叶末子卷起来又落下。我又喝了一口，觉得这茶的余味比第一口更深。
+
+我端着碗想了想：“老人家，城门口那个告示上的规矩……真的是一直都这样吗？”
+
+他摇扇子的手停了一下：“规矩是真的。但规矩之外的东西，也是真的。”
+
+“什么东西？”
+
+他看了我一眼，没有直接回答，而是把手伸进衣兜里，摸出一颗小小的、淡紫色的果子，放在桌上推了过来。“拿着吧，进城之后会用到。”
+
+我接过来，果子只有拇指大小，表面有一层细密的绒毛，微微发凉。
+
+我坐了一会儿，茶喝完了，道了谢站起来。
+
+[[走向城门|Gate]](call:"addWisdom")
+
+
+:: Gate
+城门是石头砌的，发暗，有些地方长着深绿色的苔藓。不算特别高大，但给人一种很沉的压迫感。门前排着一小队人，安安静静地等着。
+
+城门边上贴着一张[[告示|ReadSign]]，白纸黑字，边角被风吹得微微卷起。旁边站着两个[[卫兵|Guards]]，靠墙的姿势看起来很懒，但目光一直没离开排队的那些人。
+
+排在最前面的一个中年人正在[[跟卫兵说话|TheArgument]]，声音越来越大，语气越来越急。我走近了几步，听见他在说通行证的事。
+
+我站在告示和争执之间，目光来回了一下。麦力站在我旁边，安静地等着。
+
+
+:: ReadSign
+告示是牛皮色的纸，有些旧了，字迹依然清楚：
+
+“入城者必须出示通行证。通行证由城内长老会签发。无证者不得入城。特此通告。”
+
+我又看了一遍落款处的小字：“长老会制，建城元年。”
+
+建城元年。这条规矩从城堡建成那天就有了。可第一个站在城门口的人，手里怎么会有通行证呢？
+
+我正想着，旁边一个排队的人看了我一眼，低声说了一句：“那张告示贴了一百多年了。”
+
+我一愣：“一百多年？”
+
+“嗯。一百多年了，没人撕。”
+
+一百多年。每个想进城的人都在面对同一条规矩。
+
+我站在告示前，又读了一遍。
+
+(set: $lookedAtSign to true)
+
+[[转身去看那个中年人|TheArgument]]
+[[问那个排队的人|Queuer]]
+
+
+:: Queuer
+说话的是个年轻人，背着一个旧帆布包，和我年纪差不多。我走到他旁边：“你也是来进城的？”
+
+“嗯。”他点点头，“排了一下午了。”
+
+“那你排到了打算怎么办？”
+
+“先看看呗。”他说，“万一运气好呢。”
+
+“以前进城好像不用通行证。”
+
+他看了我一眼，指了指城门左侧墙上那块木牌：“那块牌子还在，写着要自备问题。后来不知道哪天贴了这张告示，大家就都按告示的规矩来了。”
+
+“那到底是木牌说了算还是告示说了算？”
+
+“应该是告示吧。”他顿了顿，“不过有人说过，只要你愿意，两样都行。”
+
+他笑了笑，没再解释。队伍往前挪了几步，他也跟着往前走了。
+
+我站在原处，想了想他那句“两样都行”。
+
+(set: $metQueuer to true)
+
+[[去看告示|ReadSign]]
+[[去听听中年人的争执|TheArgument]]
+
+
+:: TheArgument
+中年人穿着一件深灰色的外套，领子有点歪，脸涨得通红，手里攥着一张纸，不停地往卫兵面前递：“我有通行证！你看，这是你们长老会签发的！”
+
+卫兵是个高个子，面容寡淡，扫了一眼那张纸：“通行证是进城的凭证，但您这张是预发件，需要进城之后到长老会换取正式通行证才能生效。”
+
+“那我不就是先进去再换吗？”
+
+“是的。”
+
+“那我现在不是还没进去吗？”
+
+“是的。”
+
+中年人气得跺了一下脚：“那你让我进去！”
+
+卫兵叹了口气：“您进去之后就能换到正式通行证，但按规矩，进城必须出示有效通行证。您目前没有有效通行证，所以不能进城。”
+
+中年人张了张嘴又闭上，转身走了几步，又回头看了一眼城门，最终往台阶方向走了。走了两步蹲下来，把脸埋进手里。
+
+我站在旁边，把这段对话来回想了两遍。卫兵说的是道理，中年人说的也是道理，可这两个道理撞在一起，谁都动不了。
+
+我看了看那个蹲在路边的中年人。
+
+(set: $sawArgument to true)
+
+[[走过去和他说话|ManAgain]](call:"addWisdom")
+[[转身去找麦力|AskMcLee]]
+
+
+:: ManAgain
+我走到他旁边，在他身边的台阶上坐下来。他抬头看了我一眼，又低下头去。
+
+“你的通行证是在希思城办的？”
+
+“嗯。”
+
+“那边的人怎么说？”
+
+“说只要进城换一下就行。”他苦笑了一下，“到了这儿才发现进不去。”
+
+他没抬头，声音很轻：“我赶了两天的路。”
+
+我坐了一会儿，不知道该说什么。
+
+他站起来拍了拍裤子上的土，低头看了我一眼：“你要是进去了，帮我带句话——就说有个叫陆远的人，通行证办了一半。”
+
+他走了。
+
+我坐在台阶上又待了一会儿，才站起来。
+
+[[去找麦力|AskMcLee]](call:"addWisdom")
+
+
+:: AskMcLee
+我在城门边的墙根下找到麦力。他正蹲着，用一根草茎逗地上的甲虫。
+
+“我们怎么进去？”我在他旁边蹲下。
+
+“什么怎么进去？”
+
+“通行证。我们也没有。”
+
+麦力把草茎扔掉，拍了拍手。“谁说我们没有？”他从口袋里掏出两张卡片晃了晃，“出希思城的时候，我带你去市长秘书处拿的。”
+
+我接过来——淡黄色的卡片，印着一行字：“伊斯德城堡通行证。”背景是城堡的全景图，画得很精细，每块石头都清清楚楚。
+
+我盯着那张图看了几秒，觉得目光被往里吸。
+
+“别看太久。”麦力把卡片抽回去，“看久了会走神。”
+
+“那第一个进去的人呢？”
+
+“这就不是我们该操心的事了。”他拍了拍我的肩膀，“走吧，趁城门还没关。”
+
+(set: $talkedToMcLee to true)
+
+[[走向城门|GatePass]]
+
+
+:: Guards
+两个卫兵站姿松散，但目光一直没闲着。我走近了一些，其中一个看了我一眼，又转开了。
+
+“进城需要通行证？”
+
+“是的。”
+
+“通行证在哪儿办？”
+
+“城内长老会。”
+
+“那没有通行证的人呢？”
+
+“那就不能进。”
+
+他回答得每个字都对，但合在一起就像一道打不开的锁。我沉默了一会儿，指了指城门左侧那块木牌：“那上面的规矩也算数吗？”
+
+卫兵看了我一眼：“那块牌子没贴在这张告示旁边。贴在一起才算规矩。”
+
+他转过头去。
+
+对话结束了。
+
+[[退开两步|Gate]]
+
+
+:: GatePass
+我走到城门口，卫兵看了看我，又看了看麦力。麦力递过那两张卡片，卫兵翻了翻，递回来。
+
+“有效。”他说，然后往旁边让了让。
+
+我跨过门槛的一瞬间，身后的光线忽然暗了一截。我回头看了一眼——太阳已经落到城墙后面了。门里门外像是两个世界，一个还亮着，一个已经暗下来了。
+
+城门里面是一条窄长的通道，两侧墙上每隔几步点着一盏油灯，火苗一跳一跳的。通道尽头透出昏黄的光，能听见里面有声音——像集市。
+
+麦力走在我前面。
+
+我摸了摸口袋里的淡紫色果子。
+
+(set: $passedGate to true)
+
+[[穿过通道|Inside]](call:"addWisdom")
+
+
+:: Inside
+走出通道的那一刻，我愣了一下。
+
+眼前是一个集市。摊位一个挨一个，行人来来往往，吆喝声、谈笑声、锅铲碰撞的声音混在一起，像一锅正在沸腾的汤。空气里有食物的香气，混杂着一股说不清的香料味。
+
+不远处有人蹲在路边低头刻着什么，旁边围了一圈人安安静静地看着。还有一个摊位摆着几排小瓶子，瓶里的液体颜色各不相同。
+
+麦力已经走到前面去了。我摸了摸肚子——从早上到现在还没正经吃过东西。
+
+(if: $hungry)[
+我饿得发慌，脚步虚浮。那饼摊的香味一阵一阵飘过来，但那个妇人已经收了摊子，正在清点零钱。
+] (else-if: $hasFood)[
+我手里的饼还剩下大半块，边走边咬了一口。麦力在前面停下来等我。
+] (else:)[
+饼摊的妇人还在揉面，热气腾腾的，香味飘得很远。
+]
+
+(if: $hungry)[
+[[跟着麦力往前走|StreetHungry]]
+] (else-if: $hasFood)[
+[[跟上麦力|Street]]
+] (else:)[
+[[去饼摊|Woman]]
+[[跟上麦力|Street]]
+]
+
+
+:: Woman
+饼摊的妇人把面团在案板上拍了拍，抬头看着你：“一个人走进一间屋子，屋里有一盏灯、一个蜡烛台、一根火柴。他先点了什么？”
+
+我站在摊前，闻着麦香，认真想了想。
+
+(if: $hungry)[
+（肚子在叫，我努力集中注意力。）
+]
+
+[[“当然是先点蜡烛。”|WomanWrong]](set: $hasFood to false)
+[[“先点灯。”|WomanWrong]](set: $hasFood to false)
+[[“火柴。”|WomanRight]](set: $hasFood to true)(call:"addWisdom")
+
+
+:: WomanWrong
+妇人看了我一眼，手里的动作没停。
+
+“蜡烛和灯都是火柴点的，”她说，“最先点的是火柴。”
+
+她继续揉她的面，没有再递饼过来的意思。我站在原地，面香一阵一阵地往鼻子里钻，肚子不争气地叫了一声。
+
+我咽了咽口水，转身走开了。饼的香气在身后追了好几步才散。
+
+(set: $hungry to true)
+
+[[穿过集市|InsideHungry]]
+
+
+:: InsideHungry
+集市依然热闹，但我走得很慢。肚子饿得发紧，腿也有些发软。那些摊位上飘出来的香气——烤饼的、煎肉的、煮面的——每一个都像在专门为难我。
+
+我走了一会儿，在一个墙根边蹲下来缓了缓。旁边有人经过，看了我一眼，又走开了。
+
+(print: (call:"hungerCheck"))
+
+我站起来，觉得不能再这么耗着了。得先找个地方坐下，吃点东西——哪怕是喝碗茶也行。
+
+(if: $passedGate)[
+[[去那家客栈看看|StreetHungry]]
+] (else:)[
+[[继续在集市里转转|Inside]]
+]
+
+
+:: WomanRight
+“火柴。”我说。
+
+妇人看了我一眼，笑了，露出缺了一颗牙的笑容。
+
+“对。很多人会想灯和蜡烛，忘了火柴才是起点。”她包了两个热腾腾的饼递过来，“拿着吧。”
+
+饼的温热透过纸传到手心。我咬了一口——外皮微焦，里面很软，带着一股朴实的麦香。
+
+(set: $hasFood to true)
+
+麦力不知道什么时候折回来了，在我旁边站定：“走吧，趁热。”
+
+我一边嚼着饼一边点头，跟着他往集市深处走去。
+
+[[跟上麦力|Street]]
+
+
+:: Street
+我沿着麦力走的方向追了一会儿，在一条巷子口看见了他。他正站在一扇深棕色的木门前，门头挂着一块牌子：“一问客栈”。
+
+麦力推开门，回头看了我一眼：“就这儿。进来吧。”
+
+柜台后面坐着一个年轻人，手里捧着一本书。他听见脚步声，放下书抬头，目光在我身上停了一下。
+
+“住店？”
+
+“住。”
+
+“问题答完就入住。”他把书放到一边，“一道过河题，桌上有道具，你动手试试。”
+
+他指了指柜台旁边的一张矮桌。桌上用石子摆出了一条窄窄的河道，左边堆着三颗小石子——分别代表羊、狼、白菜。右边空着。中间放着一枚扁平的白色石子，代表船。
+
+我看着这幅微缩的河景，觉得这种方式比光用脑子想更直接。
+
+(if: $hungry)[
+我肚子还空着，但眼下先把这道题解完再说。
+]
+
+(if: $innTries <= 1)[
+我走到桌前蹲下来。
+] (else-if: $innTries <= 3)[
+我回到桌前，看着那些石子。
+] (else:)[
+我又一次蹲下来，石子还是那些石子。
+]
+
+(set: $innTries to $innTries + 1)
+
+[[开始解题|InnPuzzle]]
+
+
+:: InnPuzzle
+(if: $hungry)[
+（饥饿让我的思路有点发飘，但我还能集中注意力。）
+]
+
+<div style="display:flex; justify-content:space-between; padding:8px 0; font-size:14px; background:#f5f3ee; border-radius:6px;">
+  <div style="text-align:center; flex:1; padding:4px;">
+    🌿 左岸<br>
+    (if: $puzzleLeft contains "羊")[🐑 ](else:)[· ]
+    (if: $puzzleLeft contains "狼")[🐺 ](else:)[· ]
+    (if: $puzzleLeft contains "菜")[🥬 ](else:)[· ]
+  </div>
+  <div style="text-align:center; flex:1; padding:4px; border-left:1px solid #ddd; border-right:1px solid #ddd;">
+    🚣 船上<br>
+    (if: $puzzleBoat == "羊")[🐑 ]
+    (else-if: $puzzleBoat == "狼")[🐺 ]
+    (else-if: $puzzleBoat == "菜")[🥬 ]
+    (else:)[· ]
+  </div>
+  <div style="text-align:center; flex:1; padding:4px;">
+    🏠 右岸<br>
+    (if: $puzzleRight contains "羊")[🐑 ](else:)[· ]
+    (if: $puzzleRight contains "狼")[🐺 ](else:)[· ]
+    (if: $puzzleRight contains "菜")[🥬 ](else:)[· ]
+  </div>
+</div>
+
+船在 (if: $puzzleBoatPos == "left")[左岸](else:)[右岸]。
+
+(if: $puzzleBoatPos == "left")[
+  左岸有：
+  (if: $puzzleLeft contains "羊")[🐑 ](else:)[]
+  (if: $puzzleLeft contains "狼")[🐺 ](else:)[]
+  (if: $puzzleLeft contains "菜")[🥬 ](else:)[]
+  你想带什么过去？
+] (else:)[
+  右岸有：
+  (if: $puzzleRight contains "羊")[🐑 ](else:)[]
+  (if: $puzzleRight contains "狼")[🐺 ](else:)[]
+  (if: $puzzleRight contains "菜")[🥬 ](else:)[]
+  你想带什么回来？
+]
+
+(if: $puzzleBoatPos == "left")[
+  (if: $puzzleLeft contains "羊")[ [[🐑 带羊过河|PuzzleMove]](set: $puzzleBoat to "羊") ]
+  (if: $puzzleLeft contains "狼")[ [[🐺 带狼过河|PuzzleMove]](set: $puzzleBoat to "狼") ]
+  (if: $puzzleLeft contains "菜")[ [[🥬 带白菜过河|PuzzleMove]](set: $puzzleBoat to "菜") ]
+  [[🚣 空船返回|PuzzleMove]](set: $puzzleBoat to "空船")
+] (else:)[
+  (if: $puzzleRight contains "羊")[ [[🐑 带羊回来|PuzzleMove]](set: $puzzleBoat to "羊") ]
+  (if: $puzzleRight contains "狼")[ [[🐺 带狼回来|PuzzleMove]](set: $puzzleBoat to "狼") ]
+  (if: $puzzleRight contains "菜")[ [[🥬 带白菜回来|PuzzleMove]](set: $puzzleBoat to "菜") ]
+  [[🚣 空船返回|PuzzleMove]](set: $puzzleBoat to "空船")
+]
+
+
+:: PuzzleMove
+(if: $puzzleBoat == "空船")[
+  (if: $puzzleBoatPos == "left")[
+    (set: $puzzleBoatPos to "right")
+  ] (else:)[
+    (set: $puzzleBoatPos to "left")
+  ]
+] (else-if: $puzzleBoatPos == "left")[
+  (if: $puzzleBoat == "羊")[
+    (set: $puzzleLeft to "狼,菜")
+    (set: $puzzleRight to "羊")
+  ] (else-if: $puzzleBoat == "狼")[
+    (set: $puzzleLeft to "羊,菜")
+    (set: $puzzleRight to "狼")
+  ] (else-if: $puzzleBoat == "菜")[
+    (set: $puzzleLeft to "羊,狼")
+    (set: $puzzleRight to "菜")
+  ]
+  (set: $puzzleBoatPos to "right")
+] (else:)[
+  (if: $puzzleBoat == "羊")[
+    (set: $puzzleRight to "狼,菜")
+    (set: $puzzleLeft to "羊")
+  ] (else-if: $puzzleBoat == "狼")[
+    (set: $puzzleRight to "羊,菜")
+    (set: $puzzleLeft to "狼")
+  ] (else-if: $puzzleBoat == "菜")[
+    (set: $puzzleRight to "羊,狼")
+    (set: $puzzleLeft to "菜")
+  ]
+  (set: $puzzleBoatPos to "left")
+]
+(set: $puzzleBoat to "none")
+
+(if: $puzzleLeft contains "狼" and $puzzleLeft contains "羊")[
+  (set: $puzzleFail to true)
+  (set: $puzzleFailReason to "狼把羊吃了")
+] (else-if: $puzzleLeft contains "羊" and $puzzleLeft contains "菜")[
+  (set: $puzzleFail to true)
+  (set: $puzzleFailReason to "羊把白菜吃了")
+] (else-if: $puzzleRight contains "狼" and $puzzleRight contains "羊")[
+  (set: $puzzleFail to true)
+  (set: $puzzleFailReason to "狼把羊吃了")
+] (else-if: $puzzleRight contains "羊" and $puzzleRight contains "菜")[
+  (set: $puzzleFail to true)
+  (set: $puzzleFailReason to "羊把白菜吃了")
+]
+
+(if: $puzzleFail)[
+  [[失败了|PuzzleFail]]
+] (else-if: $puzzleLeft == "" and $puzzleRight contains "羊" and $puzzleRight contains "狼" and $puzzleRight contains "菜")[
+  [[成功了！|InnSuccess]]
+] (else:)[
+  [[继续|InnPuzzle]]
+]
+
+
+:: PuzzleFail
+桌面上传来一声轻响。石子碰在一起，又散开了。
+
+店主低头看了一眼，语气平淡：(if: $puzzleFailReason == "狼把羊吃了")["狼把羊吃了。"](else:)["羊把白菜吃了。"]
+
+(if: $puzzleFailReason == "狼把羊吃了")[
+桌上的狼石子压住了羊石子。羊石子不动了。
+] (else-if: $puzzleFailReason == "羊把白菜吃了")[
+羊石子旁边散落了几颗细小的石屑，代表白菜。
+]
+
+他把三颗石子重新推回左岸，船也放回了中间。“重新来吧。”
+
+(set: $puzzleLeft to "羊,狼,菜")
+(set: $puzzleRight to "")
+(set: $puzzleBoat to "none")
+(set: $puzzleBoatPos to "left")
+(set: $puzzleFail to false)
+
+(if: $hungry)[
+我肚子很饿，但这些石子让我暂时忘了饿。
+]
+
+[[重新开始|InnPuzzle]]
+
+
+:: InnSuccess
+我把最后一颗石子推到右岸。三颗石子静静地并排躺在那里——羊、狼、白菜，都过去了。
+
+店主低头看了一眼桌面，又抬头看了我一眼。“成了。”他在账本上划了一笔，“二楼左转第二间，住一晚。”
+
+他把书合上：“你是今天第三个过河的人。前两个都没过。”
+
+(if: $hungry)[
+“厨房在走廊尽头，”他补了一句，“面在柜子里，水在壶里，自己煮。”
+]
+
+我站在柜台前，看着桌上那条窄窄的河道，觉得这道题比想象中要沉一些——不是难，是那种“你得亲手推着它走完”的感觉。
+
+(set: $innSolved to true)
+(set: $wisdom to $wisdom + 1)
+
+往楼上走的时候，木板在脚下吱吱嘎嘎地响。拐角处的墙上贴着一张泛黄的纸，上面写着：
+
+**“每个人迟早都会停止思考，但这并不是说，将来的某一天就没有人思考了。”**
+
+我站在这行字前面停了几秒。
+
+[[继续上楼|NightView]]
+
+
+:: NightView
+二楼走廊尽头有一扇窗户。我把包放下，推开窗，夜风灌进来，凉凉的，带着一点木柴燃烧的烟味。远处能看见城墙的轮廓，城墙上的灯一颗一颗亮着。
+
+我坐在窗边，把今天的事过了一遍——石阶、平台上的石头、木牌上的字、茶水摊、城门口的告示和争执、通行证、集市里的气味和声音、那个刻木头的年轻人、那个卖颜色的摊主、饼摊、客栈柜台前的那道过河题。
+
+(if: $hungry)[
+肚子还在咕噜叫。不过厨房里有面，明天早上起来煮一碗。
+] (else-if: $hasFood)[
+那两块饼的余温早散了，但麦香还在嘴里留着一点。
+]
+
+我把那颗淡紫色果子掏出来放在窗台上。
+
+远处有梆子敲了三下。城墙上的灯在风里微微晃动。
+
+明天，可以在这座城堡里多走几条巷子。
+
+（第一天·未完成）
+
+[[重新开始|Start]]

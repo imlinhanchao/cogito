@@ -936,9 +936,22 @@ export function evaluateExpression(expression: string, variables: VariableMap): 
     .replace(/\b(?:and)\b/g, '&&')
     .replace(/\b(?:or)\b/g, '||')
 
+  // support `contains` operator: transform `A contains B` -> `__contains__(A, B)`
+  const compiledWithContains = compiled.replace(/([A-Za-z0-9_\]\)"'`\.\[\]]+)\s+contains\s+("[^\"]*"|'[^']*'|[A-Za-z0-9_\]\)"'`\.\[\]]+)/g, '__contains__($1,$2)')
+
   const vars = variables
   return (function runInScope() {
-    return eval(compiled)
+    const __contains__ = function(a: any, b: any) {
+      try {
+        if (a == null) return false
+        if (typeof a === 'string') return String(a).includes(b)
+        if (Array.isArray(a)) return a.includes(b)
+        return false
+      } catch {
+        return false
+      }
+    }
+    return eval(compiledWithContains)
   })()
 }
 
@@ -1752,8 +1765,19 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
           .replace(/\\b(?:and)\\b/g, '&&')
           .replace(/\\b(?:or)\\b/g, '||');
 
+        // support contains operator: transform A contains B -> __contains__(A, B)
+        const compiledWithContains = compiled.replace(/([A-Za-z0-9_\]\)\\\"'\.\[\]]+)\s+contains\s+(\"[^\\\"]*\"|'[^']*'|[A-Za-z0-9_\]\)\\\"'\.\[\]]+)/g, '__contains__($1,$2)');
+
         return (function runInScope() {
-          return eval(compiled);
+          const __contains__ = function(a, b) {
+            try {
+              if (a == null) return false;
+              if (typeof a === 'string') return String(a).includes(b);
+              if (Array.isArray(a)) return a.includes(b);
+              return false;
+            } catch (e) { return false }
+          };
+          return eval(compiledWithContains);
         })();
       }
 
