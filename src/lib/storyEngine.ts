@@ -704,61 +704,88 @@ function renderMarkdownBlocks(input: string): string {
 // --- Conditional macros ---
 // ParsedIfMacro describes a consumed `(if: condition)[true](else:)[false]`
 // block; the parser uses a balanced scanner to extract branches safely.
+interface ParsedIfMacroBranch {
+  condition: string | null
+  branch: string
+}
+
 interface ParsedIfMacro {
   fullEndIndex: number
-  condition: string
-  trueBranch: string
-  falseBranch: string | null
+  branches: ParsedIfMacroBranch[]
 }
 
 // consumeIfMacro: extracts an `(if: ...) [true] (else:)[false]` macro
 // returning the condition and branch contents for evaluation.
 function consumeIfMacro(source: string, startIndex: number): ParsedIfMacro | null {
   const signature = readBalancedBlock(source, startIndex, '(', ')')
-  if (!signature) {
-    return null
-  }
+  if (!signature) return null
 
   const conditionMatch = signature.content.trim().match(/^if:\s*([\s\S]+)$/i)
-  if (!conditionMatch) {
-    return null
-  }
+  if (!conditionMatch) return null
 
   let cursor = signature.endIndex
-  while (cursor < source.length && /\s/.test(source[cursor])) {
-    cursor += 1
-  }
+  while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1
 
   const trueBranchBlock = readBalancedBlock(source, cursor, '[', ']')
-  if (!trueBranchBlock) {
-    return null
-  }
+  if (!trueBranchBlock) return null
 
   cursor = trueBranchBlock.endIndex
-  while (cursor < source.length && /\s/.test(source[cursor])) {
-    cursor += 1
-  }
+  while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1
 
-  let falseBranch: string | null = null
-  if (source.slice(cursor, cursor + 7).toLowerCase() === '(else:)') {
-    cursor += 7
-    while (cursor < source.length && /\s/.test(source[cursor])) {
-      cursor += 1
+  const branches: ParsedIfMacroBranch[] = []
+  branches.push({ condition: conditionMatch[1].trim(), branch: trueBranchBlock.content })
+
+  // support multiple (else-if: <cond>)[...] blocks and a final (else:)[...]
+  while (cursor < source.length) {
+    // try else-if variants: (else-if: ...) or (elseif: ...)
+    if (source.slice(cursor, cursor + 9).toLowerCase() === '(else-if:') {
+      const sig = readBalancedBlock(source, cursor, '(', ')')
+      if (!sig) break
+      const m = sig.content.trim().match(/^else[-\s]?if:\s*([\s\S]+)$/i)
+      if (!m) { cursor = sig.endIndex; continue }
+      cursor = sig.endIndex
+      while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1
+      const branchBlock = readBalancedBlock(source, cursor, '[', ']')
+      if (!branchBlock) return null
+      branches.push({ condition: m[1].trim(), branch: branchBlock.content })
+      cursor = branchBlock.endIndex
+      while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1
+      continue
     }
 
-    const falseBranchBlock = readBalancedBlock(source, cursor, '[', ']')
-    if (!falseBranchBlock) {
-      return null
+    // also accept (elseif:...) without hyphen
+    if (source.slice(cursor, cursor + 8).toLowerCase() === '(elseif:') {
+      const sig = readBalancedBlock(source, cursor, '(', ')')
+      if (!sig) break
+      const m = sig.content.trim().match(/^elseif:\s*([\s\S]+)$/i)
+      if (!m) { cursor = sig.endIndex; continue }
+      cursor = sig.endIndex
+      while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1
+      const branchBlock = readBalancedBlock(source, cursor, '[', ']')
+      if (!branchBlock) return null
+      branches.push({ condition: m[1].trim(), branch: branchBlock.content })
+      cursor = branchBlock.endIndex
+      while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1
+      continue
     }
-    falseBranch = falseBranchBlock.content
-    cursor = falseBranchBlock.endIndex
+
+    if (source.slice(cursor, cursor + 7).toLowerCase() === '(else:)') {
+      cursor += 7
+      while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1
+      const elseBlock = readBalancedBlock(source, cursor, '[', ']')
+      if (!elseBlock) return null
+      branches.push({ condition: null, branch: elseBlock.content })
+      cursor = elseBlock.endIndex
+      while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1
+      break
+    }
+
+    break
   }
 
   return {
     fullEndIndex: cursor,
-    condition: conditionMatch[1].trim(),
-    trueBranch: trueBranchBlock.content,
-    falseBranch,
+    branches,
   }
 }
 
@@ -772,9 +799,7 @@ function replaceIfMacros(input: string, variables: VariableMap, story: StoryData
 
   while (searchFrom < input.length) {
     const ifStart = input.indexOf('(if:', searchFrom)
-    if (ifStart === -1) {
-      break
-    }
+    if (ifStart === -1) break
 
     const parsed = consumeIfMacro(input, ifStart)
     if (!parsed) {
@@ -783,9 +808,22 @@ function replaceIfMacros(input: string, variables: VariableMap, story: StoryData
     }
 
     result += input.slice(cursor, ifStart)
-    const isMatch = evaluateCondition(parsed.condition, variables)
-    const branch = isMatch ? parsed.trueBranch : parsed.falseBranch ?? ''
-    result += renderStoryText(branch, variables, story, routeTo)
+
+    // find the first branch that matches (or the final else branch)
+    let selected = ''
+    for (const b of parsed.branches) {
+      if (b.condition === null) {
+        selected = b.branch
+        break
+      }
+      if (evaluateCondition(b.condition, variables)) {
+        selected = b.branch
+        break
+      }
+    }
+
+    result += renderStoryText(selected, variables, story, routeTo)
+
     cursor = parsed.fullEndIndex
     searchFrom = parsed.fullEndIndex
   }
@@ -1430,37 +1468,63 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
         if (!conditionMatch) return null;
 
         let cursor = signature.endIndex;
-        while (cursor < source.length && /\s/.test(source[cursor])) {
-          cursor += 1;
-        }
+        while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
 
         const trueBranchBlock = readBalancedBlock(source, cursor, '[', ']');
         if (!trueBranchBlock) return null;
 
         cursor = trueBranchBlock.endIndex;
-        while (cursor < source.length && /\s/.test(source[cursor])) {
-          cursor += 1;
-        }
+        while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
 
-        let falseBranch = null;
-        if (source.slice(cursor, cursor + 7).toLowerCase() === '(else:)') {
-          cursor += 7;
-          while (cursor < source.length && /\s/.test(source[cursor])) {
-            cursor += 1;
+        const branches = [];
+        branches.push({ condition: conditionMatch[1].trim(), branch: trueBranchBlock.content });
+
+        while (cursor < source.length) {
+          if (source.slice(cursor, cursor + 9).toLowerCase() === '(else-if:') {
+            const sig = readBalancedBlock(source, cursor, '(', ')');
+            if (!sig) break;
+            const m = sig.content.trim().match(/^else[-\s]?if:\s*([\s\S]+)$/i);
+            if (!m) { cursor = sig.endIndex; continue; }
+            cursor = sig.endIndex;
+            while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+            const branchBlock = readBalancedBlock(source, cursor, '[', ']');
+            if (!branchBlock) return null;
+            branches.push({ condition: m[1].trim(), branch: branchBlock.content });
+            cursor = branchBlock.endIndex;
+            while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+            continue;
           }
 
-          const falseBranchBlock = readBalancedBlock(source, cursor, '[', ']');
-          if (!falseBranchBlock) return null;
-          falseBranch = falseBranchBlock.content;
-          cursor = falseBranchBlock.endIndex;
+          if (source.slice(cursor, cursor + 8).toLowerCase() === '(elseif:') {
+            const sig = readBalancedBlock(source, cursor, '(', ')');
+            if (!sig) break;
+            const m = sig.content.trim().match(/^elseif:\s*([\s\S]+)$/i);
+            if (!m) { cursor = sig.endIndex; continue; }
+            cursor = sig.endIndex;
+            while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+            const branchBlock = readBalancedBlock(source, cursor, '[', ']');
+            if (!branchBlock) return null;
+            branches.push({ condition: m[1].trim(), branch: branchBlock.content });
+            cursor = branchBlock.endIndex;
+            while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+            continue;
+          }
+
+          if (source.slice(cursor, cursor + 7).toLowerCase() === '(else:)') {
+            cursor += 7;
+            while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+            const elseBlock = readBalancedBlock(source, cursor, '[', ']');
+            if (!elseBlock) return null;
+            branches.push({ condition: null, branch: elseBlock.content });
+            cursor = elseBlock.endIndex;
+            while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+            break;
+          }
+
+          break;
         }
 
-        return {
-          fullEndIndex: cursor,
-          condition: conditionMatch[1].trim(),
-          trueBranch: trueBranchBlock.content,
-          falseBranch,
-        };
+        return { fullEndIndex: cursor, condition: null, trueBranch: '', falseBranch: null, branches };
       }
 
       function replaceIfMacros(input, vars, storyData, routeTo) {
@@ -1479,9 +1543,16 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
           }
 
           result += input.slice(cursor, ifStart);
-          const isMatch = Boolean(evaluateExpression(parsed.condition, vars));
-          const branch = isMatch ? parsed.trueBranch : (parsed.falseBranch || '');
-          result += renderText(branch, storyData, vars, routeTo);
+
+          let selected = '';
+          if (parsed.branches && parsed.branches.length) {
+            for (const b of parsed.branches) {
+              if (b.condition === null) { selected = b.branch; break }
+              if (Boolean(evaluateExpression(b.condition, vars))) { selected = b.branch; break }
+            }
+          }
+
+          result += renderText(selected, storyData, vars, routeTo);
           cursor = parsed.fullEndIndex;
           searchFrom = parsed.fullEndIndex;
         }
