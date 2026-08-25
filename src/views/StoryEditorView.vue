@@ -34,7 +34,9 @@
           <input v-model="story.title" class="input input-bordered flex-1 min-w-[200px]" placeholder="故事标题" />
           <button class="btn btn-primary" type="button" @click="runStory">运行</button>
           <button class="btn btn-outline" type="button" @click="importStory">导入</button>
+          <button class="btn btn-outline" type="button" @click="pasteImport">粘贴</button>
           <button class="btn btn-outline" type="button" @click="exportStory">导出</button>
+          <button class="btn btn-outline" type="button" @click="buildStory">编译</button>
           <button class="btn btn-ghost" type="button" @click="saveDraft">保存</button>
         </div>
 
@@ -214,6 +216,7 @@ import {
   serializeStory,
   buildInitialVariables,
   type StoryData,
+  buildStandaloneExport,
 } from '@/lib/storyEngine'
 
 const router = useRouter()
@@ -267,6 +270,63 @@ const importStory = () => {
   input.click()
 }
 
+const generateUniquePassageName = (base: string) => {
+  let name = base.trim() || 'Untitled'
+  let i = 1
+  while (story.value.passages.some((p) => p.name === name)) {
+    i += 1
+    name = `${base} (imported ${i})`
+  }
+  return name
+}
+
+const pasteImport = async () => {
+  try {
+    const text = await navigator.clipboard.readText()
+    if (!text || !text.trim()) {
+      // eslint-disable-next-line no-alert
+      window.alert('剪贴板没有可用文本。')
+      return
+    }
+
+    const parsed = parseStorySource(text)
+    if (!parsed || !parsed.passages || parsed.passages.length === 0) {
+      window.alert('未检测到可导入的段落内容。')
+      return
+    }
+    
+    story.value.passages = []
+
+    let added = 0
+    for (const p of parsed.passages) {
+      const exists = story.value.passages.some((q) => q.name === p.name)
+      const toAdd = { ...p }
+      if (exists) {
+        toAdd.name = generateUniquePassageName(p.name)
+      }
+      story.value.passages.push(toAdd)
+      added += 1
+    }
+
+    // Update variables with any newly introduced names (merge defaults)
+    const newVars = buildInitialVariables(story.value)
+    for (const [k, v] of Object.entries(newVars)) {
+      if (variables.value[k] === undefined) variables.value[k] = v
+    }
+
+    // Select the first newly added passage
+    if (added > 0) {
+      selectedPassage.value = story.value.passages[story.value.passages.length - added].name
+    }
+
+    window.alert(`已从剪贴板导入 ${added} 个段落。`)
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error(e)
+    window.alert('从剪贴板读取失败，请确保已授权并包含文本。')
+  }
+}
+
 const exportStory = () => {
   const source = serializeStory(story.value)
   const blob = new Blob([source], { type: 'text/plain;charset=utf-8' })
@@ -274,6 +334,17 @@ const exportStory = () => {
   const anchor = document.createElement('a')
   anchor.href = url
   anchor.download = `${(story.value.title || 'story').replace(/\s+/g, '-')}.txt`
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
+const buildStory = () => {
+  const source = buildStandaloneExport(story.value, variables.value, selectedPassage.value)
+  const blob = new Blob([source], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `${(story.value.title || 'story').replace(/\s+/g, '-')}.html`
   anchor.click()
   URL.revokeObjectURL(url)
 }
@@ -296,6 +367,7 @@ const confirmRun = () => {
     variables: variables.value,
   }
   localStorage.setItem('haide-story-session', JSON.stringify(payload))
+  localStorage.removeItem('haide-story-play-cache')
   closeDialog()
   router.push({ name: 'story-play', params: { storyId: 'current' } })
 }

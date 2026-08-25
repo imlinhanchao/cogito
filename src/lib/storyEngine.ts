@@ -892,6 +892,7 @@ export function evaluateExpression(expression: string, variables: VariableMap): 
 
   const compiled = withCalls
     .replace(/\$([A-Za-z_][A-Za-z0-9_]*)/g, (_, name: string) => `vars["${name}"]`)
+    .replace(/\b(?:not )\b/g, '!')
     .replace(/\b(?:is not|ne)\b/g, '!==')
     .replace(/\b(?:is|eq)\b/g, '===')
     .replace(/\b(?:and)\b/g, '&&')
@@ -960,7 +961,7 @@ function replaceTextWithHtml(raw: string, variables: VariableMap, story: StoryDa
   const styleBlocks: string[] = []
   const htmlFragments: string[] = []
   let working = raw.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, (match) => {
-    const placeholder = `__STYLE_BLOCK_${styleBlocks.length}__`
+    const placeholder = `$STYLE_BLOCK$${styleBlocks.length}$`
     styleBlocks.push(match)
     return placeholder
   })
@@ -968,6 +969,23 @@ function replaceTextWithHtml(raw: string, variables: VariableMap, story: StoryDa
   // 先扫描并注册函数，段落内的 set 副作用由“进入段落”时单独执行，避免渲染期修改响应式状态。
   working = extractAndRegisterFunctions(working, GLOBAL_JS_FUNCTIONS)
   working = stripSetMacros(working)
+
+  const linkPattern = /\(link:\s*(?:["']([^"']*)["']|([^)]*?))\)\s*\[((?:.|\n)*?)\]/g
+  working = working.replace(linkPattern, (_full: string, literalLabel: string, rawLabel: string, actionBlock: string) => {
+    const label = literalLabel || rawLabel || '继续'
+    const target = extractGotoTarget(actionBlock) || label
+    const actionMatch = (actionBlock || '').match(/(?:set:\s*[^)\]]+|call:\s*[^)\]]+)/i)
+    const actionAttr = actionMatch ? ` data-story-action="${actionMatch[0].replace(/"/g, "'")}"` : ''
+    return `<button type="button" class="story-link" data-story-target="${escapeHtml(target)}" data-story-goto="${escapeHtml(target)}"${actionAttr}>${escapeHtml(label)}</button>`
+  })
+
+  // Support optional action in the form of (set: ...) or (call: ...)
+  working = working.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\](?:\(((?:set:\s*[^)]+|call:\s*[^)]+))\))?/g, (_, label: string, target?: string, action?: string) => {
+    const passageName = label.trim()
+    const actualTarget = (target ?? label).trim()
+    const actionAttribute = action ? ` data-story-action="${action.replace(/"/g, "'")}"` : ''
+    return `<button type="button" class="story-link" data-story-target="${escapeHtml(actualTarget)}"${actionAttribute}>${escapeHtml(passageName)}</button>`
+  })
 
   // 支持调用已定义的函数： (call:"name" arg1 arg2)
   const callPattern = /\(call:\s*["']([^"']+)["'](?:\s+([^)]*?))?\)/g
@@ -985,7 +1003,7 @@ function replaceTextWithHtml(raw: string, variables: VariableMap, story: StoryDa
     if (!target) {
       return ''
     }
-    const placeholder = `__HTML_FRAGMENT_${htmlFragments.length}__`
+    const placeholder = `$HTML_FRAGMENT$${htmlFragments.length}$`
     htmlFragments.push(renderStoryText(target.content, variables, story, routeTo))
     return placeholder
   })
@@ -994,20 +1012,6 @@ function replaceTextWithHtml(raw: string, variables: VariableMap, story: StoryDa
   working = working.replace(printPattern, (_, expression: string) => {
     const resolved = evaluateExpression(expression, variables)
     return escapeHtml(String(resolved))
-  })
-
-  const linkPattern = /\(link:\s*(?:["']([^"']*)["']|([^)]*?))\)\s*\[((?:.|\n)*?)\]/g
-  working = working.replace(linkPattern, (_full: string, literalLabel: string, rawLabel: string, actionBlock: string) => {
-    const label = literalLabel || rawLabel || '继续'
-    const target = extractGotoTarget(actionBlock) || label
-    return `<button type="button" class="story-link" data-story-target="${escapeHtml(target)}" data-story-goto="${escapeHtml(target)}">${escapeHtml(label)}</button>`
-  })
-
-  working = working.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\](?:\((set:\s*[^)]+)\))?/g, (_, label: string, target?: string, action?: string) => {
-    const passageName = label.trim()
-    const actualTarget = (target ?? label).trim()
-    const actionAttribute = action ? ` data-story-action="${escapeHtml(action)}"` : ''
-    return `<button type="button" class="story-link" data-story-target="${escapeHtml(actualTarget)}"${actionAttribute}>${escapeHtml(passageName)}</button>`
   })
 
   const gotoPattern = /\(goto:\s*["']([^"']+)['"]\s*\)/g
@@ -1025,10 +1029,10 @@ function replaceTextWithHtml(raw: string, variables: VariableMap, story: StoryDa
 
   working = sanitizeAllowedHtml(working)
   for (const [index, styleBlock] of styleBlocks.entries()) {
-    working = working.replace(`__STYLE_BLOCK_${index}__`, styleBlock)
+    working = working.replace(`$STYLE_BLOCK$${index}$`, styleBlock)
   }
   for (const [index, fragment] of htmlFragments.entries()) {
-    working = working.replace(`__HTML_FRAGMENT_${index}__`, fragment)
+    working = working.replace(`$HTML_FRAGMENT$${index}$`, fragment)
   }
   return working
 }
@@ -1197,6 +1201,12 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
         }
       }
 
+      function extractGotoTarget(actionBlock) {
+        const normalized = actionBlock.trim()
+        const gotoMatch = normalized.match(/goto:\\s*(?:["']([^"']+)["']|([^\\]\\)]+))/i)
+        return (gotoMatch?.[1] ?? gotoMatch?.[2])?.trim()
+      }
+
       function parseCallArgs(argsSegment, vars) {
         if (!argsSegment) return [];
 
@@ -1266,7 +1276,7 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
               escaped = false;
               continue;
             }
-            if (ch === '\\') {
+            if (ch === '\\\\') {
               escaped = true;
               continue;
             }
@@ -1497,12 +1507,12 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
             return placeholder;
           });
 
-          working = working.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+          working = working.replace(/\\*\*([^*]+)\\*\\*/g, '<strong>$1</strong>');
           working = working.replace(/__([^_]+)__/g, '<strong>$1</strong>');
-          working = working.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
-          working = working.replace(/_([^_\n]+)_/g, '<em>$1</em>');
+          working = working.replace(/\\*([^*\\n]+)\\*/g, '<em>$1</em>');
+          working = working.replace(/_([^_\\n]+)_/g, '<em>$1</em>');
           working = working.replace(/~~([^~]+)~~/g, '<del>$1</del>');
-          working = working.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(_full, label, href) {
+          working = working.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, function(_full, label, href) {
             const safeHref = escapeHtml(String(href).trim());
             return '<a href="' + safeHref + '" rel="noreferrer noopener">' + renderMarkdownInline(String(label)) + '</a>';
           });
@@ -1516,7 +1526,7 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
       }
 
       function renderMarkdownBlocks(input) {
-        const lines = String(input).replace(/\r\n/g, '\n').split('\n');
+        const lines = String(input).replace(/\\r\\n/g, '\\n').split('\\n');
         const output = [];
         const paragraphLines = [];
         const quoteLines = [];
@@ -1561,7 +1571,7 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
 
           if (inCodeBlock) {
             if (/^\`\`\`\s*$/.test(trimmed)) {
-              output.push('<pre><code' + (codeLanguage ? ' class="language-' + escapeHtml(codeLanguage) + '"' : '') + '>' + escapeHtml(codeLines.join('\n')) + '</code></pre>');
+              output.push('<pre><code' + (codeLanguage ? ' class="language-' + escapeHtml(codeLanguage) + '"' : '') + '>' + escapeHtml(codeLines.join('\\n')) + '</code></pre>');
               inCodeBlock = false;
               codeLines = [];
               codeLanguage = '';
@@ -1574,7 +1584,7 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
           if (inRawHtmlBlock) {
             rawHtmlLines.push(line);
             if (trimmed.toLowerCase() === '</' + rawHtmlTag + '>') {
-              output.push(rawHtmlLines.join('\n'));
+              output.push(rawHtmlLines.join('\\n'));
               inRawHtmlBlock = false;
               rawHtmlTag = '';
               rawHtmlLines = [];
@@ -1587,7 +1597,7 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
             continue;
           }
 
-          const codeFenceMatch = trimmed.match(/^\`\`\`([A-Za-z0-9_-]+)?\s*$/);
+          const codeFenceMatch = trimmed.match(/^\`\`\`([A-Za-z0-9_-]+)?\\s*$/);
           if (codeFenceMatch) {
             flushAllBlocks();
             inCodeBlock = true;
@@ -1596,7 +1606,7 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
             continue;
           }
 
-          const headingMatch = trimmed.match(/^(#{1,6})\s+(.+)$/);
+          const headingMatch = trimmed.match(/^(#{1,6})\\s+(.+)$/);
           if (headingMatch) {
             flushAllBlocks();
             const level = headingMatch[1].length;
@@ -1604,7 +1614,7 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
             continue;
           }
 
-          const rawHtmlStartMatch = trimmed.match(/^<([A-Za-z][\w:-]*)(\s[^>]*)?>$/);
+          const rawHtmlStartMatch = trimmed.match(/^<([A-Za-z][\\w:-]*)(\\s[^>]*)?>$/);
           if (rawHtmlStartMatch && MARKDOWN_RAW_HTML_BLOCK_TAGS.has(rawHtmlStartMatch[1].toLowerCase())) {
             flushAllBlocks();
             inRawHtmlBlock = true;
@@ -1613,7 +1623,7 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
             continue;
           }
 
-          const quoteMatch = trimmed.match(/^>\s?(.*)$/);
+          const quoteMatch = trimmed.match(/^>\\s?(.*)$/);
           if (quoteMatch) {
             flushParagraph();
             flushList();
@@ -1625,8 +1635,8 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
             flushQuote();
           }
 
-          const unorderedListMatch = trimmed.match(/^[-*+]\s+(.+)$/);
-          const orderedListMatch = trimmed.match(/^\d+\.\s+(.+)$/);
+          const unorderedListMatch = trimmed.match(/^[-*+]\\s+(.+)$/);
+          const orderedListMatch = trimmed.match(/^\\d+\\.\\s+(.+)$/);
           if (unorderedListMatch || orderedListMatch) {
             flushParagraph();
             const nextType = unorderedListMatch ? 'ul' : 'ol';
@@ -1649,14 +1659,14 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
         flushAllBlocks();
 
         if (inCodeBlock) {
-          output.push('<pre><code' + (codeLanguage ? ' class="language-' + escapeHtml(codeLanguage) + '"' : '') + '>' + escapeHtml(codeLines.join('\n')) + '</code></pre>');
+          output.push('<pre><code' + (codeLanguage ? ' class="language-' + escapeHtml(codeLanguage) + '"' : '') + '>' + escapeHtml(codeLines.join('\\n')) + '</code></pre>');
         }
 
         if (inRawHtmlBlock && rawHtmlLines.length) {
-          output.push(rawHtmlLines.join('\n'));
+          output.push(rawHtmlLines.join('\\n'));
         }
 
-        return output.join('\n');
+        return output.join('\\n');
       }
 
       function evaluateExpression(expression, vars) {
@@ -1665,11 +1675,11 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
 
         const withCalls = replaceCallExpressions(normalized, vars);
         const compiled = withCalls
-          .replace(/\$([A-Za-z_][A-Za-z0-9_]*)/g, function(_, name) { return 'vars["' + name + '"]' })
-          .replace(/\b(?:is not|ne)\b/g, '!==')
-          .replace(/\b(?:is|eq)\b/g, '===')
-          .replace(/\b(?:and)\b/g, '&&')
-          .replace(/\b(?:or)\b/g, '||');
+          .replace(/\\$([A-Za-z_][A-Za-z0-9_]*)/g, function(_, name) { return 'vars["' + name + '"]' })
+          .replace(/\\b(?:is not|ne)\\b/g, '!==')
+          .replace(/\\b(?:is|eq)\\b/g, '===')
+          .replace(/\\b(?:and)\\b/g, '&&')
+          .replace(/\\b(?:or)\\b/g, '||');
 
         return (function runInScope() {
           return eval(compiled);
@@ -1679,7 +1689,7 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
       function renderText(input, currentStory, currentVars, routeTo) {
         const styleBlocks = [];
         const htmlFragments = [];
-        let working = input.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, (match) => {
+        let working = input.replace(/<style\\b[^>]*>[\\s\\S]*?<\\/style>/gi, (match) => {
           const placeholder = '__STYLE_BLOCK_' + styleBlocks.length + '__';
           styleBlocks.push(match);
           return placeholder;
@@ -1689,28 +1699,28 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
         working = stripSetMacros(working);
         working = replaceIfMacros(working, currentVars, currentStory, routeTo);
 
-        const displayPattern = /(display:\s*["']([^"']+)["']\s*)/g;
-        working = working.replace(displayPattern, (_, _full, targetName) => {
-          const target = currentStory.passages.find((passage) => passage.name === targetName);
-          if (!target) {
-            return '';
-          }
-          const placeholder = '__HTML_FRAGMENT_' + htmlFragments.length + '__';
+        const displayPattern = /(display:\\s*["']([^"']+)["']\\s*)/g;
+        working = working.replace(displayPattern, function(_, _full, targetName) {
+          const target = currentStory.passages.find(function(p) { return p.name === targetName; });
+          if (!target) return '';
+          const placeholder = '$HTML_FRAGMENT$' + htmlFragments.length + '$';
           htmlFragments.push(renderText(target.content, currentStory, currentVars, routeTo));
           return placeholder;
         });
 
-        const printPattern = /(print:\s*([^)]*?))/g;
+        const printPattern = /(print:\\s*([^)]*?))/g;
         working = working.replace(printPattern, (_, _full, expression) => escapeHtml(String(evaluateExpression(expression, currentVars))));
 
-        const linkPattern = /(link:\s*(?:["']([^"']*)["']|([^)]*?))\)\s*\[((?:.|\n)*?)\]/g;
+        const linkPattern = /\\(link:\\s*(?:["']([^"']*)["']|([^)]*?))\\)\\s*\\[((?:.|\\n)*?)\\]/g;
         working = working.replace(linkPattern, (_full, literalLabel, rawLabel, actionBlock) => {
           const label = literalLabel || rawLabel || '继续';
           const target = extractGotoTarget(actionBlock) || label;
-          return '<button type="button" class="story-link" data-story-target="' + escapeHtml(target) + '" data-story-goto="' + escapeHtml(target) + '">' + escapeHtml(label) + '</button>';
+          const actionMatch = (actionBlock || '').match(/(?:set:\\s*[^)\\]]+|call:\\s*[^)\\]]+)/i);
+          const actionAttr = actionMatch ? ' data-story-action="' + escapeHtml(actionMatch[0]) + '"' : '';
+          return '<button type="button" class="story-link" data-story-target="' + escapeHtml(target) + '" data-story-goto="' + escapeHtml(target) + '"' + actionAttr + '>' + escapeHtml(label) + '</button>';
         });
 
-        working = working.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\](?:\((set:\s*[^)]+)\))?/g, (_, label, target, action) => {
+        working = working.replace(/\\[\\[([^\\]|]+)(?:\\|([^\\]]+))?\\]\\](?:\\(((?:set:\\s*[^)]+|call:\\s*[^)]+))\\))?/g, function(_, label, target, action) {
           const actualTarget = (target || label).trim();
           const btnText = label.trim();
           const actionAttribute = action ? ' data-story-action="' + escapeHtml(action) + '"' : '';
@@ -1718,19 +1728,19 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
         });
 
         working = working.replace(/''([^']+)''/g, '<strong>$1</strong>');
-        working = working.replace(/(?<!:)\/\/([^/\n]+?)\/\//g, '<em>$1</em>');
+        working = working.replace(/(?<!:)\\/\\/([^/\\n]+?)\\/\\//g, '<em>$1</em>');
         working = working.replace(/~~([^~]+)~~/g, '<del>$1</del>');
-        working = working.replace(/\^\^([^\^]+)\^\^/g, '<sup>$1</sup>');
+        working = working.replace(/\\^\\^([^\\^]+)\\^\\^/g, '<sup>$1</sup>');
         working = working.replace(/,,([^,]+),,/g, '<sub>$1</sub>');
 
         working = renderMarkdownBlocks(working);
 
         styleBlocks.forEach((styleBlock, index) => {
-          working = working.replace('__STYLE_BLOCK_' + index + '__', styleBlock);
+          working = working.replace('$STYLE_BLOCK$' + index + '$', styleBlock);
         });
 
         htmlFragments.forEach((fragment, index) => {
-          working = working.replace('__HTML_FRAGMENT_' + index + '__', fragment);
+          working = working.replace('$HTML_FRAGMENT$' + index + '$', fragment);
         });
 
         return working;
@@ -1740,8 +1750,11 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
         const passage = story.passages.find((item) => item.name === passageName) || story.passages[0];
         variables.passage = passage.name;
         variables.storyTitle = story.title;
-        applyPassageEntryEffects(passage.content, variables);
-        document.getElementById('story-root').innerHTML = renderText(passage.content, story, variables, renderPassage);
+        // Ensure any (fn:) definitions in the passage are registered
+        // before executing (set:) side-effects which may call those functions.
+        const passageContentForEffects = extractAndRegisterFunctions(passage.content, GLOBAL_JS_FUNCTIONS);
+        applyPassageEntryEffects(passageContentForEffects, variables);
+        document.getElementById('story-root').innerHTML = renderText(passageContentForEffects, story, variables, renderPassage);
 
         const varRoot = document.getElementById('variables-root');
         const entries = Object.entries(variables).filter(([key]) => key !== 'passage' && key !== 'storyTitle');
@@ -1754,9 +1767,15 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
           node.addEventListener('click', () => {
             const action = node.getAttribute('data-story-action');
             if (action) {
-              const setMatch = action.trim().match(/^set:\s*(\$[A-Za-z_][A-Za-z0-9_]*)\s+to\s+(.+)$/);
+              const setMatch = action.trim().match(/^set:\\s*(\\$[A-Za-z_][A-Za-z0-9_]*)\\s+to\\s+(.+)$/);
               if (setMatch) {
                 variables[setMatch[1].slice(1)] = evaluateExpression(setMatch[2], variables);
+              } else {
+                const callMatch = action.trim().match(/^call:\\s*["']([^"']+)["'](?:\\s+(.+))?$/i);
+                if (callMatch) {
+                  const args = parseCallArgs(callMatch[2], variables);
+                  executeStoryJsFunction(callMatch[1], args, variables);
+                }
               }
             }
             const target = node.getAttribute('data-story-target');
