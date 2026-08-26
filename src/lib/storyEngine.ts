@@ -65,6 +65,7 @@ export interface StoryPassage {
 
 export interface StoryData {
   title: string
+  description?: string
   startPassage: string
   passages: StoryPassage[]
 }
@@ -248,17 +249,28 @@ export function parseStorySource(source: string): StoryData {
 
   const title = (normalized.match(/^\s*标题\s*[:：]\s*(.+)$/m)?.[1] ?? 'Interactive Story').trim() || 'Interactive Story'
 
+  const description = (normalized.match(/^\s*简述\s*[:：]\s*(.+)$/m)?.[1] ?? '').trim() || ''
+  const explicitStart = (normalized.match(/^\s*(?:起始段落|起始)\s*[:：]\s*(.+)$/m)?.[1] ?? '').trim()
+
   return {
     title,
-    startPassage: passages[0]?.name ?? 'Start',
+    description: description || undefined,
+    startPassage: explicitStart || (passages[0]?.name ?? 'Start'),
     passages,
   }
 }
 
 export function serializeStory(story: StoryData): string {
-  return story.passages
+  const headerLines: string[] = []
+  headerLines.push(`标题：${story.title || 'Untitled'}`)
+  if (story.description) headerLines.push(`简述：${story.description}`)
+  if (story.startPassage) headerLines.push(`起始段落：${story.startPassage}`)
+
+  const passagesText = story.passages
     .map((passage) => `:: ${passage.name}\n${passage.content.trim()}`)
     .join('\n\n')
+
+  return headerLines.join('\n') + '\n\n' + passagesText
 }
 
 export function collectVariableNamesFromStory(story: StoryData): string[] {
@@ -1163,6 +1175,78 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
   const safeStory = JSON.stringify(story)
   const safeVariables = JSON.stringify(variables)
   const safeCurrent = JSON.stringify(currentPassage)
+  // Collect helper functions and constants from this module and serialize
+  const helperOrder = [
+    'ALLOWED_HTML_TAGS',
+    'CALL_IN_EXPRESSION_PATTERN',
+    'CALL_ARG_TOKEN_PATTERN',
+    'MARKDOWN_RAW_HTML_BLOCK_TAGS',
+    'escapeHtml',
+    'executeStoryJsFunction',
+    'extractGotoTarget',
+    'parseCallArgs',
+    'toExpressionLiteral',
+    'replaceCallExpressions',
+    'readBalancedBlock',
+    'consumeFnDefinition',
+    'extractAndRegisterFunctions',
+    'applySetMacros',
+    'applyPassageEntryEffects',
+    'stripSetMacros',
+    'consumeIfMacro',
+    'replaceIfMacros',
+    'renderMarkdownInline',
+    'renderMarkdownBlocks',
+    'evaluateExpression',
+    'replaceTextWithHtml',
+    'renderStoryText',
+    'sanitizeAllowedHtml',
+    'sanitizeTag',
+    'evaluateCondition',
+  ]
+
+  const fnMap: Record<string, any> = {
+    ALLOWED_HTML_TAGS,
+    CALL_IN_EXPRESSION_PATTERN,
+    CALL_ARG_TOKEN_PATTERN,
+    MARKDOWN_RAW_HTML_BLOCK_TAGS,
+    escapeHtml,
+    executeStoryJsFunction,
+    extractGotoTarget,
+    parseCallArgs,
+    toExpressionLiteral,
+    replaceCallExpressions,
+    readBalancedBlock,
+    consumeFnDefinition,
+    extractAndRegisterFunctions,
+    applySetMacros,
+    applyPassageEntryEffects,
+    stripSetMacros,
+    consumeIfMacro,
+    replaceIfMacros,
+    renderMarkdownInline,
+    renderMarkdownBlocks,
+    evaluateExpression,
+    replaceTextWithHtml,
+    renderStoryText,
+    sanitizeAllowedHtml,
+    sanitizeTag,
+    evaluateCondition,
+  }
+
+  const helpersSrc = helperOrder
+    .map((name) => {
+      const v = fnMap[name]
+      if (typeof v === 'function') return v.toString()
+      try {
+        if (v instanceof RegExp) return `const ${name} = ${v.toString()};`
+        if (v instanceof Set) return `const ${name} = new Set(${JSON.stringify(Array.from(v))});`
+        return `const ${name} = ${JSON.stringify(v)};`
+      } catch (e) {
+        return `// could not serialize ${name}`
+      }
+    })
+    .join('\n\n')
 
   return `<!DOCTYPE html>
 <html lang="zh-Hant">
@@ -1222,666 +1306,52 @@ export function buildStandaloneExport(story: StoryData, variables: VariableMap, 
         <div id="variables-root" class="var-list"></div>
       </aside>
     </div>
-
-    <script>
-      const story = ${safeStory};
-      const variables = ${safeVariables};
-      const currentPassageName = ${safeCurrent};
-      const GLOBAL_JS_FUNCTIONS = {};
-
-      function escapeHtml(value) {
-        return String(value)
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/\"/g, '&quot;')
-          .replace(/'/g, '&#39;');
-      }
-
-      const CALL_IN_EXPRESSION_PATTERN = /call:\s*["']([^"']+)["']((?:\s+(?:"[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'|\$[A-Za-z_][A-Za-z0-9_]*|-?\d+(?:\.\d+)?|true|false|null|undefined))*)/gi;
-      const CALL_ARG_TOKEN_PATTERN = /"[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'|\$[A-Za-z_][A-Za-z0-9_]*|-?\d+(?:\.\d+)?|true|false|null|undefined/g;
-
-      function executeStoryJsFunction(name, args, vars) {
-        const code = GLOBAL_JS_FUNCTIONS[name];
-        if (!code) return undefined;
-        try {
-          const fn = new Function('vars', 'args', code);
-          return fn(vars, args);
-        } catch (e) {
-          return undefined;
-        }
-      }
-
-      function extractGotoTarget(actionBlock) {
-        const normalized = actionBlock.trim()
-        const gotoMatch = normalized.match(/goto:\\s*(?:["']([^"']+)["']|([^\\]\\)]+))/i)
-        return (gotoMatch?.[1] ?? gotoMatch?.[2])?.trim()
-      }
-
-      function parseCallArgs(argsSegment, vars) {
-        if (!argsSegment) return [];
-
-        const args = [];
-        const matches = argsSegment.match(CALL_ARG_TOKEN_PATTERN) || [];
-        for (const token of matches) {
-          if ((token.startsWith('"') && token.endsWith('"')) || (token.startsWith("'") && token.endsWith("'"))) {
-            args.push(token.slice(1, -1));
-            continue;
-          }
-
-          if (token.startsWith('$')) {
-            args.push(vars[token.slice(1)]);
-            continue;
-          }
-
-          if (token === 'true') {
-            args.push(true);
-            continue;
-          }
-
-          if (token === 'false') {
-            args.push(false);
-            continue;
-          }
-
-          if (token === 'null') {
-            args.push(null);
-            continue;
-          }
-
-          if (token === 'undefined') {
-            args.push(undefined);
-            continue;
-          }
-
-          args.push(Number(token));
-        }
-
-        return args;
-      }
-
-      function toExpressionLiteral(value) {
-        if (value === undefined) return 'undefined';
-        const json = JSON.stringify(value);
-        return json === undefined ? 'undefined' : json;
-      }
-
-      function replaceCallExpressions(expression, vars) {
-        return expression.replace(CALL_IN_EXPRESSION_PATTERN, function(_full, name, argsSegment) {
-          const args = parseCallArgs(argsSegment, vars);
-          return toExpressionLiteral(executeStoryJsFunction(name, args, vars));
-        });
-      }
-
-      function readBalancedBlock(source, startIndex, openChar, closeChar) {
-        if (source[startIndex] !== openChar) return null;
-
-        let depth = 1;
-        let quote = null;
-        let escaped = false;
-
-        for (let i = startIndex + 1; i < source.length; i += 1) {
-          const ch = source[i];
-          if (quote) {
-            if (escaped) {
-              escaped = false;
-              continue;
-            }
-            if (ch === '\\\\') {
-              escaped = true;
-              continue;
-            }
-            if (ch === quote) {
-              quote = null;
-            }
-            continue;
-          }
-
-          if (ch === '"' || ch === "'" || ch === '\`') {
-            quote = ch;
-            continue;
-          }
-
-          if (ch === openChar) {
-            depth += 1;
-            continue;
-          }
-
-          if (ch === closeChar) {
-            depth -= 1;
-            if (depth === 0) {
-              return {
-                content: source.slice(startIndex + 1, i),
-                endIndex: i + 1,
-              };
-            }
-          }
-        }
-
-        return null;
-      }
-
-      function consumeFnDefinition(source, startIndex) {
-        const signature = readBalancedBlock(source, startIndex, '(', ')');
-        if (!signature) return null;
-
-        const nameMatch = signature.content.trim().match(/^fn:\s*["']([^"']+)["']\s*$/i);
-        if (!nameMatch) return null;
-
-        let cursor = signature.endIndex;
-        while (cursor < source.length && /\s/.test(source[cursor])) {
-          cursor += 1;
-        }
-
-        const body = readBalancedBlock(source, cursor, '[', ']');
-        if (!body) return null;
-
-        return {
-          name: nameMatch[1],
-          code: body.content,
-          endIndex: body.endIndex,
-        };
-      }
-
-      function extractAndRegisterFunctions(input, registry) {
-        let result = '';
-        let cursor = 0;
-        let searchFrom = 0;
-
-        while (searchFrom < input.length) {
-          const fnStart = input.indexOf('(fn:', searchFrom);
-          if (fnStart === -1) break;
-
-          const parsed = consumeFnDefinition(input, fnStart);
-          if (!parsed) {
-            searchFrom = fnStart + 4;
-            continue;
-          }
-
-          result += input.slice(cursor, fnStart);
-          registry[parsed.name] = parsed.code;
-          cursor = parsed.endIndex;
-          searchFrom = parsed.endIndex;
-        }
-
-        result += input.slice(cursor);
-        return result;
-      }
-
-      function applySetMacros(input, vars) {
-        let result = '';
-        let cursor = 0;
-        let searchFrom = 0;
-
-        while (searchFrom < input.length) {
-          const setStart = input.indexOf('(set:', searchFrom);
-          if (setStart === -1) break;
-
-          const parsed = readBalancedBlock(input, setStart, '(', ')');
-          if (!parsed) {
-            searchFrom = setStart + 5;
-            continue;
-          }
-
-          const setMatch = parsed.content.trim().match(/^set:\s*(\$[A-Za-z_][A-Za-z0-9_]*)\s+to\s+([\s\S]+)$/i);
-          if (!setMatch) {
-            searchFrom = setStart + 5;
-            continue;
-          }
-
-          vars[setMatch[1].slice(1)] = evaluateExpression(setMatch[2].trim(), vars);
-          result += input.slice(cursor, setStart);
-          cursor = parsed.endIndex;
-          searchFrom = parsed.endIndex;
-        }
-
-        result += input.slice(cursor);
-        return result;
-      }
-
-      function applyPassageEntryEffects(content, vars) {
-        applySetMacros(content, vars);
-      }
-
-      function stripSetMacros(input) {
-        let result = '';
-        let cursor = 0;
-        let searchFrom = 0;
-
-        while (searchFrom < input.length) {
-          const setStart = input.indexOf('(set:', searchFrom);
-          if (setStart === -1) break;
-
-          const parsed = readBalancedBlock(input, setStart, '(', ')');
-          if (!parsed) {
-            searchFrom = setStart + 5;
-            continue;
-          }
-
-          const setMatch = parsed.content.trim().match(/^set:\s*(\$[A-Za-z_][A-Za-z0-9_]*)\s+to\s+([\s\S]+)$/i);
-          if (!setMatch) {
-            searchFrom = setStart + 5;
-            continue;
-          }
-
-          result += input.slice(cursor, setStart);
-          cursor = parsed.endIndex;
-          searchFrom = parsed.endIndex;
-        }
-
-        result += input.slice(cursor);
-        return result;
-      }
-
-      function consumeIfMacro(source, startIndex) {
-        const signature = readBalancedBlock(source, startIndex, '(', ')');
-        if (!signature) return null;
-
-        const conditionMatch = signature.content.trim().match(/^if:\s*([\s\S]+)$/i);
-        if (!conditionMatch) return null;
-
-        let cursor = signature.endIndex;
-        while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
-
-        const trueBranchBlock = readBalancedBlock(source, cursor, '[', ']');
-        if (!trueBranchBlock) return null;
-
-        cursor = trueBranchBlock.endIndex;
-        while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
-
-        const branches = [];
-        branches.push({ condition: conditionMatch[1].trim(), branch: trueBranchBlock.content });
-
-        while (cursor < source.length) {
-          if (source.slice(cursor, cursor + 9).toLowerCase() === '(else-if:') {
-            const sig = readBalancedBlock(source, cursor, '(', ')');
-            if (!sig) break;
-            const m = sig.content.trim().match(/^else[-\s]?if:\s*([\s\S]+)$/i);
-            if (!m) { cursor = sig.endIndex; continue; }
-            cursor = sig.endIndex;
-            while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
-            const branchBlock = readBalancedBlock(source, cursor, '[', ']');
-            if (!branchBlock) return null;
-            branches.push({ condition: m[1].trim(), branch: branchBlock.content });
-            cursor = branchBlock.endIndex;
-            while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
-            continue;
-          }
-
-          if (source.slice(cursor, cursor + 8).toLowerCase() === '(elseif:') {
-            const sig = readBalancedBlock(source, cursor, '(', ')');
-            if (!sig) break;
-            const m = sig.content.trim().match(/^elseif:\s*([\s\S]+)$/i);
-            if (!m) { cursor = sig.endIndex; continue; }
-            cursor = sig.endIndex;
-            while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
-            const branchBlock = readBalancedBlock(source, cursor, '[', ']');
-            if (!branchBlock) return null;
-            branches.push({ condition: m[1].trim(), branch: branchBlock.content });
-            cursor = branchBlock.endIndex;
-            while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
-            continue;
-          }
-
-          if (source.slice(cursor, cursor + 7).toLowerCase() === '(else:)') {
-            cursor += 7;
-            while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
-            const elseBlock = readBalancedBlock(source, cursor, '[', ']');
-            if (!elseBlock) return null;
-            branches.push({ condition: null, branch: elseBlock.content });
-            cursor = elseBlock.endIndex;
-            while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
-            break;
-          }
-
-          break;
-        }
-
-        return { fullEndIndex: cursor, condition: null, trueBranch: '', falseBranch: null, branches };
-      }
-
-      function replaceIfMacros(input, vars, storyData, routeTo) {
-        let result = '';
-        let cursor = 0;
-        let searchFrom = 0;
-
-        while (searchFrom < input.length) {
-          const ifStart = input.indexOf('(if:', searchFrom);
-          if (ifStart === -1) break;
-
-          const parsed = consumeIfMacro(input, ifStart);
-          if (!parsed) {
-            searchFrom = ifStart + 4;
-            continue;
-          }
-
-          result += input.slice(cursor, ifStart);
-
-          let selected = '';
-          if (parsed.branches && parsed.branches.length) {
-            for (const b of parsed.branches) {
-              if (b.condition === null) { selected = b.branch; break }
-              if (Boolean(evaluateExpression(b.condition, vars))) { selected = b.branch; break }
-            }
-          }
-
-          result += renderText(selected, storyData, vars, routeTo);
-          cursor = parsed.fullEndIndex;
-          searchFrom = parsed.fullEndIndex;
-        }
-
-        result += input.slice(cursor);
-        return result;
-      }
-
-      const MARKDOWN_RAW_HTML_BLOCK_TAGS = new Set(['div','section','article','aside','header','footer','main','nav','pre','blockquote','table','thead','tbody','tfoot','tr','td','th','ul','ol','li','p','h1','h2','h3','h4','h5','h6']);
-
-      function renderMarkdownInline(input) {
-        const segments = String(input).split(/(<[^>]+>)/g);
-
-        return segments.map((segment) => {
-          if (!segment || segment.startsWith('<')) {
-            return segment;
-          }
-
-          const codePlaceholders = [];
-          let working = segment.replace(/\`([^\`]+)\`/g, function(_full, code) {
-            const placeholder = '__INLINE_CODE_' + codePlaceholders.length + '__';
-            codePlaceholders.push('<code>' + escapeHtml(code) + '</code>');
-            return placeholder;
-          });
-
-          working = working.replace(/\\*\*([^*]+)\\*\\*/g, '<strong>$1</strong>');
-          working = working.replace(/__([^_]+)__/g, '<strong>$1</strong>');
-          working = working.replace(/\\*([^*\\n]+)\\*/g, '<em>$1</em>');
-          working = working.replace(/_([^_\\n]+)_/g, '<em>$1</em>');
-          working = working.replace(/~~([^~]+)~~/g, '<del>$1</del>');
-          working = working.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, function(_full, label, href) {
-            const safeHref = escapeHtml(String(href).trim());
-            return '<a href="' + safeHref + '" rel="noreferrer noopener">' + renderMarkdownInline(String(label)) + '</a>';
-          });
-
-          working = working.replace(/__INLINE_CODE_(\d+)__/g, function(_full, index) {
-            return codePlaceholders[Number(index)] || '';
-          });
-
-          return working;
-        }).join('');
-      }
-
-      function renderMarkdownBlocks(input) {
-        const lines = String(input).replace(/\\r\\n/g, '\\n').split('\\n');
-        const output = [];
-        const paragraphLines = [];
-        const quoteLines = [];
-        const listItems = [];
-        let listType = null;
-        let inCodeBlock = false;
-        let codeLines = [];
-        let codeLanguage = '';
-        let inRawHtmlBlock = false;
-        let rawHtmlTag = '';
-        let rawHtmlLines = [];
-
-        const flushParagraph = function() {
-          if (!paragraphLines.length) return;
-          output.push('<p>' + renderMarkdownInline(paragraphLines.join('<br />')) + '</p>');
-          paragraphLines.length = 0;
-        };
-
-        const flushQuote = function() {
-          if (!quoteLines.length) return;
-          output.push('<blockquote>' + renderMarkdownInline(quoteLines.join('<br />')) + '</blockquote>');
-          quoteLines.length = 0;
-        };
-
-        const flushList = function() {
-          if (!listItems.length || !listType) return;
-          const items = listItems.map((item) => '<li>' + renderMarkdownInline(item) + '</li>').join('');
-          output.push('<' + listType + '>' + items + '</' + listType + '>');
-          listItems.length = 0;
-          listType = null;
-        };
-
-        const flushAllBlocks = function() {
-          flushParagraph();
-          flushQuote();
-          flushList();
-        };
-
-        for (let index = 0; index < lines.length; index += 1) {
-          const line = lines[index];
-          const trimmed = line.trim();
-
-          if (inCodeBlock) {
-            if (/^\`\`\`\s*$/.test(trimmed)) {
-              output.push('<pre><code' + (codeLanguage ? ' class="language-' + escapeHtml(codeLanguage) + '"' : '') + '>' + escapeHtml(codeLines.join('\\n')) + '</code></pre>');
-              inCodeBlock = false;
-              codeLines = [];
-              codeLanguage = '';
-            } else {
-              codeLines.push(line);
-            }
-            continue;
-          }
-
-          if (inRawHtmlBlock) {
-            rawHtmlLines.push(line);
-            if (trimmed.toLowerCase() === '</' + rawHtmlTag + '>') {
-              output.push(rawHtmlLines.join('\\n'));
-              inRawHtmlBlock = false;
-              rawHtmlTag = '';
-              rawHtmlLines = [];
-            }
-            continue;
-          }
-
-          if (!trimmed) {
-            flushAllBlocks();
-            continue;
-          }
-
-          const codeFenceMatch = trimmed.match(/^\`\`\`([A-Za-z0-9_-]+)?\\s*$/);
-          if (codeFenceMatch) {
-            flushAllBlocks();
-            inCodeBlock = true;
-            codeLanguage = codeFenceMatch[1] || '';
-            codeLines = [];
-            continue;
-          }
-
-          const headingMatch = trimmed.match(/^(#{1,6})\\s+(.+)$/);
-          if (headingMatch) {
-            flushAllBlocks();
-            const level = headingMatch[1].length;
-            output.push('<h' + level + '>' + renderMarkdownInline(headingMatch[2]) + '</h' + level + '>');
-            continue;
-          }
-
-          const rawHtmlStartMatch = trimmed.match(/^<([A-Za-z][\\w:-]*)(\\s[^>]*)?>$/);
-          if (rawHtmlStartMatch && MARKDOWN_RAW_HTML_BLOCK_TAGS.has(rawHtmlStartMatch[1].toLowerCase())) {
-            flushAllBlocks();
-            inRawHtmlBlock = true;
-            rawHtmlTag = rawHtmlStartMatch[1].toLowerCase();
-            rawHtmlLines = [line];
-            continue;
-          }
-
-          const quoteMatch = trimmed.match(/^>\\s?(.*)$/);
-          if (quoteMatch) {
-            flushParagraph();
-            flushList();
-            quoteLines.push(quoteMatch[1]);
-            continue;
-          }
-
-          if (quoteLines.length) {
-            flushQuote();
-          }
-
-          const unorderedListMatch = trimmed.match(/^[-*+]\\s+(.+)$/);
-          const orderedListMatch = trimmed.match(/^\\d+\\.\\s+(.+)$/);
-          if (unorderedListMatch || orderedListMatch) {
-            flushParagraph();
-            const nextType = unorderedListMatch ? 'ul' : 'ol';
-            if (listType && listType !== nextType) {
-              flushList();
-            }
-            listType = nextType;
-            const listItem = (unorderedListMatch ? unorderedListMatch[1] : orderedListMatch[1]);
-            listItems.push((listItem || '').trim());
-            continue;
-          }
-
-          if (listItems.length) {
-            flushList();
-          }
-
-          paragraphLines.push(line);
-        }
-
-        flushAllBlocks();
-
-        if (inCodeBlock) {
-          output.push('<pre><code' + (codeLanguage ? ' class="language-' + escapeHtml(codeLanguage) + '"' : '') + '>' + escapeHtml(codeLines.join('\\n')) + '</code></pre>');
-        }
-
-        if (inRawHtmlBlock && rawHtmlLines.length) {
-          output.push(rawHtmlLines.join('\\n'));
-        }
-
-        return output.join('\\n');
-      }
-
-      function evaluateExpression(expression, vars) {
-        const normalized = String(expression).trim();
-        if (!normalized) return 0;
-
-        const withCalls = replaceCallExpressions(normalized, vars);
-        const compiled = withCalls
-          .replace(/\\$([A-Za-z_][A-Za-z0-9_]*)/g, function(_, name) { return 'vars["' + name + '"]' })
-          .replace(/\\b(?:is not|ne)\\b/g, '!==')
-          .replace(/\\b(?:is|eq)\\b/g, '===')
-          .replace(/\\b(?:and)\\b/g, '&&')
-          .replace(/\\b(?:or)\\b/g, '||');
-
-        // support contains operator: transform A contains B -> __contains__(A, B)
-        const compiledWithContains = compiled.replace(/([A-Za-z0-9_\]\)\\\"'\.\[\]]+)\s+contains\s+(\"[^\\\"]*\"|'[^']*'|[A-Za-z0-9_\]\)\\\"'\.\[\]]+)/g, '__contains__($1,$2)');
-
-        return (function runInScope() {
-          const __contains__ = function(a, b) {
-            try {
-              if (a == null) return false;
-              if (typeof a === 'string') return String(a).includes(b);
-              if (Array.isArray(a)) return a.includes(b);
-              return false;
-            } catch (e) { return false }
-          };
-          return eval(compiledWithContains);
-        })();
-      }
-
-      function renderText(input, currentStory, currentVars, routeTo) {
-        const styleBlocks = [];
-        const htmlFragments = [];
-        let working = input.replace(/<style\\b[^>]*>[\\s\\S]*?<\\/style>/gi, (match) => {
-          const placeholder = '__STYLE_BLOCK_' + styleBlocks.length + '__';
-          styleBlocks.push(match);
-          return placeholder;
-        });
-
-        working = extractAndRegisterFunctions(working, GLOBAL_JS_FUNCTIONS);
-        working = stripSetMacros(working);
-        working = replaceIfMacros(working, currentVars, currentStory, routeTo);
-
-        const displayPattern = /(display:\\s*["']([^"']+)["']\\s*)/g;
-        working = working.replace(displayPattern, function(_, _full, targetName) {
-          const target = currentStory.passages.find(function(p) { return p.name === targetName; });
-          if (!target) return '';
-          const placeholder = '$HTML_FRAGMENT$' + htmlFragments.length + '$';
-          htmlFragments.push(renderText(target.content, currentStory, currentVars, routeTo));
-          return placeholder;
-        });
-
-        const printPattern = /(print:\\s*([^)]*?))/g;
-        working = working.replace(printPattern, (_, _full, expression) => escapeHtml(String(evaluateExpression(expression, currentVars))));
-
-        const linkPattern = /\\(link:\\s*(?:["']([^"']*)["']|([^)]*?))\\)\\s*\\[((?:.|\\n)*?)\\]/g;
-        working = working.replace(linkPattern, (_full, literalLabel, rawLabel, actionBlock) => {
-          const label = literalLabel || rawLabel || '继续';
-          const target = extractGotoTarget(actionBlock) || label;
-          const actionMatch = (actionBlock || '').match(/(?:set:\\s*[^)\\]]+|call:\\s*[^)\\]]+)/i);
-          const actionAttr = actionMatch ? ' data-story-action="' + escapeHtml(actionMatch[0]) + '"' : '';
-          return '<button type="button" class="story-link" data-story-target="' + escapeHtml(target) + '" data-story-goto="' + escapeHtml(target) + '"' + actionAttr + '>' + escapeHtml(label) + '</button>';
-        });
-
-        working = working.replace(/\\[\\[([^\\]|]+)(?:\\|([^\\]]+))?\\]\\](?:\\(((?:set:\\s*[^)]+|call:\\s*[^)]+))\\))?/g, function(_, label, target, action) {
-          const actualTarget = (target || label).trim();
-          const btnText = label.trim();
-          const actionAttribute = action ? ' data-story-action="' + escapeHtml(action) + '"' : '';
-          return '<button type="button" class="story-link" data-story-target="' + escapeHtml(actualTarget) + '"' + actionAttribute + '>' + escapeHtml(btnText) + '</button>';
-        });
-
-        working = working.replace(/''([^']+)''/g, '<strong>$1</strong>');
-        working = working.replace(/(?<!:)\\/\\/([^/\\n]+?)\\/\\//g, '<em>$1</em>');
-        working = working.replace(/~~([^~]+)~~/g, '<del>$1</del>');
-        working = working.replace(/\\^\\^([^\\^]+)\\^\\^/g, '<sup>$1</sup>');
-        working = working.replace(/,,([^,]+),,/g, '<sub>$1</sub>');
-
-        working = renderMarkdownBlocks(working);
-
-        styleBlocks.forEach((styleBlock, index) => {
-          working = working.replace('$STYLE_BLOCK$' + index + '$', styleBlock);
-        });
-
-        htmlFragments.forEach((fragment, index) => {
-          working = working.replace('$HTML_FRAGMENT$' + index + '$', fragment);
-        });
-
-        return working;
-      }
-
-      function renderPassage(passageName) {
-        const passage = story.passages.find((item) => item.name === passageName) || story.passages[0];
-        variables.passage = passage.name;
-        variables.storyTitle = story.title;
-        // Ensure any (fn:) definitions in the passage are registered
-        // before executing (set:) side-effects which may call those functions.
-        const passageContentForEffects = extractAndRegisterFunctions(passage.content, GLOBAL_JS_FUNCTIONS);
-        applyPassageEntryEffects(passageContentForEffects, variables);
-        document.getElementById('story-root').innerHTML = renderText(passageContentForEffects, story, variables, renderPassage);
-
-        const varRoot = document.getElementById('variables-root');
-        const entries = Object.entries(variables).filter(([key]) => key !== 'passage' && key !== 'storyTitle');
-        varRoot.innerHTML = entries.length
-          ? entries.map(([key, value]) => '<div class="var-item"><span>' + escapeHtml(key) + '</span><strong>' + escapeHtml(String(value)) + '</strong></div>').join('')
-          : '<p>暂无变量</p>';
-
-        const nodes = document.querySelectorAll('[data-story-target]');
-        nodes.forEach((node) => {
-          node.addEventListener('click', () => {
-            const action = node.getAttribute('data-story-action');
-            if (action) {
-              const setMatch = action.trim().match(/^set:\\s*(\\$[A-Za-z_][A-Za-z0-9_]*)\\s+to\\s+(.+)$/);
-              if (setMatch) {
-                variables[setMatch[1].slice(1)] = evaluateExpression(setMatch[2], variables);
-              } else {
-                const callMatch = action.trim().match(/^call:\\s*["']([^"']+)["'](?:\\s+(.+))?$/i);
-                if (callMatch) {
-                  const args = parseCallArgs(callMatch[2], variables);
-                  executeStoryJsFunction(callMatch[1], args, variables);
+      <script>
+        const story = ${safeStory};
+        const variables = ${safeVariables};
+        const currentPassageName = ${safeCurrent};
+        const GLOBAL_JS_FUNCTIONS = {};
+
+  ${helpersSrc}
+
+        function renderPassage(passageName) {
+          const passage = story.passages.find((p) => p.name === passageName) || story.passages[0]
+          variables.passage = passage.name
+          variables.storyTitle = story.title
+
+          const passageContentForEffects = extractAndRegisterFunctions(passage.content, GLOBAL_JS_FUNCTIONS)
+          applyPassageEntryEffects(passageContentForEffects, variables)
+          document.getElementById('story-root').innerHTML = renderStoryText(passageContentForEffects, variables, story, renderPassage)
+
+          const varRoot = document.getElementById('variables-root')
+          const entries = Object.entries(variables).filter(([key]) => key !== 'passage' && key !== 'storyTitle')
+          varRoot.innerHTML = entries.length
+            ? entries.map(([key, value]) => \`<div class="var-item"><span>\${escapeHtml(key)}</span><strong>\${escapeHtml(String(value))}</strong></div>\`).join('')
+            : '<p>暂无变量</p>'
+
+          const nodes = document.querySelectorAll('[data-story-target]')
+          nodes.forEach((node) => {
+            node.addEventListener('click', () => {
+              const action = node.getAttribute('data-story-action')
+              if (action) {
+                const setMatch = action.trim().match(/^set:\s*(\$[A-Za-z_][A-Za-z0-9_]*)\s+to\s+(.+)$/)
+                if (setMatch) {
+                  variables[setMatch[1].slice(1)] = evaluateExpression(setMatch[2], variables)
+                } else {
+                  const callMatch = action.trim().match(/^call:\s*["']([^"']+)["'](?:\s+(.+))?$/i)
+                  if (callMatch) {
+                    const args = parseCallArgs(callMatch[2], variables)
+                    executeStoryJsFunction(callMatch[1], args, variables)
+                  }
                 }
               }
-            }
-            const target = node.getAttribute('data-story-target');
-            if (target) {
-              renderPassage(target);
-            }
-          });
-        });
-      }
+              const target = node.getAttribute('data-story-target')
+              if (target) renderPassage(target)
+            })
+          })
+        }
 
-      renderPassage(currentPassageName);
+        renderPassage(currentPassageName);
     </script>
   </body>
 </html>`
