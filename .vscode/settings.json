@@ -57,5 +57,9 @@
       "username": "hancel",
       "password": "root_`1qw23"
     }
-  ]
+  ],
+  "chat.tools.terminal.autoApprove": {
+    "npm run lint": true,
+    "npm run test": true
+  }
 }
