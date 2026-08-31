@@ -1,26 +1,19 @@
 import { createApp } from "vue";
-import { createPinia } from "pinia";
 
 import App from "./App.vue";
-import router from "./router/index.ts";
-import { useAppStore } from "./stores/app.ts";
-import "uno.css";
+import router from "./router/";
 import "./styles/main.css";
+import { setupStore } from "./stores/";
+import { registerComponents } from './components'
 
-const app = createApp(App);
-const pinia = createPinia();
+function bootstrap() {
+  const app = createApp(App);
+  
+  setupStore(app);
+  app.use(router);
+  registerComponents(app)
 
-app.use(pinia);
-app.use(router);
+  app.mount("#app");
+}
 
-const appStore = useAppStore(pinia);
-const syncTheme = (theme: string) => {
-  document.documentElement.setAttribute("data-theme", theme);
-};
-
-syncTheme(appStore.theme);
-appStore.$subscribe((_, state) => {
-  syncTheme(state.theme);
-});
-
-app.mount("#app");
+bootstrap();

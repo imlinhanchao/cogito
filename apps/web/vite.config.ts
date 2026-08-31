@@ -1,10 +1,19 @@
 import tailwindcss from "@tailwindcss/vite";
 import vue from "@vitejs/plugin-vue";
-import UnoCSS from "unocss/vite";
+import { createSvgIconsPlugin } from 'vite-plugin-svg-icons';
+import { resolve } from "path";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [vue(), UnoCSS(), tailwindcss()],
+  plugins: [
+    vue(), 
+    tailwindcss(),
+    createSvgIconsPlugin({
+      iconDirs: [resolve(process.cwd(), 'src/assets/icons')],
+      symbolId: 'icon-[dir]-[name]',
+    }),
+
+  ],
   resolve: {
     alias: {
       "@": "/src",
@@ -12,5 +21,11 @@ export default defineConfig({
   },
   server: {
     allowedHosts: true,
+    proxy: {
+      "/api": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
+    },
   },
 });

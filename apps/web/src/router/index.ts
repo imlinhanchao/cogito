@@ -1,37 +1,63 @@
-import { createRouter, createWebHistory } from "vue-router";
-
-import HomeView from "@/views/HomeView.vue";
-import PlaygroundView from "@/views/PlaygroundView.vue";
-import StoryEditorView from "@/views/StoryEditorView.vue";
-import StoryPlayView from "@/views/StoryPlayView.vue";
+import { createRouter, createWebHashHistory } from "vue-router";
+import MainLayout from "@/layouts/MainLayout.vue";
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(),
   routes: [
     {
       path: "/",
-      name: "home",
-      component: HomeView,
+      component: MainLayout,
+      children: [
+        {
+          path: "/",
+          name: "home",
+          component: () => import("@/views/HomeView.vue"),
+          meta: {
+            title: "首页",
+          },
+        },
+        {
+          path: "/story-editor",
+          name: "story-editor",
+          component: () => import("@/views/StoryEditorView.vue"),
+          meta: {
+            title: "故事编辑器",
+          },
+        },
+        {
+          path: "/story-play/:storyId?",
+          name: "story-play",
+          component: () => import("@/views/StoryPlayView.vue"),
+          meta: {
+            title: "故事播放",
+          },
+        }
+      ]
+    },
+    {
+      path: "/login",
+      name: "login",
+      component: () => import("@/views/sys/login.vue"),
       meta: {
-        title: "首页",
+        title: "登录",
       },
     },
     {
-      path: "/story-editor",
-      name: "story-editor",
-      component: StoryEditorView,
+      path: "/login/:source",
+      name: "logining",
+      component: () => import("@/views/sys/login.vue"),
       meta: {
-        title: "故事编辑器",
+        title: "登录中...",
       },
     },
     {
-      path: "/story-play/:storyId?",
-      name: "story-play",
-      component: StoryPlayView,
+      path: "/config",
+      name: "config",
+      component: () => import("@/views/sys/config.vue"),
       meta: {
-        title: "故事播放",
+        title: "系统配置",
       },
-    },
+    }
   ],
   scrollBehavior() {
     return { top: 0 };

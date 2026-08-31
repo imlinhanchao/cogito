@@ -2,8 +2,8 @@
   "name": "cogito",
   "private": true,
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "apps/web",
+    "apps/server"
   ],
   "scripts": {
     "build": "npm run build:w",

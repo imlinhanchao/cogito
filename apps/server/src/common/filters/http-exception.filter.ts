@@ -20,7 +20,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const errorResponse = isHttpException ? exception.getResponse() : undefined;
     const msg = this.getMessage(errorResponse, exception);
 
-    response.status(status).json({
+    response.status(200).json({
       code: status,
       msg,
       data: {
