@@ -5,7 +5,7 @@
     <div
       class="flex flex-col items-center gap-2 sm:flex-row sm:justify-between"
     >
-      <p class="text-sm text-base-content/70">Copyright © 2024 Haide UI</p>
+      <p class="text-sm text-base-content/70">Copyright © {{ new Date().getFullYear() }} Tellory</p>
     </div>
   </footer>
 </template>

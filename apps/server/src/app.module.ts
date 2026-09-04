@@ -12,7 +12,7 @@ import { ConfigModule } from './config/config.module';
         TypeOrmModule.forRoot({
           type: 'mysql',
           ...ConfigService.getConfig()?.db,
-          entities: [__dirname + '/entities/*{.ts,.js}'],
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
           synchronize: true,
         }),
         AuthModule,

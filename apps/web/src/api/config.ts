@@ -11,6 +11,7 @@ export interface ConfigData {
   }
   port: number
   jwtSecret: string
+  salt: string;
   github: {
     clientId: string
     clientSecret: string

@@ -1,16 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from '../entities/User';
+import { User } from './user.entity';
 import Fishpi from 'fishpi';
+import * as crypto from 'crypto';
 import * as GitHub from '../lib/github';
 import * as Steam from '../lib/steam';
+import { ConfigService } from 'src/config/config.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    private configService: ConfigService,
   ) {}
 
   async save(user: User): Promise<User> {
@@ -24,11 +27,21 @@ export class UsersService {
       await this.usersRepository.update({ id: account.id }, account);
       return account;
     }
+    if (user.password) {
+      const sha256 = crypto.createHash('sha256');
+      user.password = sha256
+        .update(user.password + this.configService.get('salt'))
+        .digest('hex');
+    }
     return this.usersRepository.save(user);
   }
 
   async findOne(username: string, from: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { username, from } });
+  }
+
+  async findByEmail(email: string): Promise<User | null> {
+    return this.usersRepository.findOne({ where: { email } });
   }
 
   async findById(id: string): Promise<User | null> {

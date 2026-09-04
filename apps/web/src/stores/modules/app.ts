@@ -16,6 +16,12 @@ export const useAppStore = defineStore("app", () => {
 
   const themeLabel = computed(() => (theme.value === "light" ? "浅色" : "深色"));
 
+  if (theme.value === "light") {
+    document.documentElement.setAttribute("data-theme", "light");
+  } else {
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+
   return {
     theme,
     toggleTheme,

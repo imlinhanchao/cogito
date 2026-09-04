@@ -66,8 +66,8 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const pageTitle = to.meta.title
-    ? `${to.meta.title} · Haide UI Template`
-    : "Haide UI Template";
+    ? `${to.meta.title} | 织言 · Tellory`
+    : "织言 · Tellory";
   document.title = pageTitle;
 });
 

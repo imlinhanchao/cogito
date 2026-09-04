@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login as loginApi, register as registerApi } from '@/api/auth'
+// import { login as loginApi } from '@/api/auth'
 import { getUserProfile } from '@/api/user'
 import { getConfigStatus } from '@/api/config'
 import { storage } from '@/utils/storage'
@@ -28,16 +28,6 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     storage.removeItem('token')
     storage.removeItem('user')
-  }
-
-  async function login(username: string, password: string) {
-    try {
-      const data = await loginApi({ username, password })
-      setAuth(data)
-      return true
-    } catch (error) {
-      return false
-    }
   }
 
   async function loadProfile() {
@@ -77,7 +67,7 @@ export const useAuthStore = defineStore('auth', () => {
     isConfigured,
     getToken,
     getUser,
-    login,
+    setAuth,
     loginWithToken,
     logout,
     loadProfile,

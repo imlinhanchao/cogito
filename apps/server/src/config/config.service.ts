@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { existsSync, writeFileSync } from 'fs';
 import { configPath } from '../utils/config';
 import { ConfigData } from './config.dto';
+import { get } from 'http';
 
 @Injectable()
 export class ConfigService {
@@ -27,6 +28,10 @@ export class ConfigService {
       return require(ConfigService.configPath) as ConfigData;
     }
     return null;
+  }
+
+  get(key: keyof ConfigData): any {
+    return ConfigService.get(key);
   }
 
   static get(key: keyof ConfigData): any {

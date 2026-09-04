@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
 import { JwtStrategy } from './jwt.strategy';
 import { ConfigService } from '../config/config.service';
+import { ConfigModule } from 'src/config/config.module';
 
 export function getJwtSecret(): string {
   return (
@@ -22,6 +23,7 @@ export function getJwtSecret(): string {
       secret: getJwtSecret(),
       signOptions: { expiresIn: '7d' },
     }),
+    ConfigModule,
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],

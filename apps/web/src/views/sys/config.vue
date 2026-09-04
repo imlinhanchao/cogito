@@ -107,6 +107,10 @@
               required
             />
           </div>
+        </div>
+
+        <div class="space-y-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="divider col-span-2 text-xs font-bold opacity-50 uppercase tracking-wider">安全配置</div>
 
           <div class="form-control w-full">
             <label class="label px-1">
@@ -118,7 +122,21 @@
                 class="grow"
                 required
               />
-              <Icon icon="fluent-emoji-high-contrast:game-die" class="text-base opacity-40 cursor-pointer" @click="generateKey" />
+              <Icon icon="fluent-emoji-high-contrast:game-die" class="text-base opacity-40 cursor-pointer" @click="generate('jwtSecret')" />
+            </label>
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label px-1">
+              <span class="text-xs font-bold opacity-60 uppercase">Salt</span>
+            </label>
+            <label class="input">
+              <input
+                v-model="config.salt"
+                class="grow"
+                required
+              />
+              <Icon icon="fluent-emoji-high-contrast:game-die" class="text-base opacity-40 cursor-pointer" @click="generate('salt')" />
             </label>
           </div>
 
@@ -191,6 +209,7 @@ const config = ref<ConfigData>({
   },
   port: 3000,
   jwtSecret: 'app-secret-key-change-in-production',
+  salt: 'app-salt-change-in-production',
   github: {
     clientId: '',
     clientSecret: ''
@@ -227,8 +246,9 @@ useAuthStore().checkConfig().then((isConfigured) => {
   }
 })
 
-function generateKey() {
+function generate(field: keyof ConfigData) {
   const randomKey = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
-  config.value.jwtSecret = randomKey;
+  // @ts-ignore
+  config.value[field] = randomKey;
 }
 </script>

@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
-@Entity({ comment: '用户表' })
+@Entity({ comment: '用户表', name: 'user' })
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -10,6 +10,12 @@ export class User {
 
   @Column({ comment: '昵称' })
   nickname: string;
+
+  @Column({ comment: '密码', nullable: true })
+  password?: string;
+
+  @Column({ comment: '邮箱', nullable: true })
+  email?: string;
 
   @Column({ default: false, comment: '是否为管理员' })
   isAdmin: boolean = false;
@@ -24,7 +30,13 @@ export class User {
   from: string = 'fishpi';
 
   @Column({ comment: '第三方ID' })
-  sourceId: string;
+  sourceId: string = '';
+
+  @Column({ default: false, comment: '是否验证' })
+  isVerified: boolean = false;
+
+  @Column({ comment: '验证 Token', nullable: true })
+  verificationToken?: string;
 
   static get unsafeKey() {
     return ['attr'];
@@ -33,7 +45,9 @@ export class User {
   constructor(user?: Partial<User>) {
     if (!user) return;
     this.username = user.username || '';
-    this.nickname = user.nickname || '';
+    this.nickname = user.nickname || user.username || '';
+    this.password = user.password || '';
+    this.email = user.email || '';
     this.isAdmin = user.isAdmin || false;
     this.avatar = user.avatar || '';
     this.lastLogin = user.lastLogin || 0;

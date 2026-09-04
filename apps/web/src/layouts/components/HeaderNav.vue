@@ -14,6 +14,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 
 interface NavItem {
@@ -21,9 +22,8 @@ interface NavItem {
   path: string;
 }
 
-defineProps<{
-  navItems: NavItem[];
-}>();
+const navItems = ref<NavItem[]>([
+]);
 
 const route = useRoute();
 </script>

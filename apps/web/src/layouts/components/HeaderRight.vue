@@ -1,30 +1,33 @@
 <template>
-  <div class="navbar-end gap-3">
-    <div class="hidden text-right sm:block">
-      <p class="text-xs uppercase tracking-[0.28em] text-base-content/60">
-        Layout Template
-      </p>
-      <p class="text-sm font-medium text-base-content">Vue 3 + daisyUI</p>
-    </div>
-
-    <label class="btn btn-ghost btn-sm gap-2 rounded-btn">
+  <div class="navbar-end flex items-center gap-2">
+    <label class="gap-2 rounded-btn cursor-pointer">
+      <Icon :icon="isDark ? 'twemoji:waxing-crescent-moon' : 'twemoji:sun'" />
       <input
-        :checked="theme === 'dark'"
-        class="theme-controller toggle toggle-sm"
+        ref="themeRef"
+        :checked="isDark"
+        class="theme-controller toggle toggle-sm hidden"
         type="checkbox"
         value="dark"
-        @change="useAppStore().toggleTheme()"
+        @change="appStore.toggleTheme()"
       />
-      <span class="hidden sm:inline">{{ themeLabel }}</span>
     </label>
+    <div v-if="isAuthenticated">
+      <span>欢迎，{{ authStore.user.name }}</span>
+    </div>
+    <div v-else>
+      <router-link to="/login"><Icon icon="basil:login-solid" /> 登录</router-link>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useAppStore } from "@/stores/modules/app";
+import { useAuthStore } from "@/stores/modules/auth";
+import { computed } from "vue";
 
-defineProps<{
-  theme: "light" | "dark";
-  themeLabel: string;
-}>();
+const authStore = useAuthStore();
+const appStore = useAppStore();
+
+const isDark = computed(() => appStore.theme === 'dark');
+const isAuthenticated = computed(() => authStore.isAuthenticated);
 </script>
