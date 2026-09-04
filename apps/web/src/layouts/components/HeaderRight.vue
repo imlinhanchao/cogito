@@ -1,7 +1,6 @@
 <template>
-  <div class="navbar-end flex items-center gap-2">
-    <label class="gap-2 rounded-btn cursor-pointer">
-      <Icon :icon="isDark ? 'twemoji:waxing-crescent-moon' : 'twemoji:sun'" />
+  <div class="navbar-end flex items-center gap-1">
+    <label class="toggle" :class="{ 'text-[#3c3f44]': isDark, 'text-[#c2c2c4] bg-[#8e96aa24]': !isDark }">
       <input
         ref="themeRef"
         :checked="isDark"
@@ -10,9 +9,14 @@
         value="dark"
         @change="appStore.toggleTheme()"
       />
+      <Icon aria-label="enabled" icon="twemoji:sun" size="1.2em" color="#fbb247" class="bg-white rounded-full shadow" />
+      <Icon aria-label="disabled" icon="akar-icons:moon-fill" size="1.2em" color="#f5ec39" class="fill-black rounded-full" />
     </label>
-    <div v-if="isAuthenticated">
-      <span>欢迎，{{ authStore.user.name }}</span>
+    <div class="divider divider-horizontal my-2"></div>
+    <div class="avatar" v-if="isAuthenticated && authStore.getUser">
+      <div class="w-9 rounded-full">
+        <img :src="authStore.getUser.avatar" />
+      </div>
     </div>
     <div v-else>
       <router-link to="/login"><Icon icon="basil:login-solid" /> 登录</router-link>
@@ -28,6 +32,6 @@ import { computed } from "vue";
 const authStore = useAuthStore();
 const appStore = useAppStore();
 
-const isDark = computed(() => appStore.theme === 'dark');
+const isDark = computed(() => appStore.getTheme === 'dark');
 const isAuthenticated = computed(() => authStore.isAuthenticated);
 </script>

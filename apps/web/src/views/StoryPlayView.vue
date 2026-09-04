@@ -1,104 +1,30 @@
 <template>
-  <div class="story-play min-h-[calc(100vh-12rem)] bg-base-200 p-4 lg:p-6">
-    <div class="mx-auto max-w-6xl">
-      <div class="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <p
-            class="text-xs font-semibold uppercase tracking-[0.28em] text-base-content/60"
-          >
-            播放模式
-          </p>
-          <h1 class="text-2xl font-black">{{ story.title || "互动故事" }}</h1>
-        </div>
-        <div class="flex items-center gap-2">
-          <button class="btn btn-sm btn-outline" type="button" @click="back">
-            后退
-          </button>
-          <button
-            class="btn btn-sm btn-outline"
-            type="button"
-            @click="saveState"
-          >
-            存档
-          </button>
-          <button
-            class="btn btn-sm btn-outline"
-            type="button"
-            @click="loadState"
-          >
-            读档
-          </button>
-          <button
-            class="btn btn-sm btn-primary"
-            type="button"
-            @click="router.push({ name: 'story-editor' })"
-          >
-            编辑
-          </button>
-        </div>
-      </div>
-
-      <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <article
-          class="rounded-3xl border border-base-300 bg-base-100 p-5 shadow-xl"
-        >
-          <div class="mb-4 flex items-center justify-between gap-2">
-            <span class="badge badge-primary"
-              >当前段落：{{ currentPassageName }}</span
-            >
-            <button
-              v-if="history.length > 1"
-              class="btn btn-xs btn-ghost"
-              type="button"
-              @click="undo"
-            >
-              撤销
-            </button>
-          </div>
-          <div
-            ref="storyContentRef"
-            class="story-content prose max-w-none leading-relaxed"
-            v-html="renderedPassage"
-          ></div>
-        </article>
-
-        <aside
-          class="rounded-3xl border border-base-300 bg-base-100 p-4 shadow-xl"
-        >
-          <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-lg font-bold">变量面板</h2>
-            <button
-              class="btn btn-xs btn-ghost"
-              type="button"
-              @click="toggleVariables"
-            >
-              {{ variablesCollapsed ? "展开" : "折叠" }}
-            </button>
-          </div>
-          <div v-if="!variablesCollapsed" class="space-y-2 text-sm">
-            <div
-              v-if="Object.keys(variables).length === 0"
-              class="text-base-content/60"
-            >
-              暂无变量
-            </div>
-            <div
-              v-for="(value, key) in variables"
-              :key="key"
-              class="flex items-center justify-between gap-2 rounded-lg bg-base-200 px-2 py-2"
-            >
-              <span>{{ key }}</span>
-              <strong>{{ value }}</strong>
-            </div>
-          </div>
-        </aside>
-      </div>
+  <article
+    class="rounded-3xl border border-base-300 bg-base-100 p-5 shadow-xl"
+  >
+    <div class="mb-4 flex items-center justify-between gap-2">
+      <span class="badge badge-primary"
+        >当前段落：{{ currentPassageName }}</span
+      >
+      <button
+        v-if="history.length > 1"
+        class="btn btn-xs btn-ghost"
+        type="button"
+        @click="undo"
+      >
+        撤销
+      </button>
     </div>
-  </div>
+    <div
+      ref="storyContentRef"
+      class="story-content prose max-w-none leading-relaxed"
+      v-html="renderedPassage"
+    ></div>
+  </article>
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
   applyPassageEntryEffects,
@@ -110,6 +36,14 @@ import {
 } from "@/lib/storyEngine";
 
 const router = useRouter();
+
+const props = defineProps<{
+  external?: boolean;
+  storyProp?: StoryData | null;
+  currentPassageProp?: string | null;
+  variablesProp?: VariableMap | null;
+}>();
+const emits = defineEmits();
 const storyContentRef = ref<HTMLElement | null>(null);
 const renderedPassage = ref("");
 const story = ref<StoryData>({
@@ -191,6 +125,7 @@ const renderCurrentPassage = () => {
 };
 
 const restoreAutoSnapshot = (): boolean => {
+  if (props.external) return false;
   const raw = localStorage.getItem(AUTO_PLAY_CACHE_KEY);
   if (!raw) {
     return false;
@@ -240,6 +175,9 @@ const handleStoryClick = (event: MouseEvent) => {
   const action = linkElement?.getAttribute("data-story-action");
   if (action) {
     applyStoryAction(action, variables.value);
+    if (props.external) {
+      emits('update:variables', variables.value);
+    }
   }
   goto(target);
 };
@@ -255,6 +193,9 @@ const goto = (target: string) => {
   currentPassageName.value = nextPassage.name;
   history.value = [...history.value, nextPassage.name];
   renderCurrentPassage();
+  if (props.external) {
+    emits('update:currentPassage', currentPassageName.value);
+  }
 };
 
 const undo = () => {
@@ -313,6 +254,15 @@ const toggleVariables = () => {
 onMounted(() => {
   storyContentRef.value?.addEventListener("click", handleStoryClick);
 
+  // If external props provided, initialize from props and skip local/session restore
+  if (props.external && props.storyProp) {
+    story.value = props.storyProp;
+    currentPassageName.value = props.currentPassageProp || props.storyProp.startPassage || story.value.passages[0]?.name || 'Start';
+    variables.value = props.variablesProp || buildInitialVariables(story.value);
+    renderCurrentPassage();
+    return;
+  }
+
   if (restoreAutoSnapshot()) {
     return;
   }
@@ -349,6 +299,26 @@ onMounted(() => {
   }
 
   renderCurrentPassage();
+});
+
+// Watch external props to update internal state
+watch(() => props.storyProp, (v) => {
+  if (props.external && v) {
+    story.value = v;
+    renderCurrentPassage();
+  }
+});
+watch(() => props.currentPassageProp, (v) => {
+  if (props.external && v) {
+    currentPassageName.value = v || currentPassageName.value;
+    renderCurrentPassage();
+  }
+});
+watch(() => props.variablesProp, (v) => {
+  if (props.external && v) {
+    variables.value = v || variables.value;
+    renderCurrentPassage();
+  }
 });
 
 onBeforeUnmount(() => {

@@ -17,12 +17,18 @@ const router = createRouter({
           },
         },
         {
-          path: "/story-editor",
+          path: "/story-editor/:storyId?",
           name: "story-editor",
           component: () => import("@/views/StoryEditorView.vue"),
           meta: {
             title: "故事编辑器",
           },
+        },
+        {
+          path: "/stories",
+          name: "story-list",
+          component: () => import("@/views/StoryListView.vue"),
+          meta: { title: "故事列表" },
         },
         {
           path: "/story-play/:storyId?",

@@ -1,12 +1,6 @@
 <template>
   <div class="min-h-screen bg-base-200 text-base-content h-full flex flex-col">
-    <Header
-      :brand="appStore.brand"
-      :nav-items="appStore.navItems"
-      :theme="appStore.theme"
-      :theme-label="appStore.themeLabel"
-      @toggle-theme="appStore.toggleTheme"
-    />
+    <Header />
     <Content>
       <slot />
     </Content>

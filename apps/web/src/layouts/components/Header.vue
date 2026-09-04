@@ -1,10 +1,10 @@
 <template>
   <header
-    class="sticky top-0 z-40 border-b border-base-100 bg-base-200 backdrop-blur px-5"
+    class="sticky top-0 z-40 backdrop-blur px-5"
   >
     <div class="navbar app-container px-0">
       <div class="navbar-start gap-3">
-        <HeaderLogo />
+        <HeaderLogo class="inline-flex rounded-full p-3 bg-base-300 shadow" />
       </div>
 
       <HeaderNav />

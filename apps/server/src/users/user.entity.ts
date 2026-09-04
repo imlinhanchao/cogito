@@ -39,7 +39,7 @@ export class User {
   verificationToken?: string;
 
   static get unsafeKey() {
-    return ['attr'];
+    return ['password', 'verificationToken'];
   }
 
   constructor(user?: Partial<User>) {
@@ -53,5 +53,7 @@ export class User {
     this.lastLogin = user.lastLogin || 0;
     this.from = user.from || 'fishpi';
     this.sourceId = user.sourceId || '';
+    this.isVerified = user.isVerified || false;
+    this.verificationToken = user.verificationToken || '';
   }
 }

@@ -1,5 +1,5 @@
 <template>
-  <div class="story-shell h-full min-h-[calc(100vh-10rem)] p-4 lg:p-6">
+  <div class="story-shell h-full p-4">
     <div class="grid h-full gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
       <aside
         class="rounded-2xl border border-base-300 bg-base-100 p-3 shadow-sm"
@@ -44,14 +44,14 @@
                 passage.tags.length || 0
               }}</span>
             </button>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1">
               <button
-                class="btn btn-xs btn-ghost"
+                class="btn btn-xs btn-ghost btn-square tooltip tooltip-left"
+                data-tip="复制段落名"
                 type="button"
                 @click.stop="copyPassageName(passage.name)"
-                title="复制段落名"
               >
-                复制
+                <Icon icon="mdi:content-copy" class="text-sm" />
               </button>
             </div>
           </div>
@@ -61,168 +61,272 @@
       <main
         class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm"
       >
-        <div class="mb-4 flex flex-wrap items-center gap-2">
-          <input
-            v-model="story.title"
-            class="input input-bordered flex-1 min-w-[200px]"
-            placeholder="故事标题"
-          />
-          <button class="btn btn-primary" type="button" @click="runStory">
-            运行
-          </button>
-          <button class="btn btn-outline" type="button" @click="importStory">
-            导入
-          </button>
-          <button class="btn btn-outline" type="button" @click="pasteImport">
-            粘贴
-          </button>
-          <button class="btn btn-outline" type="button" @click="exportStory">
-            导出
-          </button>
-          <button class="btn btn-outline" type="button" @click="buildStory">
-            编译
-          </button>
-          <button class="btn btn-ghost" type="button" @click="saveDraft">
-            保存
-          </button>
+        <div class="mb-4 space-y-2.5 bg-base-200/40 p-3 rounded-xl border border-base-200">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <input
+              v-model="story.title"
+              class="input input-bordered input-sm flex-1 min-w-60 font-bold text-base bg-base-100"
+              placeholder="故事标题..."
+            />
+            <div class="flex items-center gap-1 shrink-0">
+              <div class="tooltip tooltip-bottom" data-tip="导入文件 (.txt/.json/.html)">
+                <button class="btn btn-sm btn-ghost btn-square" type="button" @click="importStory">
+                  <Icon icon="mdi:file-upload-outline" class="text-lg" />
+                </button>
+              </div>
+              <div class="tooltip tooltip-bottom" data-tip="从剪贴板粘贴导入">
+                <button class="btn btn-sm btn-ghost btn-square" type="button" @click="pasteImport">
+                  <Icon icon="mdi:content-paste" class="text-lg" />
+                </button>
+              </div>
+              <div class="tooltip tooltip-bottom" data-tip="导出文本源码 (.txt)">
+                <button class="btn btn-sm btn-ghost btn-square" type="button" @click="exportStory">
+                  <Icon icon="mdi:file-download-outline" class="text-lg" />
+                </button>
+              </div>
+              <div class="tooltip tooltip-bottom" data-tip="编译导出 HTML 文件">
+                <button class="btn btn-sm btn-ghost btn-square" type="button" @click="buildStory">
+                  <Icon icon="mdi:hammer" class="text-lg" />
+                </button>
+              </div>
+              <div class="divider divider-horizontal my-1 mx-0.5"></div>
+              <div class="tooltip tooltip-bottom" data-tip="保存至服务器">
+                <button class="btn btn-sm btn-primary shadow-xs gap-1" type="button" @click="saveToServer">
+                  <Icon icon="mdi:content-save-outline" class="text-base" />
+                  <span>保存</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="flex-1 min-w-70 flex items-center gap-1.5 bg-base-100 rounded-lg px-2 border border-base-300 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition">
+              <Icon icon="mdi:text-box-outline" class="text-base text-base-content/50 shrink-0" />
+              <input
+                v-model="story.description"
+                class="input input-sm border-none focus:outline-none w-full px-1"
+                placeholder="故事描述/简述..."
+              />
+            </div>
+            <div class="w-full sm:w-72 flex items-center gap-1.5 bg-base-100 rounded-lg px-2 border border-base-300 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition">
+              <Icon icon="mdi:tag-multiple-outline" class="text-base text-base-content/50 shrink-0" />
+              <input
+                v-model="storyTagsStr"
+                class="input input-sm border-none focus:outline-none w-full px-1"
+                placeholder="故事标签（逗号分隔，如: 奇幻, 动作）"
+              />
+            </div>
+          </div>
         </div>
 
-        <div class="mb-4 flex flex-wrap gap-2">
-          <button
-            class="btn btn-sm btn-outline"
-            type="button"
-            @click="insertSnippet('[[' + selectedPassage + '|]]')"
-          >
-            链接
-          </button>
-          <button
-            class="btn btn-sm btn-outline"
-            type="button"
-            @click="insertSnippet('(if: $var > 0)[文本](else:)[文本]')"
-          >
-            分支
-          </button>
-          <button
-            class="btn btn-sm btn-outline"
-            type="button"
-            @click="insertSnippet('(set: $score to $score + 1)')"
-          >
-            赋值
-          </button>
-          <button
-            class="btn btn-sm btn-outline"
-            type="button"
-            @click="insertSnippet('(print: $score)')"
-          >
-            打印
-          </button>
-          <button
-            class="btn btn-sm btn-outline"
-            type="button"
-            @click="insertJsGlobalSnippet"
-          >
-            全局 JS 定义
-          </button>
-          <button
-            class="btn btn-sm btn-outline"
-            type="button"
-            @click="insertCallSnippet"
-          >
-            调用 JS 函数
-          </button>
+        <div class="tools mb-4 flex flex-wrap gap-1 items-center bg-base-200/60 p-1.5 rounded-xl border border-base-200">
+          <div class="tooltip tooltip-bottom" data-tip="插入链接 [[段落|显示]]">
+            <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('[[' + selectedPassage + '|]]')">
+              <Icon icon="mdi:link-variant" class="text-lg" />
+            </button>
+          </div>
+
+          <div class="tooltip tooltip-bottom" data-tip="插入条件分支 (if:)">
+            <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('(if: $var > 0)[文本](else:)[文本]')">
+              <Icon icon="mdi:source-branch" class="text-lg" />
+            </button>
+          </div>
+
+          <div class="tooltip tooltip-bottom" data-tip="变量赋值 (set:)">
+            <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('(set: $score to $score + 1)')">
+              <Icon icon="mdi:plus-box-outline" class="text-lg" />
+            </button>
+          </div>
+
+          <div class="tooltip tooltip-bottom" data-tip="打印变量 (print:)">
+            <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('(print: $score)')">
+              <Icon icon="mdi:code-json" class="text-lg" />
+            </button>
+          </div>
+
+          <div class="divider divider-horizontal my-1 mx-0.5"></div>
+
+          <div class="tooltip tooltip-bottom" data-tip="粗体 ''文字''">
+            <button class="btn btn-sm btn-ghost btn-square" type="button" @click="wrapSelection(`''`, `''`)">
+              <Icon icon="mdi:format-bold" class="text-lg" />
+            </button>
+          </div>
+
+          <div class="tooltip tooltip-bottom" data-tip="斜体 //文字//">
+            <button class="btn btn-sm btn-ghost btn-square" type="button" @click="wrapSelection(`//`, `//`)">
+              <Icon icon="mdi:format-italic" class="text-lg" />
+            </button>
+          </div>
+
+          <div class="tooltip tooltip-bottom" data-tip="删除线 ~~文字~~">
+            <button class="btn btn-sm btn-ghost btn-square" type="button" @click="wrapSelection(`~~`, `~~`)">
+              <Icon icon="mdi:format-strikethrough" class="text-lg" />
+            </button>
+          </div>
+
+          <div class="tooltip tooltip-bottom" data-tip="上标 ^^文字^^">
+            <button class="btn btn-sm btn-ghost btn-square" type="button" @click="wrapSelection(`^^`, `^^`)">
+              <Icon icon="mdi:format-superscript" class="text-lg" />
+            </button>
+          </div>
+
+          <div class="tooltip tooltip-bottom" data-tip="下标 ,,文字,,">
+            <button class="btn btn-sm btn-ghost btn-square" type="button" @click="wrapSelection(',,', ',,')">
+              <Icon icon="mdi:format-subscript" class="text-lg" />
+            </button>
+          </div>
+
+          <div class="divider divider-horizontal my-1 mx-0.5"></div>
+
+          <div class="tooltip tooltip-bottom" data-tip="嵌入段落 (display:)">
+            <button class="btn btn-sm btn-ghost btn-square" type="button" @click='insertSnippet(`(display: "Intro")`)'>
+              <Icon icon="mdi:file-replace-outline" class="text-lg" />
+            </button>
+          </div>
+
+          <div class="tooltip tooltip-bottom" data-tip="插入全局 JS 函数 (fn:)">
+            <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertJsGlobalSnippet">
+              <Icon icon="mdi:code-braces" class="text-lg" />
+            </button>
+          </div>
+
+          <div class="tooltip tooltip-bottom" data-tip="调用 JS 函数 (call:)">
+            <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertCallSnippet">
+              <Icon icon="mdi:play-circle-outline" class="text-lg" />
+            </button>
+          </div>
+
+          <div class="tooltip tooltip-bottom" data-tip="插入 CSS 样式块 <style>">
+            <button class="btn btn-sm btn-ghost btn-square" type="button" @click='insertSnippet(`<style>\n.demo-callout { padding: 0.5rem; }\n</style>`)'>
+              <Icon icon="mdi:language-css3" class="text-lg" />
+            </button>
+          </div>
         </div>
 
         <div class="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-          <div class="rounded-xl border border-base-300 bg-base-200 p-3">
+          <div class="rounded-xl border border-base-300 bg-base-200/50 p-3">
             <div class="mb-2 flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <label class="text-sm font-semibold">段落编辑</label>
-                <span class="text-sm text-base-content/60"
-                  >场景：{{ selectedPassage }}</span
+              <div class="flex items-center gap-2">
+                <label class="text-sm font-bold flex items-center gap-1">
+                  <Icon icon="mdi:square-edit-outline" class="text-base text-primary" />
+                  <span>段落编辑</span>
+                </label>
+                <span class="badge badge-neutral badge-sm font-mono"
+                  >{{ selectedPassage }}</span
                 >
               </div>
-              <div class="flex items-center gap-2">
-                <button
-                  class="btn btn-xs btn-outline"
-                  type="button"
-                  @click="renamePassage"
-                >
-                  重命名
-                </button>
-                <button
-                  class="btn btn-xs btn-error btn-outline"
-                  type="button"
-                  @click="deletePassage"
-                >
-                  删除
-                </button>
+              <div class="flex items-center gap-1">
+                <div class="tooltip tooltip-bottom" data-tip="重命名当前段落">
+                  <button
+                    class="btn btn-xs btn-ghost btn-square"
+                    type="button"
+                    @click="renamePassage"
+                  >
+                    <Icon icon="mdi:pencil-outline" class="text-base" />
+                  </button>
+                </div>
+                <div class="tooltip tooltip-bottom" data-tip="删除当前段落">
+                  <button
+                    class="btn btn-xs btn-ghost btn-square text-error"
+                    type="button"
+                    @click="deletePassage"
+                  >
+                    <Icon icon="mdi:trash-can-outline" class="text-base" />
+                  </button>
+                </div>
               </div>
             </div>
             <textarea
               v-model="selectedPassageContent"
-              class="h-[420px] w-full resize-none rounded-xl border border-base-300 bg-base-100 p-3 font-mono text-sm outline-none focus:border-primary"
+              class="h-105 w-full resize-none rounded-xl border border-base-300 bg-base-100 p-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition"
               spellcheck="false"
             />
             <div class="mt-3 flex items-center gap-2">
-              <label class="text-sm">Tags：</label>
+              <label class="text-xs text-base-content/70 flex items-center gap-1">
+                <Icon icon="mdi:tag-multiple-outline" class="text-sm" />
+                <span>Tags：</span>
+              </label>
               <input
                 v-model="tagEditValue"
-                class="input input-sm flex-1"
-                placeholder="用逗号分隔标签"
+                class="input input-sm flex-1 input-bordered"
+                placeholder="逗号分隔段落标签"
               />
               <button
-                class="btn btn-xs btn-primary"
+                class="btn btn-xs btn-primary gap-1"
                 type="button"
                 @click="saveTags"
               >
-                保存
+                <Icon icon="mdi:check" class="text-sm" />
+                <span>保存标签</span>
               </button>
             </div>
           </div>
 
-          <div
-            class="space-y-4 rounded-xl border border-base-300 bg-base-200 p-3"
-          >
-            <div class="rounded-xl bg-base-100 p-3">
-              <p
-                class="mb-2 text-sm font-semibold uppercase tracking-[0.24em] text-base-content/70"
-              >
-                故事信息
-              </p>
-              <ul class="space-y-2 text-sm text-base-content/80">
-                <li>
-                  标题: <strong>{{ story.title || "未命名故事" }}</strong>
-                </li>
-                <li>
-                  起始段落:
-                  <strong>{{ story.startPassage || selectedPassage }}</strong>
-                </li>
-                <li>
-                  段落数: <strong>{{ story.passages.length }}</strong>
-                </li>
-              </ul>
+          <div class="space-y-4 rounded-xl border border-base-300 bg-base-200/50 p-3">
+            <div class="flex items-center justify-between mb-2">
+              <div class="tabs tabs-boxed bg-base-200 p-0.5">
+                <a :class="['tab tab-xs font-semibold', activeRightTab === 'preview' ? 'tab-active' : '']" @click.prevent="activeRightTab = 'preview'">
+                  <Icon icon="mdi:play-circle-outline" class="mr-1 text-sm" />预览
+                </a>
+                <a :class="['tab tab-xs font-semibold', activeRightTab === 'vars' ? 'tab-active' : '']" @click.prevent="activeRightTab = 'vars'">
+                  <Icon icon="mdi:variable" class="mr-1 text-sm" />变量
+                </a>
+              </div>
+              <div class="flex items-center gap-1">
+                <select v-if="activeRightTab === 'preview'" v-model="previewPassage" class="select select-xs select-bordered">
+                  <option v-for="p in story.passages" :key="p.name" :value="p.name">{{ p.name }}</option>
+                </select>
+                <div v-if="activeRightTab === 'preview'" class="tooltip tooltip-bottom" data-tip="刷新预览">
+                  <button class="btn btn-ghost btn-xs" type="button" @click="refreshPreview">
+                    <Icon icon="mdi:refresh" size="16px" />
+                  </button>
+                </div>
+                <div class="tooltip tooltip-bottom" data-tip="重置变量到初始状态">
+                  <button class="btn btn-ghost btn-xs" type="button" @click="resetPreviewVars">
+                    <Icon icon="material-symbols-light:reset-settings" size="16px" />
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <div class="rounded-xl bg-base-100 p-3">
-              <p
-                class="mb-2 text-sm font-semibold uppercase tracking-[0.24em] text-base-content/70"
-              >
-                变量面板
-              </p>
+            <div v-if="activeRightTab === 'preview'">
+              <StoryPlayView
+                :external="true"
+                :storyProp="story"
+                :currentPassageProp="previewPassage"
+                :variablesProp="variables"
+                @update:variables="handleUpdateVariables($event)"
+                @update:currentPassage="handleUpdateCurrentPassage($event)"
+              />
+            </div>
+
+            <div v-else>
+              <div class="mb-2">
+                <input v-model="varFilter" placeholder="筛选变量" class="input input-sm w-full" />
+              </div>
+
               <div class="space-y-2 text-sm">
-                <div
-                  v-if="Object.keys(variables).length === 0"
-                  class="text-base-content/60"
-                >
-                  暂无变量
-                </div>
-                <div
-                  v-for="(value, key) in variables"
-                  :key="key"
-                  class="flex items-center justify-between gap-2 rounded-lg bg-base-200 px-2 py-1"
-                >
-                  <span>{{ key }}</span>
-                  <strong>{{ value }}</strong>
+                <div v-if="filteredVariableEntries.length === 0" class="text-base-content/60">暂无变量</div>
+                <div v-for="([key, value]) in filteredVariableEntries" :key="key" class="flex items-center justify-between gap-2 rounded-lg bg-base-200 px-2 py-1">
+                  <div class="flex-1">
+                    <div class="text-xs text-base-content/70">{{ key }}</div>
+                    <div class="truncate">{{ displayVar(value) }}</div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button class="btn btn-xs btn-ghost tooltip" data-tip="插入变量"  type="button" @click="insertVariableToEditor(key)">
+                      <Icon icon="dashicons:insert" />
+                    </button>
+                    <div v-if="!builtinVariableNames.has(key)">
+                      <button class="btn btn-xs btn-ghost tooltip" data-tip="编辑变量" type="button" @click="openEditVar(key)">
+                        <Icon icon="dashicons:edit" />
+                      </button>
+                    </div>
+                    <div v-else class="tooltip" :data-tip="key + ' 为内置变量，不能编辑'">
+                      <button class="btn btn-xs btn-ghost btn-square" type="button" disabled>
+                        <Icon icon="mdi:lock" class="text-sm" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -241,7 +345,6 @@
               </p>
               <h3 class="mt-1 text-lg font-bold">语法说明书</h3>
             </div>
-            <span class="badge badge-outline">Harlowe / 轻量支持</span>
           </div>
 
           <div class="grid gap-4 lg:grid-cols-2">
@@ -380,29 +483,27 @@
       </main>
     </div>
 
-    <dialog ref="dialogRef" class="modal">
-      <div class="modal-box">
-        <h3 class="text-lg font-bold">故事运行</h3>
-        <p class="py-4">当前故事已准备好播放，是否切换到播放视图？</p>
+    <dialog id="json-editor-dialog" class="modal">
+      <div class="modal-box w-11/12 max-w-3xl">
+        <h3 class="text-lg font-bold">编辑变量 JSON</h3>
+        <div class="py-4" ref="jsonEditorRef">
+          <textarea style="width:100%;height:400px;"></textarea>
+        </div>
         <div class="modal-action">
-          <button class="btn btn-ghost" type="button" @click="closeDialog">
-            取消
-          </button>
-          <button class="btn btn-primary" type="button" @click="confirmRun">
-            确认
-          </button>
+          <button class="btn btn-ghost" type="button" @click="closeJsonEditor">取消</button>
+          <button class="btn btn-primary" type="button" @click="saveEditedVar">保存</button>
         </div>
       </div>
-      <form method="dialog" class="modal-backdrop">
-        <button type="submit">close</button>
-      </form>
+      <form method="dialog" class="modal-backdrop"><button type="submit">close</button></form>
     </dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, onMounted, ref, nextTick, onBeforeUnmount, watch } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { getStory, createStory, updateStory } from "@/api/stories";
+import StoryPlayView from "@/views/StoryPlayView.vue";
 import {
   createDefaultStory,
   parseStorySource,
@@ -411,12 +512,52 @@ import {
   type StoryData,
   buildStandaloneExport,
 } from "@/lib/storyEngine";
+import {} from "@/lib/storyEngine";
+
+// CodeMirror v5 for JSON editing
+import CodeMirror from "codemirror";
+import "codemirror/lib/codemirror.css";
+import "codemirror/theme/dracula.css";
+import "codemirror/mode/javascript/javascript";
+import msg from "@/components/msg";
+import { useAppStore } from "@/stores/modules/app";
+import { omit } from "lodash-es";
+
+const appStore = useAppStore();
+const isDark = computed(() => appStore.getTheme === "dark");
 
 const router = useRouter();
 const dialogRef = ref<HTMLDialogElement | null>(null);
+const jsonEditorRef = ref<HTMLDivElement | null>(null);
+const cmInstance = ref<any>(null);
+const jsonEditorValue = ref("");
+const editingVarName = ref("");
+
 const story = ref<StoryData>(createDefaultStory());
+const route = useRoute();
+const currentStoryId = ref<string | null>(null);
 const selectedPassage = ref("Start");
 const variables = ref<Record<string, unknown>>({});
+const previewPassage = ref<string>("Start");
+const selectedInsertVar = ref("");
+const variableKeys = computed(() => Object.keys(variables.value));
+const storyTagsStr = computed({
+  get: () => (story.value.tags || []).join(","),
+  set: (v: string) => {
+    story.value.tags = (v || "")
+      .replaceAll("，", ",")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  },
+});
+const activeRightTab = ref<'preview'|'vars'>('preview');
+const varFilter = ref("");
+const filteredVariableEntries = computed(() => {
+  const q = (varFilter.value || "").toLowerCase();
+  return Object.entries(variables.value).filter(([k]) => k.toLowerCase().includes(q));
+});
+const builtinVariableNames = new Set<string>(['passage', 'storyTitle']);
 
 const selectedPassageContent = computed({
   get: () => {
@@ -437,6 +578,149 @@ const selectedPassageContent = computed({
     current.content = value;
   },
 });
+
+const displayVar = (v: unknown) => {
+  if (v === null || v === undefined) return String(v);
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+};
+
+function insertSnippet(snippet: string) {
+  const textarea = document.querySelector("textarea") as HTMLTextAreaElement | null;
+  if (!textarea) return;
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const content = textarea.value;
+  textarea.value = `${content.slice(0, start)}${snippet}${content.slice(end)}`;
+  textarea.selectionStart = textarea.selectionEnd = start + snippet.length;
+  textarea.focus();
+}
+
+function wrapSelection(before: string, after?: string) {
+  const textarea = document.querySelector("textarea") as HTMLTextAreaElement | null;
+  const a = after ?? before;
+  if (!textarea) {
+    insertSnippet(before + a);
+    return;
+  }
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const content = textarea.value;
+  if (start !== end) {
+    const selected = content.slice(start, end);
+    const replaced = before + selected + a;
+    textarea.value = content.slice(0, start) + replaced + content.slice(end);
+    textarea.selectionStart = start;
+    textarea.selectionEnd = start + replaced.length;
+    textarea.focus();
+  } else {
+    const inserted = before + a;
+    textarea.value = `${content.slice(0, start)}${inserted}${content.slice(end)}`;
+    const cursorPos = start + before.length;
+    textarea.selectionStart = textarea.selectionEnd = cursorPos;
+    textarea.focus();
+  }
+}
+
+function insertJsGlobalSnippet() {
+  insertSnippet(`(fn:\"myFunc\")[console.log(\"hello\"); return 123]`);
+}
+
+function insertCallSnippet() {
+  insertSnippet(`(call:\"myFunc\")`);
+}
+
+const insertVariableToEditor = (key: string) => {
+  insertSnippet(`$${key}`);
+};
+
+const openEditVar = async (key: string) => {
+  editingVarName.value = key;
+  jsonEditorValue.value = JSON.stringify(variables.value[key], null, 2);
+  // show modal
+  await nextTick();
+  const dlg = document.getElementById("json-editor-dialog") as HTMLDialogElement | null;
+  if (dlg) dlg.showModal();
+  // init CodeMirror
+  await nextTick();
+  const currentTheme = isDark.value ? "dracula" : "default";
+  if (jsonEditorRef.value && !cmInstance.value) {
+    const textarea = jsonEditorRef.value.querySelector("textarea") as HTMLTextAreaElement | null;
+    if (textarea) {
+      textarea.value = jsonEditorValue.value;
+      cmInstance.value = CodeMirror.fromTextArea(textarea, {
+        mode: { name: "javascript", json: true },
+        theme: currentTheme,
+        lineNumbers: true,
+        tabSize: 2,
+        autofocus: true,
+      });
+      cmInstance.value.setSize("100%", 400);
+    }
+  } else if (cmInstance.value) {
+    cmInstance.value.setOption("theme", currentTheme);
+    cmInstance.value.setValue(jsonEditorValue.value);
+  }
+};
+
+const saveEditedVar = () => {
+  if (!editingVarName.value) return;
+  let raw = jsonEditorValue.value;
+  if (cmInstance.value) raw = cmInstance.value.getValue();
+  try {
+    const parsed = JSON.parse(raw);
+    variables.value[editingVarName.value] = parsed;
+  } catch (e) {
+    // fallback: treat as string
+    variables.value[editingVarName.value] = raw;
+  }
+  const dlg = document.getElementById("json-editor-dialog") as HTMLDialogElement | null;
+  if (dlg) dlg.close();
+};
+
+const closeJsonEditor = () => {
+  const dlg = document.getElementById("json-editor-dialog") as HTMLDialogElement | null;
+  if (dlg) dlg.close();
+};
+
+const refreshPreview = () => {
+  // preview is controlled by StoryPlayView via props; updating refs will re-render automatically
+  // keep a tiny tick to allow reactive updates
+  previewPassage.value = previewPassage.value;
+};
+
+const resetPreviewVars = () => {
+  variables.value = buildInitialVariables(story.value);
+};
+
+const insertSelectedVar = () => {
+  if (!selectedInsertVar.value) return;
+  insertSnippet(`$${selectedInsertVar.value}`);
+};
+
+
+onBeforeUnmount(() => {
+  if (cmInstance.value) {
+    try { cmInstance.value.toTextArea(); } catch {}
+    cmInstance.value = null;
+  }
+});
+
+
+const handleUpdateVariables = (v: any) => {
+  variables.value = v;
+};
+
+const handleUpdateCurrentPassage = (p: string) => {
+  // save previous passage name into built-in variable before updating
+  try {
+    const prev = previewPassage.value;
+    if (prev) variables.value.prevPassage = prev;
+  } catch (e) {
+    // ignore if variables object shape differs
+  }
+  previewPassage.value = p;
+};
 
 const ensurePassage = (name: string) => {
   const normalized = name.trim() || "Untitled";
@@ -461,15 +745,27 @@ const importStory = () => {
   input.accept = ".txt,.md,.json,.html";
   input.onchange = async () => {
     const file = input.files?.[0];
-    if (!file) {
-      return;
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = parseStorySource(text);
+      if (!parsed || !parsed.passages || parsed.passages.length === 0) {
+        window.alert("未检测到可导入的段落内容。");
+        return;
+      }
+      story.value = parsed as StoryData;
+      variables.value = buildInitialVariables(story.value);
+      selectedPassage.value = story.value.startPassage || story.value.passages[0]?.name || selectedPassage.value;
+      previewPassage.value = selectedPassage.value;
+      refreshPreview();
+      window.alert('导入成功');
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(e);
+      window.alert('导入失败');
     }
-    const text = await file.text();
-    const parsed = parseStorySource(text);
-    story.value = parsed;
-    selectedPassage.value = parsed.passages[0]?.name ?? "Start";
-    variables.value = buildInitialVariables(parsed);
   };
+  // trigger file picker
   input.click();
 };
 
@@ -488,13 +784,13 @@ const pasteImport = async () => {
     const text = await navigator.clipboard.readText();
     if (!text || !text.trim()) {
       // eslint-disable-next-line no-alert
-      window.alert("剪贴板没有可用文本。");
+      msg.error("剪贴板没有可用文本。");
       return;
     }
 
     const parsed = parseStorySource(text);
     if (!parsed || !parsed.passages || parsed.passages.length === 0) {
-      window.alert("未检测到可导入的段落内容。");
+      msg.error("未检测到可导入的段落内容。");
       return;
     }
 
@@ -523,11 +819,11 @@ const pasteImport = async () => {
         story.value.passages[story.value.passages.length - added].name;
     }
 
-    window.alert(`已从剪贴板导入 ${added} 个段落。`);
+    msg.success(`已从剪贴板导入 ${added} 个段落。`);
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error(e);
-    window.alert("从剪贴板读取失败，请确保已授权并包含文本。");
+    msg.error("从剪贴板读取失败，请确保已授权并包含文本。");
   }
 };
 
@@ -559,15 +855,34 @@ const buildStory = () => {
 
 const saveDraft = () => {
   localStorage.setItem("haide-story-draft", JSON.stringify(story.value));
-  localStorage.setItem(
-    "haide-story-variables",
-    JSON.stringify(variables.value),
-  );
+  localStorage.setItem("haide-story-variables", JSON.stringify(variables.value));
 };
 
-const runStory = () => {
-  if (dialogRef.value) {
-    dialogRef.value.showModal();
+const saveToServer = async () => {
+  // Create payload compatible with server CreateStoryDto: title + content
+  const payload = {
+    ...omit(story.value, ["passages"]),
+    content: serializeStory(story.value),
+    passageSize: story.value.passages.length,
+  };
+  try {
+    if (currentStoryId.value) {
+      await updateStory(currentStoryId.value, payload);
+      msg.success('已保存');
+    } else {
+      const res = await createStory(payload);
+      const newId = res?.id;
+      if (newId) {
+        currentStoryId.value = newId;
+        // navigate to editor with id
+        router.replace({ name: 'story-editor', params: { storyId: newId } });
+      }
+      msg.success('已保存');
+    }
+  } catch (e) {
+    // fallback to local save
+    saveDraft();
+    msg.error('保存到服务器失败，已保存到本地草稿');
   }
 };
 
@@ -592,7 +907,6 @@ const selectPassage = (name: string) => {
 };
 
 // keep tag editor sync with selected passage
-import { watch } from "vue";
 watch(selectedPassage, () => {
   const p = story.value.passages.find((x) => x.name === selectedPassage.value);
   tagEditValue.value = (p?.tags || []).join(", ");
@@ -623,28 +937,7 @@ const deletePassage = () => {
   selectedPassage.value = story.value.passages[0].name;
 };
 
-const insertSnippet = (snippet: string) => {
-  const textarea = document.querySelector(
-    "textarea",
-  ) as HTMLTextAreaElement | null;
-  if (!textarea) {
-    return;
-  }
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const content = textarea.value;
-  textarea.value = `${content.slice(0, start)}${snippet}${content.slice(end)}`;
-  textarea.selectionStart = textarea.selectionEnd = start + snippet.length;
-  textarea.focus();
-};
 
-const insertJsGlobalSnippet = () => {
-  insertSnippet(`(fn:"myFunc")[console.log("hello"); return 123]`);
-};
-
-const insertCallSnippet = () => {
-  insertSnippet(`(call:"myFunc")`);
-};
 
 const copyPassageName = async (name: string) => {
   if (!name) return;
@@ -659,14 +952,6 @@ const copyPassageName = async (name: string) => {
 
 const searchFilter = ref("");
 const tagEditValue = ref("");
-
-const uniqueTags = computed(() => {
-  const set = new Set<string>();
-  for (const p of story.value.passages) {
-    for (const t of p.tags ?? []) set.add(t);
-  }
-  return Array.from(set);
-});
 
 const filteredPassages = computed(() => {
   const q = (searchFilter.value || "").trim().toLowerCase();
@@ -687,20 +972,6 @@ const saveTags = () => {
     .filter(Boolean);
 };
 
-const insertJsFunctionsEntry = () => {
-  // ensure JSFunctions passage exists
-  ensurePassage("JSFunctions");
-  // add link in current passage content
-  const p = story.value.passages.find((x) => x.name === selectedPassage.value);
-  if (p && !p.content.includes("JSFunctions")) {
-    p.content = `${p.content}\n\n[[进入 JSFunctions|JSFunctions]]`;
-  }
-  // mark current passage with tag
-  if (p) {
-    p.tags = Array.from(new Set([...(p.tags || []), "js-entry"]));
-  }
-};
-
 onMounted(() => {
   const draft = localStorage.getItem("haide-story-draft");
   if (draft) {
@@ -713,5 +984,26 @@ onMounted(() => {
   }
 
   variables.value = buildInitialVariables(story.value);
+  previewPassage.value = selectedPassage.value || story.value.passages[0]?.name || "Start";
+  // load story if id provided
+  const sid = (route.params.storyId as string) || null;
+  if (sid) {
+    currentStoryId.value = sid;
+    getStory(sid).then((data) => {
+      if (data) {
+        data.tags = data.tags.split(',');
+        story.value = data;
+        story.value.passages = parseStorySource(data.content).passages;
+        variables.value = buildInitialVariables(story.value);
+        selectedPassage.value = story.value.startPassage || story.value.passages[0]?.name || selectedPassage.value;
+        previewPassage.value = selectedPassage.value;
+        refreshPreview();
+      }
+    }).catch(() => {});
+  }
 });
+
+watch([previewPassage, () => story.value, variables], () => {
+  refreshPreview();
+}, { deep: true });
 </script>

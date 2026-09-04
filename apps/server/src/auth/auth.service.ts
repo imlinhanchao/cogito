@@ -9,6 +9,7 @@ import { User } from 'src/users/user.entity';
 import { ConfigService } from 'src/config/config.service';
 import path from 'path';
 import fs from 'fs';
+import { omit } from 'src/utils';
 
 @Injectable()
 export class AuthService {
@@ -67,14 +68,13 @@ export class AuthService {
   async loginFishpi(user: IUserLite) {
     const userDetail = await this.usersService.getFishpiUser(user.userName);
     if (!userDetail) throw new Error('用户不存在');
-    await this.usersService.save(userDetail);
+    const account = await this.usersService.save(userDetail);
     const isAdmin = userDetail?.isAdmin;
-    const payload = { username: user.userName, sub: user.oId, isAdmin };
+    const payload = { username: account.username, sub: account.id, isAdmin };
     return {
       access_token: this.jwtService.sign(payload),
       user: {
-        id: user.oId,
-        username: user.userName,
+        ...omit(account, User.unsafeKey),
         isAdmin,
       },
     };

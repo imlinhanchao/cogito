@@ -1,6 +1,8 @@
 import { Controller, Get, UseGuards, Request, Param } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UsersService } from './users.service';
+import { User } from './user.entity';
+import { omit } from 'src/utils';
 
 @Controller('users')
 export class UsersController {
@@ -10,7 +12,8 @@ export class UsersController {
   @Get('profile')
   async getProfile(@Request() req) {
     const user = await this.usersService.findById(req.user.userId);
-    return user;
+    if (!user) throw new Error('用户不存在');
+    return omit(user, User.unsafeKey);
   }
 
   @Get(':from/:username')

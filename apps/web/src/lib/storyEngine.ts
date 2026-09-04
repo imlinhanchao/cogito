@@ -66,6 +66,7 @@ export interface StoryPassage {
 export interface StoryData {
   title: string;
   description?: string;
+  tags?: string[];
   startPassage: string;
   passages: StoryPassage[];
 }
@@ -231,11 +232,22 @@ export function parseStorySource(source: string): StoryData {
       continue;
     }
 
-    const name = (match[1] ?? match[2] ?? "Untitled").trim();
+    const rawHeader = (match[1] ?? match[2] ?? "Untitled").trim();
     const content = (match[3] ?? "").trim();
+    // support optional tags in header like: :: Name [tag1,tag2]
+    let name = rawHeader;
+    let tags: string[] = [];
+    const tagMatch = rawHeader.match(/^(.*?)\s*\[(.*)\]\s*$/);
+    if (tagMatch) {
+      name = tagMatch[1].trim() || "Untitled";
+      tags = tagMatch[2]
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
     passages.push({
       name,
-      tags: [],
+      tags,
       content,
     });
   }
@@ -256,6 +268,8 @@ export function parseStorySource(source: string): StoryData {
 
   const description =
     (normalized.match(/^\s*简述\s*[:：]\s*(.+)$/m)?.[1] ?? "").trim() || "";
+  const tagsLine = (normalized.match(/^\s*标签\s*[:：]\s*(.+)$/m)?.[1] ?? "").trim() || "";
+  const tags = tagsLine ? tagsLine.split(',').map(s => s.trim()).filter(Boolean) : [];
   const explicitStart = (
     normalized.match(/^\s*(?:起始段落|起始)\s*[:：]\s*(.+)$/m)?.[1] ?? ""
   ).trim();
@@ -263,6 +277,7 @@ export function parseStorySource(source: string): StoryData {
   return {
     title,
     description: description || undefined,
+    tags: tags.length ? tags : undefined,
     startPassage: explicitStart || (passages[0]?.name ?? "Start"),
     passages,
   };
@@ -272,10 +287,14 @@ export function serializeStory(story: StoryData): string {
   const headerLines: string[] = [];
   headerLines.push(`标题：${story.title || "Untitled"}`);
   if (story.description) headerLines.push(`简述：${story.description}`);
+  if (story.tags && story.tags.length) headerLines.push(`标签：${story.tags.join(',')}`);
   if (story.startPassage) headerLines.push(`起始段落：${story.startPassage}`);
 
   const passagesText = story.passages
-    .map((passage) => `:: ${passage.name}\n${passage.content.trim()}`)
+    .map((passage) => {
+      const tagSuffix = passage.tags && passage.tags.length ? ` [${passage.tags.join(",")}]` : "";
+      return `:: ${passage.name}${tagSuffix}\n${passage.content.trim()}`;
+    })
     .join("\n\n");
 
   return headerLines.join("\n") + "\n\n" + passagesText;
@@ -302,6 +321,8 @@ export function buildInitialVariables(story: StoryData): VariableMap {
   }
   variables.passage = story.startPassage;
   variables.storyTitle = story.title;
+  // previous passage name (empty at session start)
+  variables.prevPassage = "";
   return variables;
 }
 

@@ -22,9 +22,11 @@ export const useAppStore = defineStore("app", () => {
     document.documentElement.setAttribute("data-theme", "dark");
   }
 
+  const getTheme = computed(() => theme.value);
+
   return {
-    theme,
-    toggleTheme,
+    getTheme,
     themeLabel,
+    toggleTheme,
   };
 });
