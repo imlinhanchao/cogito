@@ -201,6 +201,11 @@
               <Icon icon="mdi:language-css3" class="text-lg" />
             </button>
           </div>
+          <div class="tooltip tooltip-bottom" data-tip="显示语法说明书">
+            <button class="btn btn-sm btn-ghost btn-square" type="button" @click="showManual = true">
+              <Icon icon="mdi:book-open-variant" class="text-lg" />
+            </button>
+          </div>
         </div>
 
         <div class="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
@@ -211,9 +216,7 @@
                   <Icon icon="mdi:square-edit-outline" class="text-base text-primary" />
                   <span>段落编辑</span>
                 </label>
-                <span class="badge badge-neutral badge-sm font-mono"
-                  >{{ selectedPassage }}</span
-                >
+                <span class="badge badge-neutral badge-sm font-mono">{{ selectedPassage }}</span>
               </div>
               <div class="flex items-center gap-1">
                 <div class="tooltip tooltip-bottom" data-tip="重命名当前段落">
@@ -332,154 +335,6 @@
             </div>
           </div>
         </div>
-
-        <section
-          class="mt-6 rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm"
-        >
-          <div class="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <p
-                class="text-xs font-semibold uppercase tracking-[0.28em] text-base-content/50"
-              >
-                Syntax Manual
-              </p>
-              <h3 class="mt-1 text-lg font-bold">语法说明书</h3>
-            </div>
-          </div>
-
-          <div class="grid gap-4 lg:grid-cols-2">
-            <article class="rounded-2xl border border-base-300 bg-base-200 p-4">
-              <h4 class="mb-3 font-semibold">变量与赋值</h4>
-              <div class="space-y-3 text-sm leading-7 text-base-content/80">
-                <div
-                  class="rounded-xl bg-base-100 p-3 font-mono text-xs leading-6"
-                >
-                  (set: $health to 10)<br />
-                  (set: $name to "小明")<br />
-                  (set: $score to $score + 1)<br />
-                  (set: $msg to $a + $b)
-                </div>
-                <p>
-                  变量以 <strong>$</strong> 开头。支持数值运算与字符串连接。
-                </p>
-              </div>
-            </article>
-
-            <article class="rounded-2xl border border-base-300 bg-base-200 p-4">
-              <h4 class="mb-3 font-semibold">条件分支</h4>
-              <div class="space-y-3 text-sm leading-7 text-base-content/80">
-                <div
-                  class="rounded-xl bg-base-100 p-3 font-mono text-xs leading-6"
-                >
-                  (if: $health > 5)[你很强壮]<br />
-                  (if: $hasKey)[门开了](else:)[门锁着]<br />
-                  (if: $score eq 0)[分数为零]
-                </div>
-                <p>
-                  支持
-                  <strong>&gt;</strong
-                  >、<strong>&lt;</strong>、<strong>&gt;=</strong>、<strong>&lt;=</strong>、<strong>is</strong>、<strong
-                    >is not</strong
-                  >、<strong>eq</strong>、<strong>ne</strong>。
-                </p>
-              </div>
-            </article>
-
-            <article class="rounded-2xl border border-base-300 bg-base-200 p-4">
-              <h4 class="mb-3 font-semibold">链接与跳转</h4>
-              <div class="space-y-3 text-sm leading-7 text-base-content/80">
-                <div
-                  class="rounded-xl bg-base-100 p-3 font-mono text-xs leading-6"
-                >
-                  [[去森林|Forest]]<br />
-                  [[去湖边]]<br />
-                  (link:"点击我")[(goto:"NextPassage")]<br />
-                  [[开门|Hall]](set: $doorOpen to true)
-                </div>
-                <p>
-                  快捷链接、按钮链接都可用。`[[显示文字|段落名]]`
-                  左边显示文字，右边是目标段落。
-                </p>
-              </div>
-            </article>
-
-            <article class="rounded-2xl border border-base-300 bg-base-200 p-4">
-              <h4 class="mb-3 font-semibold">显示与样式</h4>
-              <div class="space-y-3 text-sm leading-7 text-base-content/80">
-                <div
-                  class="rounded-xl bg-base-100 p-3 font-mono text-xs leading-6"
-                >
-                  (display: "Intro")<br />
-                  (print: $health)<br />
-                  ''粗体'' //斜体// ~~删除线~~ ^^上标^^ ,,下标,,
-                </div>
-                <p>
-                  可直接在段落里插入其他段落内容，也可以打印变量值和基础文本样式。
-                </p>
-              </div>
-            </article>
-
-            <article
-              class="rounded-2xl border border-base-300 bg-base-200 p-4 lg:col-span-2"
-            >
-              <h4 class="mb-3 font-semibold">HTML 与样式</h4>
-              <div class="space-y-3 text-sm leading-7 text-base-content/80">
-                <div
-                  class="rounded-xl bg-base-100 p-3 font-mono text-xs leading-6"
-                >
-                  &lt;style&gt;<br />
-                  .demo-callout { color: #1e3a8a; }<br />
-                  &lt;/style&gt;<br />
-                  &lt;div class="demo-callout" title="提示"&gt;支持安全的 HTML
-                  内容&lt;/div&gt;
-                </div>
-                <p>
-                  支持 <strong>style</strong> 标签与安全 HTML 属性，如
-                  id、class、style、title 等。事件属性会被忽略。
-                </p>
-              </div>
-            </article>
-
-            <article
-              class="rounded-2xl border border-base-300 bg-base-200 p-4 lg:col-span-2"
-            >
-              <h4 class="mb-3 font-semibold">JS 函数（扩展）</h4>
-              <div class="space-y-3 text-sm leading-7 text-base-content/80">
-                <div
-                  class="rounded-xl bg-base-100 p-3 font-mono text-xs leading-6"
-                >
-                  (fn:"greet")[return 'Hello, ' + (args[0] || vars.name ||
-                  '访客') + '!']<br />
-                  (call:"greet" "小红")<br />
-                  <br />
-                  (fn:"incScore")[vars.score = (Number(vars.score)||0) +
-                  (Number(args[0])||1); return vars.score]<br />
-                  (call:"incScore" 5)<br />
-                  (set: $newScore to (call:"incScore" 2))<br />
-                  (print: $newScore)
-                </div>
-                <p>
-                  定义格式：<strong>(fn:"name")[代码]</strong>；调用格式：<strong
-                    >(call:"name" arg1 arg2)</strong
-                  >。
-                </p>
-                <p>
-                  函数由
-                  <strong>new Function('vars','args', code)</strong> 执行，接收
-                  <strong>vars</strong>（变量字典引用）和
-                  <strong>args</strong>（参数数组）。函数可以读取与修改
-                  <strong>vars</strong>，并通过 <code>return</code> 返回值，可用
-                  <strong>(set: $x to (call:"name" ...))</strong>
-                  将返回值赋给变量。
-                </p>
-                <p class="text-sm text-base-content/60">
-                  安全提示：该功能会执行任意
-                  JS，仅在受信任环境使用；导出或公开使用时请谨慎或启用沙箱策略。
-                </p>
-              </div>
-            </article>
-          </div>
-        </section>
       </main>
     </div>
 
@@ -496,9 +351,9 @@
       </div>
       <form method="dialog" class="modal-backdrop"><button type="submit">close</button></form>
     </dialog>
+    <SyntaxManual v-if="showManual" @close="showManual = false" />
   </div>
 </template>
-
 <script setup lang="ts">
 import { computed, onMounted, ref, nextTick, onBeforeUnmount, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
@@ -522,6 +377,7 @@ import "codemirror/mode/javascript/javascript";
 import msg from "@/components/msg";
 import { useAppStore } from "@/stores/modules/app";
 import { omit } from "lodash-es";
+import SyntaxManual from "@/components/SyntaxManual.vue";
 
 const appStore = useAppStore();
 const isDark = computed(() => appStore.getTheme === "dark");
@@ -532,6 +388,7 @@ const jsonEditorRef = ref<HTMLDivElement | null>(null);
 const cmInstance = ref<any>(null);
 const jsonEditorValue = ref("");
 const editingVarName = ref("");
+const showManual = ref(false);
 
 const story = ref<StoryData>(createDefaultStory());
 const route = useRoute();
