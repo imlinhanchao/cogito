@@ -30,7 +30,7 @@ export class StoriesController {
   ) {
     const c = createdAt || Date.now();
     const l = limit || 20;
-    // 如果接口没有传 authorId 且请求中包含已认证的用户，则将其作为 authorId
+    // 接口传 authorId 且与已认证的用户不一致，则视为公开请求，不返回草稿
     const isPublicRequest = authorId !== req?.user?.userId;
     return this.storiesService.findAll(c, l, authorId, search, isPublicRequest);
   }
