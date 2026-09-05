@@ -77,10 +77,11 @@ export const EMPTY_STORY_SOURCE = `标题：未命名故事
 新故事开始了。
 `;
 
-export const DEFAULT_STORY_SOURCE = `标题：语法全检 Demo
+export const DEFAULT_STORY_SOURCE = `标题：语法示例 Demo
 
 :: Start
-你站在一个用于验证所有语法的实验场。
+这是一个用于演示所有语法的故事。
+这里开始初始化变量
 (set: $name to "小明")
 (set: $score to 0)
 (set: $health to 7)
@@ -1447,6 +1448,7 @@ export function buildStandaloneExport(
     <title>${escapeHtml(story.title)}</title>
     <style>
       body { font-family: "Segoe UI", sans-serif; background: #f6f7fb; color: #1a1b2a; margin: 0; }
+      .hidden { display: none; }
       .story-shell { max-width: 880px; margin: 48px auto; padding: 32px; background: white; border-radius: 18px; box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08); }
       .story-title { font-size: 2rem; font-weight: 700; margin-bottom: 18px; }
       .story-content { line-height: 1.9; font-size: 1.05rem; }
@@ -1492,7 +1494,7 @@ export function buildStandaloneExport(
       </div>
       <h1 class="story-title">${escapeHtml(story.title)}</h1>
       <div id="story-root" class="story-content"></div>
-      <aside class="sidebar">
+      <aside class="sidebar hidden">
         <h3>变量面板</h3>
         <div id="variables-root" class="var-list"></div>
       </aside>

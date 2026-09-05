@@ -119,7 +119,7 @@
 
           <div class="flex items-center gap-1">
             <button 
-              v-if="s.authorId == getUser?.id" 
+              v-if="s.authorId == getUser?.id && isCurrentUser" 
               class="btn btn-ghost btn-xs btn-square hover:bg-base-300/50" 
               @click="editStory(s.id!)" 
               title="编辑故事"

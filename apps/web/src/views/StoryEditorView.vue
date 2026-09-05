@@ -229,6 +229,12 @@
               <Icon icon="mdi:book-open-variant" class="text-lg" />
             </button>
           </div>
+          <div class="divider divider-horizontal my-1 mx-0.5"></div>
+          <div class="tooltip tooltip-bottom" data-tip="初始化语法示例">
+            <button class="btn btn-sm btn-ghost btn-square" type="button" @click="initDefaultStory">
+              <Icon icon="mdi:play-circle-outline" class="text-lg" />
+            </button>
+          </div>
         </div>
 
         <div class="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
@@ -265,9 +271,10 @@
               </div>
             </div>
             <textarea
-              v-model="selectedPassageContent"
+              ref="storyCmTextarea"
+              data-cm="story"
               :readonly="props.readOnly"
-              class="h-105 w-full resize-none rounded-xl border border-base-300 bg-base-100 p-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition"
+              class="h-105 w-full resize-none rounded-xl border border-base-300 bg-base-100 p-0 font-mono text-sm outline-none transition"
               spellcheck="false"
             />
             <div class="mt-3 flex items-center gap-2">
@@ -379,6 +386,19 @@
       </div>
       <form method="dialog" class="modal-backdrop"><button type="submit">close</button></form>
     </dialog>
+    <dialog id="paste-import-dialog" class="modal">
+      <div class="modal-box w-11/12 max-w-3xl">
+        <h3 class="text-lg font-bold">粘贴并导入故事源码</h3>
+        <div class="py-4" ref="pasteEditorRef">
+          <textarea style="width:100%;height:400px;"></textarea>
+        </div>
+        <div class="modal-action">
+          <button class="btn btn-ghost" type="button" @click="closePasteDialog">取消</button>
+          <button class="btn btn-primary" type="button" @click="confirmPasteImport">导入</button>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop"><button type="submit">close</button></form>
+    </dialog>
     <SyntaxManual v-if="showManual" @close="showManual = false" />
   </div>
 </template>
@@ -403,10 +423,13 @@ import CodeMirror from "codemirror";
 import "codemirror/lib/codemirror.css";
 import "codemirror/theme/dracula.css";
 import "codemirror/mode/javascript/javascript";
+// load simple mode addon for defining custom mode
+import "codemirror/addon/mode/simple";
 import msg from "@/components/msg";
 import { useAppStore } from "@/stores/modules/app";
 import { omit } from "lodash-es";
 import SyntaxManual from "@/components/SyntaxManual.vue";
+import msgbox from "@/components/msgbox";
 
 const props = defineProps<{ readOnly?: boolean; initialStory?: any }>();
 
@@ -417,6 +440,12 @@ const router = useRouter();
 const dialogRef = ref<HTMLDialogElement | null>(null);
 const jsonEditorRef = ref<HTMLDivElement | null>(null);
 const cmInstance = ref<any>(null);
+// CodeMirror instance for story editor
+const storyCmTextarea = ref<HTMLTextAreaElement | null>(null);
+const storyCmInstance = ref<any>(null);
+// CodeMirror instance for paste-import dialog
+const pasteEditorRef = ref<HTMLDivElement | null>(null);
+const cmPasteInstance = ref<any>(null);
 const jsonEditorValue = ref("");
 const editingVarName = ref("");
 const showManual = ref(false);
@@ -475,6 +504,15 @@ const displayVar = (v: unknown) => {
 };
 
 function insertSnippet(snippet: string) {
+  if (props.readOnly) return;
+  if (storyCmInstance.value) {
+    const cm = storyCmInstance.value;
+    const doc = cm.getDoc();
+    const sel = doc.getSelection();
+    doc.replaceSelection(snippet);
+    cm.focus();
+    return;
+  }
   const textarea = document.querySelector("textarea") as HTMLTextAreaElement | null;
   if (!textarea) return;
   const start = textarea.selectionStart;
@@ -486,8 +524,24 @@ function insertSnippet(snippet: string) {
 }
 
 function wrapSelection(before: string, after?: string) {
-  const textarea = document.querySelector("textarea") as HTMLTextAreaElement | null;
   const a = after ?? before;
+  if (props.readOnly) return;
+  if (storyCmInstance.value) {
+    const cm = storyCmInstance.value;
+    const doc = cm.getDoc();
+    const sel = doc.getSelection();
+    if (sel && sel.length > 0) {
+      doc.replaceSelection(before + sel + a);
+      cm.focus();
+    } else {
+      doc.replaceSelection(before + a);
+      const cursor = doc.getCursor();
+      doc.setCursor({ line: cursor.line, ch: cursor.ch - a.length });
+      cm.focus();
+    }
+    return;
+  }
+  const textarea = document.querySelector("textarea") as HTMLTextAreaElement | null;
   if (!textarea) {
     insertSnippet(before + a);
     return;
@@ -593,6 +647,14 @@ onBeforeUnmount(() => {
     try { cmInstance.value.toTextArea(); } catch {}
     cmInstance.value = null;
   }
+  if (storyCmInstance.value) {
+    try { storyCmInstance.value.toTextArea(); } catch {}
+    storyCmInstance.value = null;
+  }
+  if (cmPasteInstance.value) {
+    try { cmPasteInstance.value.toTextArea(); } catch {}
+    cmPasteInstance.value = null;
+  }
 });
 
 
@@ -669,53 +731,85 @@ const generateUniquePassageName = (base: string) => {
 };
 
 const pasteImport = async () => {
+  // Open paste dialog and load clipboard text into CodeMirror for user editing
+  let clipboard = "";
   try {
-    const text = await navigator.clipboard.readText();
-    if (!text || !text.trim()) {
-      // eslint-disable-next-line no-alert
-      msg.error("剪贴板没有可用文本。");
-      return;
+    clipboard = await navigator.clipboard.readText();
+  } catch (e) {
+    // ignore clipboard errors, start with empty
+  }
+  await nextTick();
+  const dlg = document.getElementById("paste-import-dialog") as HTMLDialogElement | null;
+  if (dlg) dlg.showModal();
+  await nextTick();
+  const currentTheme = isDark.value ? "dracula" : "default";
+  if (pasteEditorRef.value && !cmPasteInstance.value) {
+    const ta = pasteEditorRef.value.querySelector("textarea") as HTMLTextAreaElement | null;
+    if (ta) {
+      ta.value = clipboard || "";
+      cmPasteInstance.value = CodeMirror.fromTextArea(ta, {
+        mode: 'haideStory',
+        theme: currentTheme,
+        lineNumbers: true,
+        lineWrapping: true,
+        tabSize: 2,
+      });
+      cmPasteInstance.value.setSize('100%', 400);
     }
+  } else if (cmPasteInstance.value) {
+    cmPasteInstance.value.setOption('theme', currentTheme);
+    if (clipboard) cmPasteInstance.value.setValue(clipboard);
+  }
+};
 
-    const parsed = parseStorySource(text);
+const closePasteDialog = () => {
+  const dlg = document.getElementById("paste-import-dialog") as HTMLDialogElement | null;
+  if (dlg) dlg.close();
+  if (cmPasteInstance.value) {
+    try { cmPasteInstance.value.toTextArea(); } catch {}
+    cmPasteInstance.value = null;
+  }
+};
+
+const confirmPasteImport = () => {
+  let raw = "";
+  if (cmPasteInstance.value) raw = cmPasteInstance.value.getValue();
+  else {
+    const ta = pasteEditorRef.value?.querySelector('textarea') as HTMLTextAreaElement | null;
+    raw = ta?.value || "";
+  }
+  if (!raw || !raw.trim()) {
+    msg.error('未检测到可导入的文本。');
+    return;
+  }
+  try {
+    const parsed = parseStorySource(raw);
     if (!parsed || !parsed.passages || parsed.passages.length === 0) {
-      msg.error("未检测到可导入的段落内容。");
+      msg.error('未检测到可导入的段落内容。');
       return;
     }
 
     story.value.passages = [];
-
     let added = 0;
     for (const p of parsed.passages) {
       const exists = story.value.passages.some((q) => q.name === p.name);
       const toAdd = { ...p };
-      if (exists) {
-        toAdd.name = generateUniquePassageName(p.name);
-      }
+      if (exists) toAdd.name = generateUniquePassageName(p.name);
       story.value.passages.push(toAdd);
       added += 1;
     }
-
-    // normalize tags to arrays
     story.value.passages = normalizePassageTags(story.value.passages);
-
-    // Update variables with any newly introduced names (merge defaults)
     const newVars = buildInitialVariables(story.value);
     for (const [k, v] of Object.entries(newVars)) {
       if (variables.value[k] === undefined) variables.value[k] = v;
     }
-
-    // Select the first newly added passage
-    if (added > 0) {
-      selectedPassage.value =
-        story.value.passages[story.value.passages.length - added].name;
-    }
-
-    msg.success(`已从剪贴板导入 ${added} 个段落。`);
+    if (added > 0) selectedPassage.value = story.value.passages[story.value.passages.length - added].name;
+    msg.success(`已从粘贴文本导入 ${added} 个段落。`);
+    closePasteDialog();
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error(e);
-    msg.error("从剪贴板读取失败，请确保已授权并包含文本。");
+    msg.error('导入失败，请检查文本格式。');
   }
 };
 
@@ -954,4 +1048,81 @@ onMounted(() => {
 watch([previewPassage, () => story.value, variables], () => {
   refreshPreview();
 }, { deep: true });
+
+// Define a simple custom mode for our story syntax using simple mode
+// tokens: header (:: name), macro ( (set:) (if:) (print:) etc), link [[...]], jsfn (fn: call:), style tag, strings
+(CodeMirror as any).defineSimpleMode && (CodeMirror as any).defineSimpleMode("haideStory", {
+  start: [
+    {regex: /::\s*[^\n]+/, token: "header"},
+    {regex: /\(set:|\(if:|\(print:|\(display:|\(call:|\(fn:|\(link:/, token: "keyword"},
+    {regex: /\[\[[^\]]+\]\]/, token: "link"},
+    {regex: /<style>[\s\S]*?<\/style>/, token: "style-tag"},
+    {regex: /"(?:[^"\\]|\\.)*"/, token: "string"},
+    {regex: /'(?:[^'\\]|\\.)*'/, token: "string"},
+    {regex: /\$[A-Za-z0-9_]+/, token: "variable-2"},
+    {regex: /\/\/.*$/, token: "comment"},
+    {regex: /\/.+?\//, token: "string"},
+  ],
+  meta: {
+    dontIndentStates: ["comment"],
+    lineComment: "//",
+  },
+});
+
+// Initialize CodeMirror story editor when mounted and whenever theme/selected passage changes
+watch([() => props.readOnly, isDark, selectedPassage], async () => {
+  await nextTick();
+  const textarea = storyCmTextarea.value || (document.querySelector('textarea[data-cm="story"]') as HTMLTextAreaElement | null);
+  if (!textarea) return;
+  const theme = isDark.value ? 'dracula' : 'default';
+  if (!storyCmInstance.value) {
+    textarea.value = selectedPassageContent.value || '';
+    storyCmInstance.value = CodeMirror.fromTextArea(textarea, {
+      mode: 'haideStory',
+      theme,
+      lineNumbers: true,
+      lineWrapping: true,
+      tabSize: 2,
+      extraKeys: { 'Tab': (cm: any) => cm.replaceSelection('  ', 'end') },
+      readOnly: props.readOnly ? 'nocursor' : false,
+    });
+    storyCmInstance.value.setSize('100%', '420px');
+    storyCmInstance.value.on('change', (cm: any) => {
+      const v = cm.getValue();
+      selectedPassageContent.value = v;
+    });
+    storyCmInstance.value.setOption('readOnly', props.readOnly ? 'nocursor' : false);
+  } else {
+    storyCmInstance.value.setOption('theme', theme);
+    // update content when passage changes externally
+    const cur = storyCmInstance.value.getValue();
+    const expected = selectedPassageContent.value || '';
+    if (cur !== expected) storyCmInstance.value.setValue(expected);
+    // set readonly
+    storyCmInstance.value.setOption('readOnly', props.readOnly ? 'nocursor' : false);
+  }
+});
+
+async function initDefaultStory() {
+  if (await msgbox.confirm('是否初始化默认故事？将会覆盖当前所有内容！')) {
+    story.value = createDefaultStory();
+    variables.value = buildInitialVariables(story.value);
+    selectedPassage.value = story.value.startPassage || story.value.passages[0]?.name || "Start";
+    previewPassage.value = selectedPassage.value;
+    refreshPreview();
+  }
+}
 </script>
+
+<style scoped>
+/* Basic styling for custom CodeMirror tokens */
+.cm-s-default .cm-header { color: #0f172a; font-weight: 600; }
+.cm-s-dracula .cm-header { color: #8be9fd; font-weight: 600; }
+.cm-header { font-weight: 600; }
+.cm-keyword { color: #7c3aed; }
+.cm-link { color: #0366d6; text-decoration: underline; }
+.cm-style-tag { color: #b58900; }
+.cm-variable-2 { color: #b85252; }
+.cm-string { color: #16a34a; }
+.cm-comment { color: #6b7280; font-style: italic; }
+</style>
