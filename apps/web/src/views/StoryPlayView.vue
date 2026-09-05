@@ -1,31 +1,103 @@
 <template>
-  <article
-    class="rounded-3xl border border-base-300 bg-base-100 p-5 shadow-xl"
-  >
-    <div class="mb-4 flex items-center justify-between gap-2">
-      <span class="badge badge-primary"
-        >当前段落：{{ currentPassageName }}</span
-      >
-      <button
-        v-if="history.length > 1"
-        class="btn btn-xs btn-ghost"
-        type="button"
-        @click="undo"
-      >
-        撤销
-      </button>
-    </div>
-    <div
-      ref="storyContentRef"
-      class="story-content prose max-w-none leading-relaxed"
-      v-html="renderedPassage"
-    ></div>
-  </article>
+  <div class="w-full max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-4">
+    <!-- 顶部导航与控制栏 -->
+    <header class="navbar bg-base-100 rounded-2xl border border-base-200/80 shadow-xs px-4 py-2 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2 min-w-0">
+        <button
+          v-if="!external"
+          class="btn btn-ghost btn-circle btn-sm"
+          type="button"
+          title="返回"
+          @click="goBack"
+        >
+          <Icon icon="mdi:arrow-left" class="w-5 h-5 text-base-content/80" />
+        </button>
+
+        <div class="flex flex-col min-w-0">
+          <h1 class="text-base sm:text-lg font-bold truncate tracking-tight text-base-content">
+            {{ story.title || '互动故事' }}
+          </h1>
+          <div class="flex items-center gap-2 text-xs text-base-content/60">
+            <span class="inline-flex items-center gap-1">
+              <Icon icon="mdi:book-open-page-variant-outline" class="w-3.5 h-3.5 text-primary" />
+              <span class="truncate max-w-30 sm:max-w-50">{{ currentPassageName }}</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <button
+          v-if="history.length > 1"
+          class="btn btn-sm btn-ghost gap-1.5 font-normal text-xs sm:text-sm text-base-content/80 hover:bg-base-200"
+          type="button"
+          @click="undo"
+        >
+          <Icon icon="mdi:undo-variant" class="w-4 h-4" />
+          <span>撤销</span>
+        </button>
+
+        <button
+          v-if="!external"
+          class="btn btn-sm btn-ghost btn-square"
+          type="button"
+          title="保存进度"
+          @click="saveState"
+        >
+          <Icon icon="mdi:bookmark-outline" class="w-4.5 h-4.5 text-base-content/70" />
+        </button>
+
+        <button
+          v-if="!external"
+          class="btn btn-sm btn-ghost btn-square"
+          type="button"
+          title="加载进度"
+          @click="loadState"
+        >
+          <Icon icon="mdi:folder-open-outline" class="w-4.5 h-4.5 text-base-content/70" />
+        </button>
+      </div>
+    </header>
+
+    <!-- 故事正文主体区 -->
+    <main class="card bg-base-100 border border-base-200/80 shadow-sm rounded-2xl overflow-hidden transition-all">
+      <div class="card-body p-5 sm:p-8 lg:p-10">
+        <article
+          ref="storyContentRef"
+          class="story-content prose prose-sm sm:prose-base max-w-none leading-relaxed text-base-content selection:bg-primary/20"
+          v-html="renderedPassage"
+        ></article>
+      </div>
+    </main>
+
+    <!-- 底部辅助状态/变量查看面板（非嵌入模式下提供） -->
+    <footer v-if="!external && Object.keys(variables).length > 0" class="collapse collapse-arrow bg-base-100 rounded-xl border border-base-200/60 shadow-2xs">
+      <input type="checkbox" :checked="!variablesCollapsed" @change="toggleVariables" />
+      <div class="collapse-title text-xs sm:text-sm font-medium flex items-center gap-2 py-3 min-h-0 text-base-content/70">
+        <Icon icon="mdi:variable" class="w-4 h-4 text-primary" />
+        <span>查看当前全局状态变量 ({{ Object.keys(variables).length }})</span>
+      </div>
+      <div class="collapse-content border-t border-base-200/40 text-xs">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-3">
+          <div
+            v-for="(val, key) in variables"
+            :key="key"
+            class="flex justify-between items-center bg-base-200/50 px-2.5 py-1.5 rounded-md truncate"
+          >
+            <span class="font-mono text-base-content/60 truncate mr-2">{{ key }}:</span>
+            <span class="font-mono font-semibold text-primary truncate">{{ formatVariable(val) }}</span>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import { Icon } from "@iconify/vue";
+import msg from "@/components/msg";
 import {
   applyPassageEntryEffects,
   applyStoryAction,
@@ -35,15 +107,28 @@ import {
   buildInitialVariables,
 } from "@/lib/storyEngine";
 
-const router = useRouter();
-
-const props = defineProps<{
+export interface StoryPlayProps {
   external?: boolean;
   storyProp?: StoryData | null;
   currentPassageProp?: string | null;
   variablesProp?: VariableMap | null;
-}>();
-const emits = defineEmits();
+}
+
+export interface StoryPlayEmits {
+  (e: "update:variables", value: VariableMap): void;
+  (e: "update:currentPassage", value: string): void;
+}
+
+const props = withDefaults(defineProps<StoryPlayProps>(), {
+  external: false,
+  storyProp: null,
+  currentPassageProp: null,
+  variablesProp: null,
+});
+
+const emits = defineEmits<StoryPlayEmits>();
+const router = useRouter();
+
 const storyContentRef = ref<HTMLElement | null>(null);
 const renderedPassage = ref("");
 const story = ref<StoryData>({
@@ -54,7 +139,7 @@ const story = ref<StoryData>({
 const currentPassageName = ref("Start");
 const variables = ref<VariableMap>({});
 const history = ref<string[]>(["Start"]);
-const variablesCollapsed = ref(false);
+const variablesCollapsed = ref(true);
 
 interface StoryPlaySnapshot {
   storySignature: string;
@@ -88,6 +173,7 @@ const hashStory = (storyValue: StoryData): string => {
 const getStorySignature = () => hashStory(story.value);
 
 const saveAutoSnapshot = () => {
+  if (props.external) return;
   const snapshot: StoryPlaySnapshot = {
     storySignature: getStorySignature(),
     story: story.value,
@@ -176,7 +262,7 @@ const handleStoryClick = (event: MouseEvent) => {
   if (action) {
     applyStoryAction(action, variables.value);
     if (props.external) {
-      emits('update:variables', variables.value);
+      emits("update:variables", variables.value);
     }
   }
   goto(target);
@@ -194,7 +280,7 @@ const goto = (target: string) => {
   history.value = [...history.value, nextPassage.name];
   renderCurrentPassage();
   if (props.external) {
-    emits('update:currentPassage', currentPassageName.value);
+    emits("update:currentPassage", currentPassageName.value);
   }
 };
 
@@ -206,10 +292,17 @@ const undo = () => {
   currentPassageName.value =
     history.value[history.value.length - 1] ?? story.value.startPassage;
   renderCurrentPassage();
+  if (props.external) {
+    emits("update:currentPassage", currentPassageName.value);
+  }
 };
 
-const back = () => {
-  undo();
+const goBack = () => {
+  if (window.history.length > 1) {
+    router.back();
+  } else {
+    router.push({ name: "story-list" });
+  }
 };
 
 const saveState = () => {
@@ -223,11 +316,13 @@ const saveState = () => {
       renderedPassage: renderedPassage.value,
     }),
   );
+  msg.success("故事进度已保存");
 };
 
 const loadState = () => {
   const raw = localStorage.getItem("haide-story-saved");
   if (!raw) {
+    msg.warning("暂无已保存的进度");
     return;
   }
 
@@ -242,13 +337,20 @@ const loadState = () => {
       renderCurrentPassage();
     }
     saveAutoSnapshot();
+    msg.success("已加载保存的进度");
   } catch {
-    // ignore broken save data
+    msg.error("加载存档失败，存档可能损坏");
   }
 };
 
 const toggleVariables = () => {
   variablesCollapsed.value = !variablesCollapsed.value;
+};
+
+const formatVariable = (val: unknown): string => {
+  if (val === null || val === undefined) return String(val);
+  if (typeof val === "object") return JSON.stringify(val);
+  return String(val);
 };
 
 onMounted(() => {
@@ -257,8 +359,13 @@ onMounted(() => {
   // If external props provided, initialize from props and skip local/session restore
   if (props.external && props.storyProp) {
     story.value = props.storyProp;
-    currentPassageName.value = props.currentPassageProp || props.storyProp.startPassage || story.value.passages[0]?.name || 'Start';
-    variables.value = props.variablesProp || buildInitialVariables(story.value);
+    currentPassageName.value =
+      props.currentPassageProp ||
+      props.storyProp.startPassage ||
+      story.value.passages[0]?.name ||
+      "Start";
+    variables.value =
+      props.variablesProp || buildInitialVariables(story.value);
     renderCurrentPassage();
     return;
   }
@@ -274,7 +381,8 @@ onMounted(() => {
       story.value = session.story ?? story.value;
       currentPassageName.value =
         session.currentPassage ?? story.value.startPassage;
-      variables.value = session.variables ?? buildInitialVariables(story.value);
+      variables.value =
+        session.variables ?? buildInitialVariables(story.value);
       history.value = [currentPassageName.value];
       renderCurrentPassage();
       return;
@@ -302,24 +410,33 @@ onMounted(() => {
 });
 
 // Watch external props to update internal state
-watch(() => props.storyProp, (v) => {
-  if (props.external && v) {
-    story.value = v;
-    renderCurrentPassage();
-  }
-});
-watch(() => props.currentPassageProp, (v) => {
-  if (props.external && v) {
-    currentPassageName.value = v || currentPassageName.value;
-    renderCurrentPassage();
-  }
-});
-watch(() => props.variablesProp, (v) => {
-  if (props.external && v) {
-    variables.value = v || variables.value;
-    renderCurrentPassage();
-  }
-});
+watch(
+  () => props.storyProp,
+  (v) => {
+    if (props.external && v) {
+      story.value = v;
+      renderCurrentPassage();
+    }
+  },
+);
+watch(
+  () => props.currentPassageProp,
+  (v) => {
+    if (props.external && v) {
+      currentPassageName.value = v || currentPassageName.value;
+      renderCurrentPassage();
+    }
+  },
+);
+watch(
+  () => props.variablesProp,
+  (v) => {
+    if (props.external && v) {
+      variables.value = v || variables.value;
+      renderCurrentPassage();
+    }
+  },
+);
 
 onBeforeUnmount(() => {
   storyContentRef.value?.removeEventListener("click", handleStoryClick);

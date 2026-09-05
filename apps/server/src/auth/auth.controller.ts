@@ -55,7 +55,7 @@ export class AuthController {
   @Post('login')
   async login(@Body() body: ILoginBody) {
     if (!body.username || !body.password) {
-      throw new Error('用户名和密码不能为空');
+      throw new Error('用户名或密码不能为空');
     }
     return await this.authService.login(body);
   }

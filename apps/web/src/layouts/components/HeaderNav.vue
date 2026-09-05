@@ -4,7 +4,7 @@
       <li v-for="item in navItems" :key="item.path">
         <RouterLink
           :to="item.path"
-          :class="route.path === item.path ? 'active' : ''"
+          :class="route.path === item.path ? 'text-primary' : ''"
         >
           {{ item.label }}
         </RouterLink>
@@ -23,6 +23,18 @@ interface NavItem {
 }
 
 const navItems = ref<NavItem[]>([
+  {
+    label: "首页",
+    path: "/"
+  },
+  {
+    label: "故事列表",
+    path: "/stories"
+  },
+  {
+    label: "我的故事",
+    path: "/my-stories"
+  }
 ]);
 
 const route = useRoute();

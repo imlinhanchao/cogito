@@ -146,7 +146,7 @@ function switchTab(tab: 'login' | 'register') {
         </div>
         
         <!-- Tabs for Login / Register -->
-        <div role="tablist" class="tabs tabs-box grid grid-cols-2">
+        <div v-if="!loading" role="tablist" class="tabs tabs-box grid grid-cols-2">
           <button
             role="tab"
             class="tab text-lg font-bold"
@@ -293,7 +293,7 @@ function switchTab(tab: 'login' | 'register') {
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-medium">昵称（选填）</span>
+              <span class="label-text font-medium">昵称</span>
             </label>
             <div class="relative">
               <input

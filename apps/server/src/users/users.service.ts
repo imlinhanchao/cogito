@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { User } from './user.entity';
 import Fishpi from 'fishpi';
 import * as crypto from 'crypto';
@@ -50,6 +50,10 @@ export class UsersService {
 
   async findBySrcId(id: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { sourceId: id } });
+  }
+
+  async getUsers(ids: string[]): Promise<User[]> {
+    return this.usersRepository.find({ where: { id: In(ids) } });
   }
 
   async getFishpiUser(username: string) {

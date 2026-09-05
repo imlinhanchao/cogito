@@ -23,6 +23,16 @@ export interface AuthResponse {
   }
 }
 
+export interface User {
+  id: number
+  username: string
+  isAdmin: boolean
+  nickname?: string
+  email?: string
+  from?: string
+  avatar?: string
+}
+
 /**
  * User account login
  */

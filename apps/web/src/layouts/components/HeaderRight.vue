@@ -1,5 +1,14 @@
 <template>
-  <div class="navbar-end flex items-center gap-1">
+  <div class="navbar-end flex items-center gap-1.5 sm:gap-2">
+    <router-link
+      to="/story-editor"
+      class="btn btn-primary btn-xs sm:btn-sm gap-1 font-medium shadow-xs"
+      title="创建故事"
+    >
+      <Icon icon="mdi:plus" class="w-4 h-4" />
+      <span class="hidden sm:inline">创作故事</span>
+    </router-link>
+
     <label class="toggle" :class="{ 'text-[#3c3f44]': isDark, 'text-[#c2c2c4] bg-[#8e96aa24]': !isDark }">
       <input
         ref="themeRef"
@@ -19,7 +28,10 @@
       </div>
     </div>
     <div v-else>
-      <router-link to="/login"><Icon icon="basil:login-solid" /> 登录</router-link>
+      <router-link to="/login" class="btn btn-ghost btn-xs sm:btn-sm gap-1">
+        <Icon icon="basil:login-solid" class="w-4 h-4" />
+        <span>登录</span>
+      </router-link>
     </div>
   </div>
 </template>
@@ -28,6 +40,7 @@
 import { useAppStore } from "@/stores/modules/app";
 import { useAuthStore } from "@/stores/modules/auth";
 import { computed } from "vue";
+import { Icon } from "@iconify/vue";
 
 const authStore = useAuthStore();
 const appStore = useAppStore();

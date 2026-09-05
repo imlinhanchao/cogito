@@ -1,14 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Like, LessThanOrEqual } from 'typeorm';
+import { UsersService } from 'src/users/users.service';
 import { Story } from './story.entity';
 import { StoryDto } from './stories.dto';
+import { omit } from 'src/utils';
 
 @Injectable()
 export class StoriesService {
   constructor(
     @InjectRepository(Story)
     private storiesRepo: Repository<Story>,
+    private readonly usersService: UsersService,
   ) {}
 
   async create(dto: StoryDto): Promise<Story> {
@@ -17,28 +20,69 @@ export class StoriesService {
   }
 
   async findAll(
-    page = 1,
+    createdAt = Date.now(),
     limit = 20,
+    authorId?: string,
+    search?: string,
+    isPublicRequest = true,
   ): Promise<{ data: Story[]; total: number }> {
+    // Build ORM-style where conditions. When `search` is provided,
+    // create an OR-array across `title`, `description`, `tags`.
+    let where: any;
+    const createdCond = { createdAt: LessThanOrEqual(createdAt) };
+
+    if (search) {
+      const like = `%${search}%`;
+      const clauses: any[] = [
+        { title: Like(like), ...createdCond },
+        { description: Like(like), ...createdCond },
+        { tags: Like(like), ...createdCond },
+      ];
+      if (authorId) {
+        clauses.forEach((c) => (c.authorId = authorId));
+      } else if (isPublicRequest) {
+        clauses.forEach((c) => (c.isPublished = true));
+      }
+      where = clauses;
+    } else {
+      where = { ...createdCond };
+      if (authorId) where.authorId = authorId;
+      else if (isPublicRequest) where.isPublished = true;
+    }
+
     const [data, total] = await this.storiesRepo.findAndCount({
+      where,
       order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
       take: limit,
     });
-    return { data, total };
+    const authorIds = data.map((story) => story.authorId);
+    const authors = await this.usersService.getUsers(authorIds);
+    return {
+      data: data.map((story) => ({
+        ...story,
+        author: authors.find((author) => author.id === story.authorId),
+      })),
+      total,
+    };
   }
 
   async findOne(id: string): Promise<Story | null> {
     return this.storiesRepo.findOne({ where: { id } });
   }
 
-  async update(id: string, dto: Partial<StoryDto>): Promise<Story | null> {
+  async update(
+    id: string,
+    dto: Partial<StoryDto>,
+    authorId?: string,
+  ): Promise<Story | null> {
     const story = await this.findOne(id);
     if (!story) return null;
-    Object.assign(story, dto);
-    story.tags = dto.tags?.join(',');
+    if (authorId && story.authorId !== authorId)
+      throw new Error('这不是你的故事');
+    Object.assign(story, omit(dto, ['id', 'createdAt', 'authorId']));
+    if (dto.tags) story.tags = dto.tags.join(',');
     story.updatedAt = Date.now();
-    await this.storiesRepo.update({ id }, story);
+    await this.storiesRepo.save(story);
     return story;
   }
 

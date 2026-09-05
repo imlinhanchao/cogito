@@ -31,6 +31,12 @@ const router = createRouter({
           meta: { title: "故事列表" },
         },
         {
+          path: "/my-stories",
+          name: "my-story-list",
+          component: () => import("@/views/StoryListView.vue"),
+          meta: { title: "我的故事" },
+        },
+        {
           path: "/story-play/:storyId?",
           name: "story-play",
           component: () => import("@/views/StoryPlayView.vue"),

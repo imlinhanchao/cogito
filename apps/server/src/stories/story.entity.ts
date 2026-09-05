@@ -16,10 +16,10 @@ export class Story {
   content: string;
 
   @Column({ comment: '文章段落数', nullable: true })
-  passageSize?: number;
+  passageSize: number;
 
   @Column({ comment: '作者ID', nullable: true })
-  authorId?: string;
+  authorId: string;
 
   @Column({ comment: '标签', nullable: true })
   tags?: string;

@@ -1,4 +1,5 @@
 import request from '@/utils/http';
+import type { User } from './auth';
 
 export interface StoryPayload {
   title: string;
@@ -8,8 +9,22 @@ export interface StoryPayload {
   tags?: string[];
 }
 
-export async function listStories(page = 1, limit = 20) {
-  return request.get({ url: '/stories', params: { page, limit } });
+export interface IStory {
+  id: string;
+  title: string;
+  startPassage?: string;
+  passageSize?: number;
+  description?: string;
+  tags?: string;
+  authorId: string;
+  author?: User;
+  authorName?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export async function listStories(params: { authorId?: string, search?: string, page?: number, limit?: number } = {}) {
+  return request.get<{ data: IStory[]; total: number }>({ url: '/stories', params });
 }
 
 export async function getStory(id: string) {
