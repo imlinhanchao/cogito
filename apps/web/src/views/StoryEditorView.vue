@@ -76,24 +76,24 @@
             />
             <div class="flex items-center gap-1 shrink-0">
               <template v-if="!props.readOnly">
-                <div class="tooltip tooltip-bottom" data-tip="导入文件 (.txt/.json/.html)">
-                  <button class="btn btn-sm btn-ghost btn-square" type="button" @click="importStory">
-                    <Icon icon="mdi:file-upload-outline" class="text-lg" />
-                  </button>
-                </div>
                 <div class="tooltip tooltip-bottom" data-tip="从剪贴板粘贴导入">
                   <button class="btn btn-sm btn-ghost btn-square" type="button" @click="pasteImport">
-                    <Icon icon="mdi:content-paste" class="text-lg" />
+                    <Icon icon="mdi:content-paste" size="16px" />
+                  </button>
+                </div>
+                <div class="tooltip tooltip-bottom" data-tip="导入文件 (.txt)">
+                  <button class="btn btn-sm btn-ghost btn-square" type="button" @click="importStory">
+                    <Icon icon="basil:upload-solid" size="16px" />
                   </button>
                 </div>
                 <div class="tooltip tooltip-bottom" data-tip="导出文本源码 (.txt)">
                   <button class="btn btn-sm btn-ghost btn-square" type="button" @click="exportStory">
-                    <Icon icon="mdi:file-download-outline" class="text-lg" />
+                    <Icon icon="basil:download-solid" size="16px" />
                   </button>
                 </div>
                 <div class="tooltip tooltip-bottom" data-tip="编译导出 HTML 文件">
                   <button class="btn btn-sm btn-ghost btn-square" type="button" @click="buildStory">
-                    <Icon icon="mdi:hammer" class="text-lg" />
+                    <Icon icon="mdi:hammer" size="16px" />
                   </button>
                 </div>
               </template>
@@ -133,6 +133,12 @@
                 placeholder="故事标签（逗号分隔，如: 奇幻, 动作）"
               />
             </div>
+              <div class="w-44 sm:w-48 flex items-center gap-2">
+                <Icon icon="mdi:map-marker" class="text-base text-base-content/50 shrink-0" />
+                <select v-model="story.startPassage" :disabled="props.readOnly" class="select select-sm select-bordered w-full">
+                  <option v-for="p in story.passages" :key="p.name" :value="p.name">{{ p.name }}</option>
+                </select>
+              </div>
           </div>
         </div>
 
@@ -383,6 +389,7 @@ import { getStory, createStory, updateStory, publishStory, IStory } from "@/api/
 import StoryPlayView from "@/views/StoryPlayView.vue";
 import {
   createDefaultStory,
+  createEmptyStory,
   parseStorySource,
   serializeStory,
   buildInitialVariables,
@@ -414,7 +421,7 @@ const jsonEditorValue = ref("");
 const editingVarName = ref("");
 const showManual = ref(false);
 
-const story = ref<IStory>(createDefaultStory());
+const story = ref<IStory>(createEmptyStory());
 const storyAny = computed(() => story.value as any);
 const route = useRoute();
 const currentStoryId = ref<string | null>(null);
@@ -624,7 +631,7 @@ const addPassage = () => {
 const importStory = () => {
   const input = document.createElement("input");
   input.type = "file";
-  input.accept = ".txt,.md,.json,.html";
+  input.accept = ".txt";
   input.onchange = async () => {
     const file = input.files?.[0];
     if (!file) return;
@@ -813,6 +820,17 @@ watch(selectedPassage, () => {
   tagEditValue.value = (p?.tags || []).join(", ");
 });
 
+// Ensure startPassage remains valid when passages change (add/rename/delete/import)
+watch(
+  () => story.value.passages.map((p) => p.name),
+  (names) => {
+    if (!story.value.startPassage || !names.includes(story.value.startPassage)) {
+      story.value.startPassage = names[0] ?? "Start";
+    }
+  },
+  { immediate: true },
+);
+
 const renamePassage = () => {
   const current = story.value.passages.find(
     (passage) => passage.name === selectedPassage.value,
@@ -820,21 +838,30 @@ const renamePassage = () => {
   if (!current) {
     return;
   }
+  const oldName = current.name;
   const nextName = window.prompt("新段落名：", current.name);
   if (!nextName || !nextName.trim()) {
     return;
   }
   current.name = nextName.trim();
   selectedPassage.value = current.name;
+  if (story.value.startPassage === oldName) {
+    story.value.startPassage = current.name;
+  }
 };
 
 const deletePassage = () => {
   if (story.value.passages.length <= 1) {
     return;
   }
+  const toDelete = selectedPassage.value;
   story.value.passages = story.value.passages.filter(
-    (passage) => passage.name !== selectedPassage.value,
+    (passage) => passage.name !== toDelete,
   );
+  // if startPassage was deleted, reset it to first
+  if (story.value.startPassage === toDelete) {
+    story.value.startPassage = story.value.passages[0]?.name ?? "Start";
+  }
   selectedPassage.value = story.value.passages[0].name;
 };
 
@@ -898,7 +925,7 @@ onMounted(() => {
       story.value = JSON.parse(draft) as StoryData;
       selectedPassage.value = story.value.passages[0]?.name ?? "Start";
     } catch {
-      story.value = createDefaultStory();
+      story.value = createEmptyStory();
     }
   }
 
@@ -919,6 +946,8 @@ onMounted(() => {
         refreshPreview();
       }
     }).catch(() => {});
+  } else {
+    selectedPassage.value = story.value.startPassage || story.value.passages[0]?.name || "Start";
   }
 });
 

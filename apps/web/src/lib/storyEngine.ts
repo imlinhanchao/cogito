@@ -71,6 +71,12 @@ export interface StoryData {
   passages: StoryPassage[];
 }
 
+export const EMPTY_STORY_SOURCE = `标题：未命名故事
+
+:: Start
+新故事开始了。
+`;
+
 export const DEFAULT_STORY_SOURCE = `标题：语法全检 Demo
 
 :: Start
@@ -87,7 +93,6 @@ export const DEFAULT_STORY_SOURCE = `标题：语法全检 Demo
 (display: "SyntaxSheet")
 [[进入岔路|Fork]]
 [[查看样式房间|SyntaxSheet]]
-(# 添加 JSFunctions 入口)
 [[测试 JS 函数|JSFunctions]]
 (link:"直接前往湖畔")[(goto:"Lake")]
 
@@ -199,6 +204,20 @@ const GLOBAL_JS_FUNCTIONS: Record<string, string> = {};
 
 export function createDefaultStory(): StoryData {
   return parseStorySource(DEFAULT_STORY_SOURCE);
+}
+
+export function createEmptyStory(): StoryData {
+  return {
+    title: "未命名故事",
+    startPassage: "Start",
+    passages: [
+      {
+        name: "Start",
+        tags: [],
+        content: "新故事开始了。",
+      },
+    ],
+  };
 }
 
 export function parseStorySource(source: string): StoryData {
