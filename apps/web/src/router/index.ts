@@ -44,6 +44,33 @@ const router = createRouter({
             title: "故事播放",
           },
         }
+        ,
+        {
+          path: "/admin/reviews",
+          name: "admin-reviews",
+          component: () => import("@/views/AdminReviewView.vue"),
+          meta: { title: "审核中心" },
+        }
+        ,
+        {
+          path: "/admin/reviews/:id",
+          name: "admin-review-detail",
+          component: () => import("@/views/AdminReviewDetailView.vue"),
+          meta: { title: "审核详情" },
+        }
+        ,
+        {
+          path: "/:from/:username",
+          name: "user-profile-from",
+          component: () => import("@/views/UserProfileView.vue"),
+          meta: { title: "个人主页" },
+        },
+        {
+          path: "/:username",
+          name: "user-profile",
+          component: () => import("@/views/UserProfileView.vue"),
+          meta: { title: "个人主页" },
+        }
       ]
     },
     {

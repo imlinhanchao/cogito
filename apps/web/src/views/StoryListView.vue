@@ -31,13 +31,9 @@
       </div>
       
       <div class="flex items-center justify-between sm:justify-end gap-3 text-sm text-base-content/60 border-t sm:border-t-0 pt-2 sm:pt-0 border-base-200">
-        <button class="btn btn-sm btn-primary gap-1.5 shadow-2xs" @click="createNew">
-          <Icon icon="mdi:plus" class="w-4 h-4" />
-          <span>创建故事</span>
-        </button>
         <div class="flex items-center gap-1.5">
           <Icon icon="mdi:format-list-numbered" class="w-4 h-4 text-primary" />
-          <span>共 <strong class="text-base-content font-semibold">{{ totalCount }}</strong> 条故事</span>
+          <span>共 <strong class="text-base-content font-semibold">{{ totalCount }}</strong> 个故事</span>
         </div>
       </div>
     </div>
@@ -72,12 +68,19 @@
               <img v-else :src="s.author?.avatar" alt="avatar" class="w-10 h-10 rounded-full object-cover" />
             </div>
             <div class="min-w-0 flex-1">
-              <h3 class="font-bold text-base text-base-content truncate hover:text-primary transition-colors cursor-pointer" @click="previewStory(s.id)">
-                {{ s.title || '未命名' }}
-              </h3>
+              <div class="flex items-start justify-between gap-3">
+                <h3 class="font-bold text-base text-base-content truncate hover:text-primary transition-colors cursor-pointer" @click="previewStory(s.id!)">
+                  {{ s.title || '未命名' }}
+                </h3>
+                <div v-if="isCurrentUser" class="shrink-0 ml-2">
+                  <span class="badge badge-sm" :class="statusClass(s.status)">{{ statusLabel(s.status) }}</span>
+                </div>
+              </div>
               <div class="flex items-center gap-1 text-xs text-base-content/60 truncate mt-0.5">
                 <Icon icon="mdi:account-outline" class="w-3.5 h-3.5 shrink-0" />
-                <span class="truncate">{{ s.author?.nickname || s.author?.username || '未知作者' }}</span>
+                <RouterLink :to="userLink(s)" class="truncate hover:text-primary">
+                  {{ s.author?.nickname || s.author?.username || '未知作者' }}
+                </RouterLink>
               </div>
             </div>
           </div>
@@ -85,6 +88,12 @@
           <p class="text-xs text-base-content/70 line-clamp-2 leading-relaxed min-h-8">
             {{ s.description || '暂无故事描述' }}
           </p>
+
+          <div v-if="s.status === 'rejected'" class="mt-2 text-xs text-error flex items-center gap-2">
+            <Icon icon="mdi:alert-circle-outline" class="w-4 h-4" />
+            <span class="font-medium">已拒绝</span>
+            <span class="text-base-content/60">{{ s.reviewReason || '未提供理由' }}</span>
+          </div>
 
           <div class="flex flex-wrap gap-1.5 pt-1">
             <span v-if="tagsArray(s).length === 0" class="badge badge-xs badge-ghost text-base-content/40">无标签</span>
@@ -105,21 +114,21 @@
         <div class="border-t border-base-200/60 px-4 py-2.5 bg-base-200/30 flex items-center justify-between gap-2 text-xs">
           <div class="text-base-content/60 flex items-center gap-1">
             <Icon icon="mdi:book-open-variant" class="w-4 h-4 text-primary/80" />
-            <span>{{ s.passageSize || 0 }} 章</span>
+            <span>共 {{ s.passageSize || 0 }} 章</span>
           </div>
 
           <div class="flex items-center gap-1">
             <button 
               v-if="s.authorId == getUser?.id" 
               class="btn btn-ghost btn-xs btn-square hover:bg-base-300/50" 
-              @click="editStory(s.id)" 
+              @click="editStory(s.id!)" 
               title="编辑故事"
             >
               <Icon icon="mdi:pencil-outline" class="w-4 h-4 text-base-content/70" />
             </button>
             <button 
               class="btn btn-primary btn-xs gap-1" 
-              @click="previewStory(s.id)" 
+              @click="previewStory(s.id!)" 
               title="阅读故事"
             >
               <Icon icon="mdi:play" class="w-3.5 h-3.5" />
@@ -184,9 +193,13 @@ const hasMore = computed(() => {
   return totalCount.value > stories.value.length;
 });
 
+const isCurrentUser = computed(() => {
+  return route.name == 'my-story-list';
+});
+
 const query = reactive({ 
   search: '',
-  authorId: route.name == 'my-story-list' ? getUser?.id : '',
+  authorId: isCurrentUser.value ? getUser?.id : '',
   createdAt: Date.now(),
   limit: 20
 });
@@ -231,6 +244,13 @@ const previewStory = (id: string) => {
   router.push({ name: 'story-play', params: { storyId: id } });
 };
 
+const userLink = (s: IStory) => {
+  const from = s.author?.from;
+  const username = s.author?.username;
+  if (from && username) return { path: `/${from}/${username}` };
+  else return { path: `/${username}` };
+};
+
 onMounted(async () => {
   const q = route.query.search;
   query.search = q?.toString() || '';
@@ -252,14 +272,49 @@ onMounted(async () => {
   });
 });
 
-function tagsArray(story: IStory): string[] {
-  return story.tags ? story.tags.split(',') : [];
-}
-
 function initials(story: IStory) {
   const name = story.author?.nickname || story.author?.username || '';
   if (!name) return 'U';
   return name.trim().slice(0, 1).toUpperCase();
+}
+
+function tagsArray(story: IStory): string[] {
+  if (!story.tags) return [];
+  if (Array.isArray(story.tags)) return story.tags;
+  return String(story.tags)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function statusLabel(status?: string) {
+  switch (status) {
+    case 'draft':
+      return '草稿';
+    case 'pending':
+      return '待审核';
+    case 'published':
+      return '已发布';
+    case 'rejected':
+      return '已拒绝';
+    default:
+      return '未知';
+  }
+}
+
+function statusClass(status?: string) {
+  switch (status) {
+    case 'draft':
+      return 'badge-ghost';
+    case 'pending':
+      return 'badge-warning';
+    case 'published':
+      return 'badge-success';
+    case 'rejected':
+      return 'badge-error';
+    default:
+      return 'badge-ghost';
+  }
 }
 
 function doSearch() {
@@ -283,7 +338,7 @@ function onTagClick(tag: string) {
 watch(
   () => route.name,
   (val) => {
-    if (val === 'my-story-list') {
+    if (isCurrentUser.value) {
       query.authorId = getUser?.id || '';
     } else {
       query.authorId = '';

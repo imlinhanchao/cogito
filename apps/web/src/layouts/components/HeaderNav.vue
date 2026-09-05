@@ -5,6 +5,7 @@
         <RouterLink
           :to="item.path"
           :class="route.path === item.path ? 'text-primary' : ''"
+          v-if="!item.hidden"
         >
           {{ item.label }}
         </RouterLink>
@@ -16,24 +17,24 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { RouterLink, useRoute } from "vue-router";
+import { useAuthStore } from "@/stores/modules/auth";
 
 interface NavItem {
   label: string;
   path: string;
+  hidden?: boolean;
 }
 
+const authStore = useAuthStore();
 const navItems = ref<NavItem[]>([
   {
     label: "首页",
     path: "/"
   },
   {
-    label: "故事列表",
-    path: "/stories"
-  },
-  {
     label: "我的故事",
-    path: "/my-stories"
+    path: "/my-stories",
+    hidden: !authStore.isAuthenticated
   }
 ]);
 

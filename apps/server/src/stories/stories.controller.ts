@@ -12,8 +12,9 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OptionalAuthGuard } from '../auth/optional-auth.guard';
+import { AdminGuard } from '../auth/admin.guard';
 import { StoriesService } from './stories.service';
-import { StoryDto } from './stories.dto';
+import { StoryDto, RejectDto } from './stories.dto';
 
 @Controller('stories')
 export class StoriesController {
@@ -65,5 +66,47 @@ export class StoriesController {
       throw new Error('这不是你的故事');
     }
     return this.storiesService.remove(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put(':id/publish')
+  async publish(@Param('id') id: string, @Request() req) {
+    return this.storiesService.publish(id, req.user.userId);
+  }
+
+  // 管理员：列出待审核的故事（未发布）
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Get('admin/pending')
+  async pending(@Query('limit') limit?: number) {
+    const res = await this.storiesService.findAll(
+      Date.now(),
+      limit || 50,
+      undefined,
+      undefined,
+      false,
+    );
+    // filter pending submissions
+    const pending = res.data.filter((s) => s.status === 'pending');
+    return { data: pending, total: pending.length };
+  }
+
+  // 管理员审核通过并上架
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Post(':id/approve')
+  async approve(@Param('id') id: string, @Request() req) {
+    const adminId = req.user.userId;
+    return this.storiesService.approve(id, adminId);
+  }
+
+  // 管理员拒绝投稿
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Post(':id/reject')
+  async reject(
+    @Param('id') id: string,
+    @Body() body: RejectDto,
+    @Request() req,
+  ) {
+    const adminId = req.user.userId;
+    return this.storiesService.reject(id, adminId, body?.reason);
   }
 }

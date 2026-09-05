@@ -1,5 +1,7 @@
 <template>
-  <section></section>
+  <StoryListView />
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import StoryListView from './StoryListView.vue';
+</script>

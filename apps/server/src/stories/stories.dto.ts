@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsOptional } from 'class-validator';
 
 export class StoryDto {
   @IsString()
@@ -16,6 +16,11 @@ export class StoryDto {
   tags?: string[];
 
   @IsOptional()
-  @IsBoolean()
-  isPublished?: boolean;
+  @IsString()
+  status?: 'draft' | 'pending' | 'published' | 'rejected';
+}
+
+export class RejectDto {
+  @IsString()
+  reason?: string;
 }

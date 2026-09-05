@@ -7,6 +7,7 @@
         <div class="mb-3 flex items-center justify-between px-1">
           <h2 class="text-lg font-bold">段落列表</h2>
           <button
+            v-if="!props.readOnly"
             class="btn btn-sm btn-primary"
             type="button"
             @click="addPassage"
@@ -62,39 +63,53 @@
         class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm"
       >
         <div class="mb-4 space-y-2.5 bg-base-200/40 p-3 rounded-xl border border-base-200">
+          <div v-if="props.readOnly && storyAny.status === 'rejected'" class="p-3 mb-2 rounded-lg bg-error/10 text-error text-sm border border-error/20">
+            <strong class="mr-2">已拒绝</strong>
+            <span>{{ storyAny.reviewReason || '未填写拒绝理由' }}</span>
+          </div>
           <div class="flex flex-wrap items-center justify-between gap-3">
             <input
               v-model="story.title"
+              :readonly="props.readOnly"
               class="input input-bordered input-sm flex-1 min-w-60 font-bold text-base bg-base-100"
               placeholder="故事标题..."
             />
             <div class="flex items-center gap-1 shrink-0">
-              <div class="tooltip tooltip-bottom" data-tip="导入文件 (.txt/.json/.html)">
-                <button class="btn btn-sm btn-ghost btn-square" type="button" @click="importStory">
-                  <Icon icon="mdi:file-upload-outline" class="text-lg" />
-                </button>
-              </div>
-              <div class="tooltip tooltip-bottom" data-tip="从剪贴板粘贴导入">
-                <button class="btn btn-sm btn-ghost btn-square" type="button" @click="pasteImport">
-                  <Icon icon="mdi:content-paste" class="text-lg" />
-                </button>
-              </div>
-              <div class="tooltip tooltip-bottom" data-tip="导出文本源码 (.txt)">
-                <button class="btn btn-sm btn-ghost btn-square" type="button" @click="exportStory">
-                  <Icon icon="mdi:file-download-outline" class="text-lg" />
-                </button>
-              </div>
-              <div class="tooltip tooltip-bottom" data-tip="编译导出 HTML 文件">
-                <button class="btn btn-sm btn-ghost btn-square" type="button" @click="buildStory">
-                  <Icon icon="mdi:hammer" class="text-lg" />
-                </button>
-              </div>
-              <div class="divider divider-horizontal my-1 mx-0.5"></div>
-              <div class="tooltip tooltip-bottom" data-tip="保存至服务器">
-                <button class="btn btn-sm btn-primary shadow-xs gap-1" type="button" @click="saveToServer">
-                  <Icon icon="mdi:content-save-outline" class="text-base" />
-                  <span>保存</span>
-                </button>
+              <template v-if="!props.readOnly">
+                <div class="tooltip tooltip-bottom" data-tip="导入文件 (.txt/.json/.html)">
+                  <button class="btn btn-sm btn-ghost btn-square" type="button" @click="importStory">
+                    <Icon icon="mdi:file-upload-outline" class="text-lg" />
+                  </button>
+                </div>
+                <div class="tooltip tooltip-bottom" data-tip="从剪贴板粘贴导入">
+                  <button class="btn btn-sm btn-ghost btn-square" type="button" @click="pasteImport">
+                    <Icon icon="mdi:content-paste" class="text-lg" />
+                  </button>
+                </div>
+                <div class="tooltip tooltip-bottom" data-tip="导出文本源码 (.txt)">
+                  <button class="btn btn-sm btn-ghost btn-square" type="button" @click="exportStory">
+                    <Icon icon="mdi:file-download-outline" class="text-lg" />
+                  </button>
+                </div>
+                <div class="tooltip tooltip-bottom" data-tip="编译导出 HTML 文件">
+                  <button class="btn btn-sm btn-ghost btn-square" type="button" @click="buildStory">
+                    <Icon icon="mdi:hammer" class="text-lg" />
+                  </button>
+                </div>
+              </template>
+              <div class="space-x-2" v-if="!props.readOnly">
+                <div class="tooltip tooltip-bottom" data-tip="保存至服务器">
+                  <button class="btn btn-sm btn-primary shadow-xs gap-1" type="button" @click="saveToServer">
+                    <Icon icon="mdi:content-save-outline" class="text-base" />
+                    <span>保存</span>
+                  </button>
+                </div>
+                <div class="tooltip tooltip-bottom" data-tip="提交审核" v-if="currentStoryId">
+                  <button class="btn btn-sm btn-outline btn-primary shadow-xs gap-1" type="button" @click="submitForReview">
+                    <Icon icon="mdi:send" class="text-base" />
+                    <span>提交审核</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -104,6 +119,7 @@
               <Icon icon="mdi:text-box-outline" class="text-base text-base-content/50 shrink-0" />
               <input
                 v-model="story.description"
+                :readonly="props.readOnly"
                 class="input input-sm border-none focus:outline-none w-full px-1"
                 placeholder="故事描述/简述..."
               />
@@ -112,6 +128,7 @@
               <Icon icon="mdi:tag-multiple-outline" class="text-base text-base-content/50 shrink-0" />
               <input
                 v-model="storyTagsStr"
+                :readonly="props.readOnly"
                 class="input input-sm border-none focus:outline-none w-full px-1"
                 placeholder="故事标签（逗号分隔，如: 奇幻, 动作）"
               />
@@ -119,7 +136,7 @@
           </div>
         </div>
 
-        <div class="tools mb-4 flex flex-wrap gap-1 items-center bg-base-200/60 p-1.5 rounded-xl border border-base-200">
+        <div v-if="!props.readOnly" class="tools mb-4 flex flex-wrap gap-1 items-center bg-base-200/60 p-1.5 rounded-xl border border-base-200">
           <div class="tooltip tooltip-bottom" data-tip="插入链接 [[段落|显示]]">
             <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('[[' + selectedPassage + '|]]')">
               <Icon icon="mdi:link-variant" class="text-lg" />
@@ -221,6 +238,7 @@
               <div class="flex items-center gap-1">
                 <div class="tooltip tooltip-bottom" data-tip="重命名当前段落">
                   <button
+                    v-if="!props.readOnly"
                     class="btn btn-xs btn-ghost btn-square"
                     type="button"
                     @click="renamePassage"
@@ -230,6 +248,7 @@
                 </div>
                 <div class="tooltip tooltip-bottom" data-tip="删除当前段落">
                   <button
+                    v-if="!props.readOnly"
                     class="btn btn-xs btn-ghost btn-square text-error"
                     type="button"
                     @click="deletePassage"
@@ -241,6 +260,7 @@
             </div>
             <textarea
               v-model="selectedPassageContent"
+              :readonly="props.readOnly"
               class="h-105 w-full resize-none rounded-xl border border-base-300 bg-base-100 p-3 font-mono text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition"
               spellcheck="false"
             />
@@ -251,10 +271,12 @@
               </label>
               <input
                 v-model="tagEditValue"
+                :readonly="props.readOnly"
                 class="input input-sm flex-1 input-bordered"
                 placeholder="逗号分隔段落标签"
               />
               <button
+                v-if="!props.readOnly"
                 class="btn btn-xs btn-primary gap-1"
                 type="button"
                 @click="saveTags"
@@ -284,7 +306,7 @@
                     <Icon icon="mdi:refresh" size="16px" />
                   </button>
                 </div>
-                <div class="tooltip tooltip-bottom" data-tip="重置变量到初始状态">
+                <div class="tooltip tooltip-bottom tooltip-end" data-tip="重置变量到初始状态">
                   <button class="btn btn-ghost btn-xs" type="button" @click="resetPreviewVars">
                     <Icon icon="material-symbols-light:reset-settings" size="16px" />
                   </button>
@@ -357,7 +379,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, nextTick, onBeforeUnmount, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { getStory, createStory, updateStory } from "@/api/stories";
+import { getStory, createStory, updateStory, publishStory, IStory } from "@/api/stories";
 import StoryPlayView from "@/views/StoryPlayView.vue";
 import {
   createDefaultStory,
@@ -379,6 +401,8 @@ import { useAppStore } from "@/stores/modules/app";
 import { omit } from "lodash-es";
 import SyntaxManual from "@/components/SyntaxManual.vue";
 
+const props = defineProps<{ readOnly?: boolean; initialStory?: any }>();
+
 const appStore = useAppStore();
 const isDark = computed(() => appStore.getTheme === "dark");
 
@@ -390,12 +414,13 @@ const jsonEditorValue = ref("");
 const editingVarName = ref("");
 const showManual = ref(false);
 
-const story = ref<StoryData>(createDefaultStory());
+const story = ref<IStory>(createDefaultStory());
+const storyAny = computed(() => story.value as any);
 const route = useRoute();
 const currentStoryId = ref<string | null>(null);
-const selectedPassage = ref("Start");
+const selectedPassage = ref("");
 const variables = ref<Record<string, unknown>>({});
-const previewPassage = ref<string>("Start");
+const previewPassage = ref<string>("");
 const selectedInsertVar = ref("");
 const variableKeys = computed(() => Object.keys(variables.value));
 const storyTagsStr = computed({
@@ -664,6 +689,9 @@ const pasteImport = async () => {
       added += 1;
     }
 
+    // normalize tags to arrays
+    story.value.passages = normalizePassageTags(story.value.passages);
+
     // Update variables with any newly introduced names (merge defaults)
     const newVars = buildInitialVariables(story.value);
     for (const [k, v] of Object.entries(newVars)) {
@@ -683,6 +711,21 @@ const pasteImport = async () => {
     msg.error("从剪贴板读取失败，请确保已授权并包含文本。");
   }
 };
+
+function normalizePassageTags(passages: any[]) {
+  if (!passages) return [];
+  for (const p of passages) {
+    if (p.tags == null) {
+      p.tags = [];
+    } else if (!Array.isArray(p.tags)) {
+      p.tags = String(p.tags)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+  }
+  return passages;
+}
 
 const exportStory = () => {
   const source = serializeStory(story.value);
@@ -743,16 +786,17 @@ const saveToServer = async () => {
   }
 };
 
-const confirmRun = () => {
-  const payload = {
-    story: story.value,
-    currentPassage: selectedPassage.value,
-    variables: variables.value,
-  };
-  localStorage.setItem("haide-story-session", JSON.stringify(payload));
-  localStorage.removeItem("haide-story-play-cache");
-  closeDialog();
-  router.push({ name: "story-play", params: { storyId: "current" } });
+const submitForReview = async () => {
+  if (!currentStoryId.value) {
+    msg.error('请先保存故事到服务器再提交审核');
+    return;
+  }
+  try {
+    await publishStory(currentStoryId.value);
+    msg.success('已提交审核');
+  } catch (e) {
+    msg.error('提交审核失败');
+  }
 };
 
 const closeDialog = () => {
@@ -830,6 +874,24 @@ const saveTags = () => {
 };
 
 onMounted(() => {
+  // if initialStory provided (read-only preview), use it directly
+  if (props.initialStory) {
+    try {
+      const data = props.initialStory;
+      currentStoryId.value = data.id;
+      data.tags = data.tags?.split ? data.tags.split(',') : data.tags;
+      story.value = data as any;
+      story.value.passages = normalizePassageTags(parseStorySource(data.content).passages);
+      variables.value = buildInitialVariables(story.value);
+      selectedPassage.value = story.value.startPassage || story.value.passages[0]?.name || selectedPassage.value;
+      previewPassage.value = selectedPassage.value;
+      refreshPreview();
+    } catch {
+      // ignore
+    }
+    return;
+  }
+
   const draft = localStorage.getItem("haide-story-draft");
   if (draft) {
     try {
@@ -850,7 +912,7 @@ onMounted(() => {
       if (data) {
         data.tags = data.tags.split(',');
         story.value = data;
-        story.value.passages = parseStorySource(data.content).passages;
+        story.value.passages = normalizePassageTags(parseStorySource(data.content).passages);
         variables.value = buildInitialVariables(story.value);
         selectedPassage.value = story.value.startPassage || story.value.passages[0]?.name || selectedPassage.value;
         previewPassage.value = selectedPassage.value;
