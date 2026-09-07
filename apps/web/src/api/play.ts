@@ -1,5 +1,9 @@
 import request from '@/utils/http';
 
+export async function getReleaseStory(storyId: string) {
+  return request.get({ url: `/play/story/${storyId}` });
+}
+
 export async function createPlay(storyId: string, body: any = {}) {
   return request.post({ url: `/play/${storyId}`, data: body });
 }

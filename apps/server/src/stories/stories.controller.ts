@@ -42,8 +42,20 @@ export class StoriesController {
   }
 
   @Get(':id')
-  async get(@Param('id') id: string) {
-    return this.storiesService.findOne(id);
+  @UseGuards(OptionalAuthGuard)
+  async get(@Param('id') id: string, @Request() req) {
+    const story = await this.storiesService.findOne(id);
+    if (!story) {
+      throw new Error('故事不存在');
+    }
+    if (
+      story.status === 'draft' &&
+      story.authorId !== req?.user?.userId &&
+      !req?.user?.isAdmin
+    ) {
+      throw new Error('故事尚未发布');
+    }
+    return story;
   }
 
   @UseGuards(JwtAuthGuard)

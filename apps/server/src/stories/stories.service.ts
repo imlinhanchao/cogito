@@ -126,8 +126,43 @@ export class StoriesService {
     };
   }
 
-  async findOne(id: string): Promise<Story | null> {
-    return this.storiesRepo.findOne({ where: { id } });
+  async findOne(id: string) {
+    const story = await this.findById(id, false);
+    const author = story
+      ? await this.usersService.findById(story.authorId)
+      : null;
+    return story
+      ? {
+          ...story,
+          tags: story.tags?.split(',') || [],
+          author,
+        }
+      : null;
+  }
+
+  async findApprovedOne(id: string) {
+    const story = await this.findById(id, true);
+    const author = story
+      ? await this.usersService.findById(story.authorId)
+      : null;
+    return story
+      ? {
+          ...story,
+          tags: story.tags?.split(',') || [],
+          author,
+        }
+      : null;
+  }
+
+  async findById(
+    id: string,
+    isPublicRequest: true,
+  ): Promise<ApprovedStory | null>;
+  async findById(id: string, isPublicRequest: false): Promise<Story | null>;
+  async findById(id: string, isPublicRequest = false) {
+    return isPublicRequest
+      ? this.approvedRepo.findOne({ where: { sourceStoryId: id } })
+      : this.storiesRepo.findOne({ where: { id } });
   }
 
   async update(
@@ -135,7 +170,7 @@ export class StoriesService {
     dto: Partial<StoryDto>,
     authorId?: string,
   ): Promise<Story | null> {
-    const story = await this.findOne(id);
+    const story = await this.findById(id, false);
     if (!story) return null;
     if (authorId && story.authorId !== authorId)
       throw new Error('这不是你的故事');
@@ -152,7 +187,7 @@ export class StoriesService {
   }
 
   async publish(id: string, authorId?: string): Promise<Story | null> {
-    const story = await this.findOne(id);
+    const story = await this.findById(id, false);
     if (!story) return null;
     if (authorId && story.authorId !== authorId)
       throw new Error('这不是你的故事');
@@ -166,7 +201,7 @@ export class StoriesService {
 
   /** 管理员审核并上架：创建 ApprovedStory 快照并将 story 标记为已发布 */
   async approve(id: string, adminId: string): Promise<ApprovedStory | null> {
-    const story = await this.findOne(id);
+    const story = await this.findById(id, false);
     if (!story) return null;
     // mark published
     story.status = 'published';
@@ -210,7 +245,7 @@ export class StoriesService {
     adminId: string,
     reason?: string,
   ): Promise<Story | null> {
-    const story = await this.findOne(id);
+    const story = await this.findById(id, false);
     if (!story) return null;
     story.status = 'rejected';
     story.reviewReason = reason || '';

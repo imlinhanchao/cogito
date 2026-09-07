@@ -37,21 +37,17 @@ const router = createRouter({
           meta: { title: "我的故事" },
         },
         {
-          path: "/story-play/:storyId?",
-          name: "story-play",
-          component: () => import("@/views/StoryPlayView.vue"),
-          meta: {
-            title: "故事播放",
-          },
-        }
-        ,
-        {
           path: "/play/:storyId",
           name: "play",
           component: () => import("@/views/PlayView.vue"),
           meta: { title: "游玩" },
-        }
-        ,
+        },
+        {
+          path: "/test/:storyId",
+          name: "test",
+          component: () => import("@/views/PlayView.vue"),
+          meta: { title: "测试" },
+        },
         {
           path: "/admin/reviews",
           name: "admin-reviews",

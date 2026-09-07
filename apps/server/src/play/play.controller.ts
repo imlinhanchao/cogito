@@ -24,6 +24,16 @@ export class PlayController {
     private readonly storyRuntimeService: StoryRuntimeService,
   ) {}
 
+  @Get('story/:id')
+  @UseGuards(OptionalAuthGuard)
+  async getApprovedStory(@Param('id') id: string, @Request() req) {
+    const p = await this.storiesService.findApprovedOne(id);
+    if (!p) {
+      throw new Error('故事不存在');
+    }
+    return p;
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post(':id')
   async createPlay(@Param('id') id: string, @Request() req) {

@@ -439,13 +439,13 @@ const isDark = computed(() => appStore.getTheme === "dark");
 const router = useRouter();
 const dialogRef = ref<HTMLDialogElement | null>(null);
 const jsonEditorRef = ref<HTMLDivElement | null>(null);
-const cmInstance = ref<any>(null);
+let cmInstance: any = null;
 // CodeMirror instance for story editor
 const storyCmTextarea = ref<HTMLTextAreaElement | null>(null);
 let storyCmInstance: any = null;
 // CodeMirror instance for paste-import dialog
 const pasteEditorRef = ref<HTMLDivElement | null>(null);
-const cmPasteInstance = ref<any>(null);
+let cmPasteInstance: any = null;
 const jsonEditorValue = ref("");
 const editingVarName = ref("");
 const showManual = ref(false);
@@ -587,29 +587,29 @@ const openEditVar = async (key: string) => {
   // init CodeMirror
   await nextTick();
   const currentTheme = isDark.value ? "dracula" : "default";
-  if (jsonEditorRef.value && !cmInstance.value) {
+  if (jsonEditorRef.value && !cmInstance) {
     const textarea = jsonEditorRef.value.querySelector("textarea") as HTMLTextAreaElement | null;
     if (textarea) {
       textarea.value = jsonEditorValue.value;
-      cmInstance.value = CodeMirror.fromTextArea(textarea, {
+      cmInstance = CodeMirror.fromTextArea(textarea, {
         mode: { name: "javascript", json: true },
         theme: currentTheme,
         lineNumbers: true,
         tabSize: 2,
         autofocus: true,
       });
-      cmInstance.value.setSize("100%", 400);
+      cmInstance.setSize("100%", 400);
     }
-  } else if (cmInstance.value) {
-    cmInstance.value.setOption("theme", currentTheme);
-    cmInstance.value.setValue(jsonEditorValue.value);
+  } else if (cmInstance) {
+    cmInstance.setOption("theme", currentTheme);
+    cmInstance.setValue(jsonEditorValue.value);
   }
 };
 
 const saveEditedVar = () => {
   if (!editingVarName.value) return;
   let raw = jsonEditorValue.value;
-  if (cmInstance.value) raw = cmInstance.value.getValue();
+  if (cmInstance) raw = cmInstance.getValue();
   try {
     const parsed = JSON.parse(raw);
     variables.value[editingVarName.value] = parsed;
@@ -643,17 +643,17 @@ const insertSelectedVar = () => {
 
 
 onBeforeUnmount(() => {
-  if (cmInstance.value) {
-    try { cmInstance.value.toTextArea(); } catch {}
-    cmInstance.value = null;
+  if (cmInstance) {
+    try { cmInstance.toTextArea(); } catch {}
+    cmInstance = null;
   }
   if (storyCmInstance) {
     try { storyCmInstance.toTextArea(); } catch {}
     storyCmInstance = null;
   }
-  if (cmPasteInstance.value) {
-    try { cmPasteInstance.value.toTextArea(); } catch {}
-    cmPasteInstance.value = null;
+  if (cmPasteInstance) {
+    try { cmPasteInstance.toTextArea(); } catch {}
+    cmPasteInstance = null;
   }
 });
 
@@ -743,37 +743,37 @@ const pasteImport = async () => {
   if (dlg) dlg.showModal();
   await nextTick();
   const currentTheme = isDark.value ? "dracula" : "default";
-  if (pasteEditorRef.value && !cmPasteInstance.value) {
+  if (pasteEditorRef.value && !cmPasteInstance) {
     const ta = pasteEditorRef.value.querySelector("textarea") as HTMLTextAreaElement | null;
     if (ta) {
       ta.value = clipboard || "";
-      cmPasteInstance.value = CodeMirror.fromTextArea(ta, {
+      cmPasteInstance = CodeMirror.fromTextArea(ta, {
         mode: 'haideStory',
         theme: currentTheme,
         lineNumbers: true,
         lineWrapping: true,
         tabSize: 2,
       });
-      cmPasteInstance.value.setSize('100%', 400);
+      cmPasteInstance.setSize('100%', 400);
     }
-  } else if (cmPasteInstance.value) {
-    cmPasteInstance.value.setOption('theme', currentTheme);
-    if (clipboard) cmPasteInstance.value.setValue(clipboard);
+  } else if (cmPasteInstance) {
+    cmPasteInstance.setOption('theme', currentTheme);
+    if (clipboard) cmPasteInstance.setValue(clipboard);
   }
 };
 
 const closePasteDialog = () => {
   const dlg = document.getElementById("paste-import-dialog") as HTMLDialogElement | null;
   if (dlg) dlg.close();
-  if (cmPasteInstance.value) {
-    try { cmPasteInstance.value.toTextArea(); } catch {}
-    cmPasteInstance.value = null;
+  if (cmPasteInstance) {
+    try { cmPasteInstance.toTextArea(); } catch {}
+    cmPasteInstance = null;
   }
 };
 
 const confirmPasteImport = () => {
   let raw = "";
-  if (cmPasteInstance.value) raw = cmPasteInstance.value.getValue();
+  if (cmPasteInstance) raw = cmPasteInstance.getValue();
   else {
     const ta = pasteEditorRef.value?.querySelector('textarea') as HTMLTextAreaElement | null;
     raw = ta?.value || "";
@@ -856,7 +856,6 @@ const buildStory = () => {
 
 const saveDraft = () => {
   localStorage.setItem("haide-story-draft", JSON.stringify(story.value));
-  localStorage.setItem("haide-story-variables", JSON.stringify(variables.value));
 };
 
 const saveToServer = async () => {
@@ -880,6 +879,7 @@ const saveToServer = async () => {
       }
       msg.success('已保存');
     }
+    localStorage.removeItem("haide-story-draft");
   } catch (e) {
     // fallback to local save
     saveDraft();
@@ -1031,7 +1031,7 @@ onMounted(() => {
     currentStoryId.value = sid;
     getStory(sid).then((data) => {
       if (data) {
-        data.tags = data.tags.split(',');
+        data.tags = data.tags?.split ? data.tags.split(',') : data.tags;
         story.value = data;
         story.value.passages = normalizePassageTags(parseStorySource(data.content).passages);
         variables.value = buildInitialVariables(story.value);

@@ -1,4 +1,4 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsNumber } from 'class-validator';
 
 export class StoryDto {
   @IsString()
@@ -18,6 +18,14 @@ export class StoryDto {
   @IsOptional()
   @IsString()
   status?: 'draft' | 'pending' | 'published' | 'rejected';
+
+  @IsOptional()
+  @IsString()
+  startPassage?: string;
+
+  @IsOptional()
+  @IsNumber()
+  passageSize?: number;
 }
 
 export class RejectDto {

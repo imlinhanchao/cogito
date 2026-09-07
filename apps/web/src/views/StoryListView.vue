@@ -127,6 +127,7 @@
               <Icon icon="mdi:pencil-outline" class="w-4 h-4 text-base-content/70" />
             </button>
             <button 
+              v-if="!isCurrentUser"
               class="btn btn-primary btn-xs gap-1" 
               @click="previewStory(s.id!)" 
               title="阅读故事"
@@ -241,7 +242,7 @@ const editStory = (id: string) => {
 };
 
 const previewStory = (id: string) => {
-  router.push({ name: 'story-play', params: { storyId: id } });
+  router.push({ name: isCurrentUser.value ? 'test' : 'play', params: { storyId: id } });
 };
 
 const userLink = (s: IStory) => {

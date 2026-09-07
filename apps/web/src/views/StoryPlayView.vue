@@ -36,26 +36,6 @@
           <Icon icon="mdi:undo-variant" class="w-4 h-4" />
           <span>撤销</span>
         </button>
-
-        <button
-          v-if="!external"
-          class="btn btn-sm btn-ghost btn-square"
-          type="button"
-          title="保存进度"
-          @click="saveState"
-        >
-          <Icon icon="mdi:bookmark-outline" class="w-4.5 h-4.5 text-base-content/70" />
-        </button>
-
-        <button
-          v-if="!external"
-          class="btn btn-sm btn-ghost btn-square"
-          type="button"
-          title="加载进度"
-          @click="loadState"
-        >
-          <Icon icon="mdi:folder-open-outline" class="w-4.5 h-4.5 text-base-content/70" />
-        </button>
       </div>
     </header>
 
@@ -150,8 +130,6 @@ interface StoryPlaySnapshot {
   renderedPassage: string;
 }
 
-const AUTO_PLAY_CACHE_KEY = "haide-story-play-cache";
-
 const hashStory = (storyValue: StoryData): string => {
   const raw = JSON.stringify({
     title: storyValue.title,
@@ -171,20 +149,6 @@ const hashStory = (storyValue: StoryData): string => {
 };
 
 const getStorySignature = () => hashStory(story.value);
-
-const saveAutoSnapshot = () => {
-  if (props.external) return;
-  const snapshot: StoryPlaySnapshot = {
-    storySignature: getStorySignature(),
-    story: story.value,
-    currentPassage: currentPassageName.value,
-    variables: variables.value,
-    history: history.value,
-    renderedPassage: renderedPassage.value,
-  };
-
-  localStorage.setItem(AUTO_PLAY_CACHE_KEY, JSON.stringify(snapshot));
-};
 
 const renderCurrentPassage = () => {
   const current =
@@ -207,41 +171,6 @@ const renderCurrentPassage = () => {
     story.value,
     (target) => goto(target),
   );
-  saveAutoSnapshot();
-};
-
-const restoreAutoSnapshot = (): boolean => {
-  if (props.external) return false;
-  const raw = localStorage.getItem(AUTO_PLAY_CACHE_KEY);
-  if (!raw) {
-    return false;
-  }
-
-  try {
-    const snapshot = JSON.parse(raw) as Partial<StoryPlaySnapshot>;
-    if (
-      !snapshot.story ||
-      snapshot.storySignature !== hashStory(snapshot.story)
-    ) {
-      return false;
-    }
-
-    story.value = snapshot.story;
-    currentPassageName.value =
-      snapshot.currentPassage || snapshot.story.startPassage;
-    variables.value =
-      snapshot.variables || buildInitialVariables(snapshot.story);
-    history.value = snapshot.history || [currentPassageName.value];
-    renderedPassage.value = snapshot.renderedPassage || "";
-
-    if (!renderedPassage.value) {
-      renderCurrentPassage();
-    }
-
-    return true;
-  } catch {
-    return false;
-  }
 };
 
 const handleStoryClick = (event: MouseEvent) => {
@@ -305,44 +234,6 @@ const goBack = () => {
   }
 };
 
-const saveState = () => {
-  localStorage.setItem(
-    "haide-story-saved",
-    JSON.stringify({
-      story: story.value,
-      currentPassage: currentPassageName.value,
-      variables: variables.value,
-      history: history.value,
-      renderedPassage: renderedPassage.value,
-    }),
-  );
-  msg.success("故事进度已保存");
-};
-
-const loadState = () => {
-  const raw = localStorage.getItem("haide-story-saved");
-  if (!raw) {
-    msg.warning("暂无已保存的进度");
-    return;
-  }
-
-  try {
-    const saved = JSON.parse(raw);
-    story.value = saved.story;
-    currentPassageName.value = saved.currentPassage || story.value.startPassage;
-    variables.value = saved.variables || buildInitialVariables(story.value);
-    history.value = saved.history || [currentPassageName.value];
-    renderedPassage.value = saved.renderedPassage || "";
-    if (!renderedPassage.value) {
-      renderCurrentPassage();
-    }
-    saveAutoSnapshot();
-    msg.success("已加载保存的进度");
-  } catch {
-    msg.error("加载存档失败，存档可能损坏");
-  }
-};
-
 const toggleVariables = () => {
   variablesCollapsed.value = !variablesCollapsed.value;
 };
@@ -368,42 +259,6 @@ onMounted(() => {
       props.variablesProp || buildInitialVariables(story.value);
     renderCurrentPassage();
     return;
-  }
-
-  if (restoreAutoSnapshot()) {
-    return;
-  }
-
-  const rawSession = localStorage.getItem("haide-story-session");
-  if (rawSession) {
-    try {
-      const session = JSON.parse(rawSession);
-      story.value = session.story ?? story.value;
-      currentPassageName.value =
-        session.currentPassage ?? story.value.startPassage;
-      variables.value =
-        session.variables ?? buildInitialVariables(story.value);
-      history.value = [currentPassageName.value];
-      renderCurrentPassage();
-      return;
-    } catch {
-      // ignore malformed session
-    }
-  }
-
-  const raw = localStorage.getItem("haide-story-draft");
-  if (raw) {
-    try {
-      const draft = JSON.parse(raw) as StoryData;
-      story.value = draft;
-      currentPassageName.value =
-        draft.startPassage || draft.passages[0]?.name || "Start";
-      variables.value = buildInitialVariables(draft);
-      history.value = [currentPassageName.value];
-      renderCurrentPassage();
-    } catch {
-      // ignore malformed draft
-    }
   }
 
   renderCurrentPassage();

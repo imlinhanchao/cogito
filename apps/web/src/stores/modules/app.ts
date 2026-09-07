@@ -24,9 +24,17 @@ export const useAppStore = defineStore("app", () => {
 
   const getTheme = computed(() => theme.value);
 
+  // 页面/故事定制 Header 标题（如果设置了则优先显示并隐藏默认 nav）
+  const customHeaderTitle = ref<string | null>(null);
+  const setCustomHeaderTitle = (title: string | null) => {
+    customHeaderTitle.value = title;
+  };
+
   return {
     getTheme,
     themeLabel,
     toggleTheme,
+    customHeaderTitle,
+    setCustomHeaderTitle,
   };
 });

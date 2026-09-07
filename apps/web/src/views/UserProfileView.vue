@@ -26,7 +26,7 @@
           <div class="flex flex-col h-full">
             <div class="flex-1">
               <div class="flex items-start justify-between gap-2">
-                <h3 class="font-semibold truncate cursor-pointer" @click="previewStory(s.id!)">{{ s.title || '未命名' }}</h3>
+                <h3 class="font-semibold truncate cursor-pointer" @click="previewStory(s.id!, s.status)">{{ s.title || '未命名' }}</h3>
                 <div v-if="isCurrentUser" class="shrink-0 ml-2">
                   <span class="badge badge-sm" :class="statusClass(s.status)">{{ statusLabel(s.status) }}</span>
                 </div>
@@ -95,11 +95,11 @@ const load = async () => {
   }
 };
 
-const previewStory = (id: string) => {
-  router.push({ name: 'story-play', params: { storyId: id } });
+const previewStory = (id: string, status?: string) => {
+  router.push({ name: status == 'published' ? 'play' : 'test', params: { storyId: id } });
 };
 const editStory = (id: string) => {
-  router.push({ name: 'story-edit', params: { storyId: id } });
+  router.push({ name: 'story-editor', params: { storyId: id } });
 };
 
 onMounted(() => {
