@@ -1,0 +1,41 @@
+{
+  "name": "tellory",
+  "version": "0.0.1",
+  "description": "A SDK sample for template.",
+  "main": "dist/index.mjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "files": [
+    "dist/*",
+    "README.md"
+  ],
+  "keywords": [
+    "sdk"
+  ],
+  "bugs": {
+    "url": "https://github.com/imlinhanchao/tellory/issues"
+  },
+  "homepage": "https://github.com/imlinhanchao/tellory#readme",
+  "author": {
+    "name": "Hancel.Lin",
+    "email": "imlinhanchao@foxmail.com",
+    "url": "https://github.com/imlinhanchao"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=12.0"
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts",
+    "dev": "tsdown src/index.ts --watch"
+  },
+  "devDependencies": {
+    "tsdown": "^0.18.4",
+    "typescript": "^5.1.6"
+  },
+  "release": {
+    "branches": [
+      "master"
+    ]
+  }
+}

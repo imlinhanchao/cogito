@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "apps/web",
-    "apps/server"
+    "apps/server",
+    "packages/sdk"
   ],
   "scripts": {
     "build": "npm run build:w",
@@ -16,5 +17,8 @@
   "devDependencies": {
     "prettier": "^3.9.6",
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "tellory": "^0.0.1"
   }
 }
