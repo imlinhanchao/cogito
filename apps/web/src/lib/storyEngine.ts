@@ -1203,7 +1203,8 @@ function replaceTextWithHtml(
       const actionAttr = actionMatch
         ? ` data-story-action="${actionMatch[0].replace(/"/g, "'")}"`
         : "";
-      return `<button type="button" class="story-link" data-story-target="${escapeHtml(target)}" data-story-goto="${escapeHtml(target)}"${actionAttr}>${escapeHtml(label)}</button>`;
+      // use data-story-target consistently (play view expects this attribute)
+      return `<button type="button" class="story-link" data-story-target="${escapeHtml(target)}"${actionAttr}>${escapeHtml(label)}</button>`;
     },
   );
 

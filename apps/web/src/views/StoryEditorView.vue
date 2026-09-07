@@ -442,7 +442,7 @@ const jsonEditorRef = ref<HTMLDivElement | null>(null);
 const cmInstance = ref<any>(null);
 // CodeMirror instance for story editor
 const storyCmTextarea = ref<HTMLTextAreaElement | null>(null);
-const storyCmInstance = ref<any>(null);
+let storyCmInstance: any = null;
 // CodeMirror instance for paste-import dialog
 const pasteEditorRef = ref<HTMLDivElement | null>(null);
 const cmPasteInstance = ref<any>(null);
@@ -505,8 +505,8 @@ const displayVar = (v: unknown) => {
 
 function insertSnippet(snippet: string) {
   if (props.readOnly) return;
-  if (storyCmInstance.value) {
-    const cm = storyCmInstance.value;
+  if (storyCmInstance) {
+    const cm = storyCmInstance;
     const doc = cm.getDoc();
     const sel = doc.getSelection();
     doc.replaceSelection(snippet);
@@ -526,8 +526,8 @@ function insertSnippet(snippet: string) {
 function wrapSelection(before: string, after?: string) {
   const a = after ?? before;
   if (props.readOnly) return;
-  if (storyCmInstance.value) {
-    const cm = storyCmInstance.value;
+  if (storyCmInstance) {
+    const cm = storyCmInstance;
     const doc = cm.getDoc();
     const sel = doc.getSelection();
     if (sel && sel.length > 0) {
@@ -647,9 +647,9 @@ onBeforeUnmount(() => {
     try { cmInstance.value.toTextArea(); } catch {}
     cmInstance.value = null;
   }
-  if (storyCmInstance.value) {
-    try { storyCmInstance.value.toTextArea(); } catch {}
-    storyCmInstance.value = null;
+  if (storyCmInstance) {
+    try { storyCmInstance.toTextArea(); } catch {}
+    storyCmInstance = null;
   }
   if (cmPasteInstance.value) {
     try { cmPasteInstance.value.toTextArea(); } catch {}
@@ -1075,9 +1075,9 @@ watch([() => props.readOnly, isDark, selectedPassage], async () => {
   const textarea = storyCmTextarea.value || (document.querySelector('textarea[data-cm="story"]') as HTMLTextAreaElement | null);
   if (!textarea) return;
   const theme = isDark.value ? 'dracula' : 'default';
-  if (!storyCmInstance.value) {
+  if (!storyCmInstance) {
     textarea.value = selectedPassageContent.value || '';
-    storyCmInstance.value = CodeMirror.fromTextArea(textarea, {
+    storyCmInstance = CodeMirror.fromTextArea(textarea, {
       mode: 'haideStory',
       theme,
       lineNumbers: true,
@@ -1086,20 +1086,20 @@ watch([() => props.readOnly, isDark, selectedPassage], async () => {
       extraKeys: { 'Tab': (cm: any) => cm.replaceSelection('  ', 'end') },
       readOnly: props.readOnly ? 'nocursor' : false,
     });
-    storyCmInstance.value.setSize('100%', '420px');
-    storyCmInstance.value.on('change', (cm: any) => {
+    storyCmInstance.setSize('100%', '420px');
+    storyCmInstance.on('change', (cm: any) => {
       const v = cm.getValue();
       selectedPassageContent.value = v;
     });
-    storyCmInstance.value.setOption('readOnly', props.readOnly ? 'nocursor' : false);
+    storyCmInstance.setOption('readOnly', props.readOnly ? 'nocursor' : false);
   } else {
-    storyCmInstance.value.setOption('theme', theme);
+    storyCmInstance.setOption('theme', theme);
     // update content when passage changes externally
-    const cur = storyCmInstance.value.getValue();
+    const cur = storyCmInstance.getValue();
     const expected = selectedPassageContent.value || '';
-    if (cur !== expected) storyCmInstance.value.setValue(expected);
+    if (cur !== expected) storyCmInstance.setValue(expected);
     // set readonly
-    storyCmInstance.value.setOption('readOnly', props.readOnly ? 'nocursor' : false);
+    storyCmInstance.setOption('readOnly', props.readOnly ? 'nocursor' : false);
   }
 });
 

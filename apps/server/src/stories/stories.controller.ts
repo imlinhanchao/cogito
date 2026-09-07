@@ -15,10 +15,15 @@ import { OptionalAuthGuard } from '../auth/optional-auth.guard';
 import { AdminGuard } from '../auth/admin.guard';
 import { StoriesService } from './stories.service';
 import { StoryDto, RejectDto } from './stories.dto';
+import { StoryRuntimeExecuteDto } from './story-runtime.dto';
+import { StoryRuntimeService } from './story-runtime.service';
 
 @Controller('stories')
 export class StoriesController {
-  constructor(private readonly storiesService: StoriesService) {}
+  constructor(
+    private readonly storiesService: StoriesService,
+    private readonly storyRuntimeService: StoryRuntimeService,
+  ) {}
 
   @UseGuards(OptionalAuthGuard)
   @Get()

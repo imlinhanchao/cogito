@@ -46,6 +46,13 @@ const router = createRouter({
         }
         ,
         {
+          path: "/play/:storyId",
+          name: "play",
+          component: () => import("@/views/PlayView.vue"),
+          meta: { title: "游玩" },
+        }
+        ,
+        {
           path: "/admin/reviews",
           name: "admin-reviews",
           component: () => import("@/views/AdminReviewView.vue"),

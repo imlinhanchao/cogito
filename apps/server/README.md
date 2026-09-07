@@ -12,11 +12,23 @@ npm run start:dev -w server
 
 The default address is `http://localhost:3000`.
 
+Set `STORY_RUNTIME_AES_KEY` to a secret value before enabling server-side
+story playback. A 64-character hexadecimal key or a base64-encoded 32-byte
+key is preferred. The runtime derives a 256-bit key for other non-empty
+values, which is convenient locally but should not be used as a key-rotation
+strategy in production.
+
 ### Endpoints
 
 - `GET /api/health` checks service health.
 - `POST /api/auth/token` creates a JWT from `userId` and `username` fields.
 - `GET /api-docs` opens Swagger UI.
+- `POST /api/stories/:id/runtime/start` renders the first passage and returns
+  `{ dataset, passage, html, variables }`. The dataset is AES-256-GCM
+  encrypted and expires after one hour.
+- `POST /api/stories/runtime/execute` accepts a dataset plus optional `target`
+  and/or `action`, executes story functions in an `isolated-vm` V8 isolate,
+  then returns the next encrypted dataset, HTML, and variables.
 
 All API responses have this shape:
 

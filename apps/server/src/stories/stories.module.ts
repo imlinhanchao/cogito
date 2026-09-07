@@ -5,11 +5,12 @@ import { ApprovedStory } from './approved-story.entity';
 import { StoriesService } from './stories.service';
 import { StoriesController } from './stories.controller';
 import { UsersModule } from 'src/users/users.module';
+import { StoryRuntimeService } from './story-runtime.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Story, ApprovedStory]), UsersModule],
-  providers: [StoriesService],
+  providers: [StoriesService, StoryRuntimeService],
   controllers: [StoriesController],
-  exports: [StoriesService],
+  exports: [StoriesService, StoryRuntimeService],
 })
 export class StoriesModule {}
