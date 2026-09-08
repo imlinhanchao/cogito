@@ -7,6 +7,9 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
+    "postbuild:assets": "copyfiles assets/**/* ../../release/",
+    "postbuild:copy": "copyfiles package.json package-lock.json ../../release/",
+    "postbuild": "npm run postbuild:assets && npm run postbuild:copy",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",

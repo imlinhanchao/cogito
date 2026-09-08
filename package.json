@@ -7,14 +7,18 @@
     "packages/sdk"
   ],
   "scripts": {
-    "build": "npm run build:w",
+    "build": "npm run build:p && npm run build:s && npm run build:w",
     "build:w": "cd apps/web && npm run build",
-    "format": "prettier --write apps/"
+    "build:s": "cd apps/server && npm run build",
+    "build:p": "cd packages/sdk && npm run build",
+    "postbuild": "copyfiles apps/server/public/**/* release/public",
+    "format": "prettier --write apps/ packages/"
   },
   "engines": {
     "node": ">=18"
   },
   "devDependencies": {
+    "copyfiles": "^2.4.1",
     "prettier": "^3.9.6",
     "typescript": "^5.0.0"
   },

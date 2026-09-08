@@ -19,6 +19,11 @@ export default defineConfig({
       "@": "/src",
     },
   },
+  build: {
+    target: 'es2015',
+    outDir: '../../release/public',
+    emptyOutDir: true,
+  },
   server: {
     allowedHosts: true,
     proxy: {
