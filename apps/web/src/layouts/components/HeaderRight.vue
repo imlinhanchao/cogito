@@ -1,5 +1,5 @@
 <template>
-  <div class="navbar-end flex items-center gap-1.5 sm:gap-2">
+  <div class="flex items-center gap-1.5 sm:gap-2">
     <!--
       桌面端：创作 / 主题切换 直接展示在导航栏。
       移动端已登录时它们被收纳进头像下拉框，因此这里隐藏；
