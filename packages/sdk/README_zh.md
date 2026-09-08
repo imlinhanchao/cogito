@@ -1,7 +1,7 @@
 [English](./README.md) | 简体中文
 
 <h1>
-<img align="center" height="30" src="https://github.com/imlinhanchao/tellory/blob/master/apps/web/public/logo.svg?raw=true">
+<img align="center" width="32" src="https://github.com/imlinhanchao/tellory/blob/master/apps/web/public/logo.svg?raw=true">
 <span>织言 · Tellory</span>
 </h1>
 
