@@ -1,183 +1,128 @@
-# 鱼丸游戏平台 SDK
+# Tellory
 
-游戏平台集成 SDK，提供身份认证、云存档以及实时属性同步功能。
+English | [简体中文](./README_zh.md)
 
-## 安装
+> A parser/renderer engine for describing Interactive Fiction with a plain-text DSL: parse story source, render it into safe HTML, and export it as a single, build-free HTML page.
 
-```bash
-npm install fishpi-play
+## Features
+
+- **Plain-text story DSL**: declare passages with `段落 "name":` / `:: name`, with support for `(set:)`, `(if:)/(else-if:)/(else:)`, `(display:)`, `(print:)`, `(call:)`, `[[Link|Target]]` and a lightweight Markdown subset (headings, lists, blockquotes, code blocks, bold/italic, etc.).
+- **Safe rendering**: a built-in whitelist-based HTML sanitizer strips `on*` event attributes and `javascript:`/`data:` URIs, protecting against malicious HTML injected by story authors.
+- **Pluggable evaluation**: the library never calls `eval` itself. Expression evaluation and function calls are delegated to a host context supplied by the caller, so the browser can use `Function`/`eval` while a server can run the exact same story inside a sandbox (e.g. `isolated-vm`) without changing any rendering logic.
+- **Zero dependencies**: no DOM or Node built-in module dependencies — the same code runs in both the browser and Node.js.
+- **Standalone export**: a single call packages the story, current save variables, and the rendering engine into one self-contained HTML file that can be played offline by double-clicking it, with no build tools or server required.
+
+## Install
+
+```sh
+npm install tellory
 ```
 
-## 快速开始
+Inside a monorepo, it can also be referenced as a workspace dependency:
 
-### 初始化
-
-```typescript
-import { GameSDK } from 'fishpi-play';
-
-const sdk = new GameSDK('your_game_key');
-```
-
-### 身份认证
-
-```typescript
-// 1. 初始化认证（处理回调 URL 中的登录信息）
-await sdk.initAuth();
-
-// 2. 检查登录状态
-if (!await sdk.isAuthenticated()) {
-    // 3. 跳转登录
-    sdk.login(window.location.href);
-}
-
-// 4. 获取用户信息
-const user = await sdk.getUserProfile();
-console.log('Welcome, ' + user.nickname);
-
-// 5. 登出
-sdk.logout();
-```
-
-### 云存档
-
-```typescript
-// 上传存档
-await sdk.saveArchive(JSON.stringify({ score: 100 }));
-
-// 获取存档
-const archive = await sdk.getArchive();
-if (archive) {
-    console.log('Last saved at:', archive.updatedAt);
-    const data = JSON.parse(archive.content);
+```json
+{
+  "dependencies": {
+    "tellory": "workspace:*"
+  }
 }
 ```
 
-### 实时属性同步 (WebSocket)
+## Quick Start
 
-```typescript
-// 连接实时消息服务
-sdk.connectRealtime((msg) => {
-    console.log('Received message:', msg);
-});
+```ts
+import {
+  parseStorySource,
+  buildInitialVariables,
+  createDefaultEvaluator,
+  applyPassageEntryEffects,
+  applyStoryAction,
+  renderStoryText,
+  buildStandaloneExport,
+} from 'tellory';
 
-// 设置属性
-sdk.setAttributes({ status: 'in-game', level: 5 });
+const source = `标题：示例故事
 
-// 获取当前属性
-const attrs = sdk.getAttributes();
+:: Start
+你面前有两条路。
+
+[[走左边的路|Left]]
+[[走右边的路|Right]]
+
+:: Left
+你选择了左边。
+
+:: Right
+你选择了右边。
+`;
+
+// 1. Parse the story source
+const story = parseStorySource(source);
+
+// 2. Build the initial variable map
+const variables = buildInitialVariables(story);
+
+// 3. In trusted environments like the browser, use the built-in eval/Function evaluator
+const ctx = createDefaultEvaluator(/* registry of (fn:) function bodies */ {});
+
+// 4. Run the entered passage's (set:) side effects, then render it to HTML
+const passage = story.passages.find((p) => p.name === story.startPassage)!;
+applyPassageEntryEffects(passage.content, variables, ctx);
+const html = renderStoryText(passage.content, variables, story, ctx);
+
+// 5. When the player clicks a link, run its action with the same ctx (e.g. goto/set/call)
+applyStoryAction('goto:"Left"', variables, ctx);
+
+// 6. Export it at any time as a standalone HTML file that needs no server
+const standaloneHtml = buildStandaloneExport(story, variables, story.startPassage);
 ```
 
-## API 参考
+## Host Context
 
-### `GameSDK`
+`applyStoryAction`, `applyPassageEntryEffects`, and `renderStoryText` never call `eval` themselves. Instead, they take a host context object (as their third/last parameter) that performs expression evaluation and function calls. Its shape is:
 
-#### `constructor(gameKey: string, baseUrl?: string)`
-初始化 SDK 实例。`baseUrl` 默认为 `http://play.adventext.fun`。
-
-#### `login(redirectUri?: string): Promise<void>`
-跳转至平台登录页面。
-
-#### `logout(): Promise<void>`
-清除本地 token，退出登录。
-
-#### `initAuth(): Promise<boolean>`
-尝试从当前页面 URL 解析验证信息。如果验证成功，将自动存储 Token 并返回 `true`。
-
-#### `isAuthenticated(): Promise<boolean>`
-检查当前 Token 是否有效并返回用户信息。
-
-#### `getToken(): string | null`
-获取当前存储的授权 Token。
-
-#### `setToken(token: string): void`
-手动设置授权 Token（例如从其他存储恢复时）。
-
-#### `getUserProfile(): Promise<UserInfo>`
-获取当前登录用户的详细信息。
-
-#### `saveArchive(content: string): Promise<void>`
-保存字符串格式的存档数据到云端。
-
-#### `getArchive(): Promise<{ content: string; updatedAt: string } | null>`
-获取云端存档及其更新时间。
-
-#### `connectRealtime(onMessage?: (data: any) => void): void`
-通过 WebSocket 连接实时同步服务。
-
-#### `setAttributes(attributes: Record<string, any>): void`
-设置当前用户的实时属性（如状态、位置等）。
-
-#### `getAttributes(): Record<string, any>`
-获取已同步的用户实时属性。
-
-#### `getOtherDevices(): void`
-请求获取当前账号在其他设备上的登录信息（通过 WebSocket 返回数据）。
-
-#### `getOnlineUsers(): Promise<OnlineUser[]>`
-按 `userId` 去重返回在线用户列表，每个 `OnlineUser` 包含用户信息及其所有在线设备（`devices`）。
-
-#### `getOnlineClients(): Promise<OnlineClient[]>`
-返回所有在线客户端（每台设备视为一个客户端），包含所属用户信息与设备属性。
-
-#### `getOnlineClientsByUser(userId: string): Promise<OnlineClient[]>`
-获取指定用户的在线客户端列表，参数 `userId` 为用户 ID，返回该用户所有在线客户端信息数组。
-
-#### `sendToUsers(userIds: string[], event: string, payload: any): Promise<SendResult>`
-向指定用户 ID 列表发送带事件类型的消息，`userIds` 为目标用户 ID 列表，`event` 为消息事件类型，`payload` 为消息内容。返回 `SendResult`，包含成功发送的连接数量 `sent`。
-
-#### `sendToClients(clientIds: string[], payload: any): Promise<SendResult>`
-向指定客户端 ID 列表发送消息。`clientIds` 为目标客户端 ID 列表，`payload` 为要发送的消息内容，返回对象包含已发送的数量 `sent`。
-
-#### `on(event: string, callback: (data: any) => void): () => void`
-监听指定事件类型的实时消息，返回一个取消监听的函数。常用于订阅自定义事件消息。
-
-#### `off(event: string, callback: (data: any) => void): void`
-取消订阅指定事件类型的回调。
-
-## 类型定义
-
-### `UserInfo`
-
-```typescript
-interface UserInfo {
-    id: string;       // 用户唯一 ID
-    username: string; // 用户名
-    nickname: string; // 昵称
-    avatar: string;   // 头像 URL
-    isAdmin: boolean; // 是否为管理员
-}
-
-### `OnlineDevice`
-
-```typescript
-interface OnlineDevice {
-    clientId: string; // 设备连接 ID
-    attributes: any;  // 设备属性
+```ts
+interface StoryEngineContext {
+  /** Registry of raw JS function bodies declared via (fn:"name")[code]. */
+  functions: Record<string, string>;
+  /** Evaluates a macro expression (with embedded call: substitutions already applied). */
+  evaluate: (expression: string, variables: Record<string, unknown>) => unknown;
+  /** Invokes a previously-registered (fn:) function. */
+  callFunction: (name: string, args: unknown[], variables: Record<string, unknown>) => unknown;
+  /** Optional: encode a link's target/action value before rendering (e.g. encryption). */
+  encodeAttribute?: (value: string) => string;
+  /** Optional: decode a value previously produced by encodeAttribute. */
+  decodeAttribute?: (value: string) => string;
+  /** Optional: passage-navigation hook used in recursive rendering scenarios. */
+  routeTo?: (target: string) => void;
 }
 ```
 
-### `OnlineClient`
+This lets the same rendering logic be safely reused across hosts, for example:
 
-```typescript
-interface OnlineClient extends UserInfo {
-    clientId: string; // 设备连接 ID
-    attributes: any;  // 设备属性
-}
-```
+- **Browser**: use the default evaluator provided by `createDefaultEvaluator`, since the story author and player trust each other.
+- **Server**: swap `evaluate`/`callFunction` for a sandbox (e.g. `isolated-vm`) to keep untrusted save data/expressions out of the main process, and use `encodeAttribute`/`decodeAttribute` to encrypt/decrypt the actions carried by links, preventing players from tampering with navigation targets or variable assignments on the client.
 
-### `OnlineUser`
+## API
 
-```typescript
-interface OnlineUser extends OnlineClient {
-    devices: OnlineDevice[]; // 用户的所有在线设备
-}
-```
+| Function | Description |
+| --- | --- |
+| `parseStorySource(source: string): StoryData` | Parses plain-text story source into a structured `StoryData` (title + passage list). |
+| `serializeStory(story: StoryData): string` | Serializes `StoryData` back into the source format understood by `parseStorySource`. |
+| `buildInitialVariables(story: StoryData): Record<string, unknown>` | Builds the initial variable map. |
+| `createDefaultEvaluator(functions)` | The default `eval`/`Function`-based evaluator, intended for trusted environments like the browser only. |
+| `applyPassageEntryEffects(content, variables, ctx): void` | Runs a passage's `(set:)` side effects when it is entered (does not return rendered output). |
+| `applyStoryAction(action, variables, ctx): void` | Runs a single `goto:`/`set:`/`call:` action (typically from a link click). |
+| `renderStoryText(input, variables, story, ctx): string` | Renders a passage's raw content into sanitized HTML, expanding all supported macros. |
+| `buildStandaloneExport(story, variables, currentPassage): string` | Generates a self-contained HTML document (embedding the story data and rendering engine) that can be opened offline. |
 
-### `SendResult`
+### Types
 
-```typescript
-interface SendResult {
-    sent: number; // 成功发送的连接数量
-}
-```
-```
+- `StoryData` — A full story: `title`, optional `description`/`tags`, `startPassage`, `passages`.
+- `StoryPassage` — A single passage: `name`, optional `tags`, `content` (raw, unrendered source).
+- `VariableMap` — The story's runtime variable table, `Record<string, unknown>`.
+- `StoryEngineContext` — The host-supplied evaluation/function-call/attribute-codec/routing hook interface (see above).
+
+## License
+
+MIT © [Hancel.Lin](https://github.com/imlinhanchao)

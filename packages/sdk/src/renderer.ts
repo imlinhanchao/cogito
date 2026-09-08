@@ -1,6 +1,6 @@
-import type { StoryData, VariableMap } from './types';
-import { readBalancedBlock, extractAndRegisterFunctions } from './scanner';
-import { escapeHtml, sanitizeAllowedHtml } from './sanitizer';
+import type { StoryData, VariableMap } from "./types";
+import { readBalancedBlock, extractAndRegisterFunctions } from "./scanner";
+import { escapeHtml, sanitizeAllowedHtml } from "./sanitizer";
 
 /**
  * Platform-specific hooks the shared renderer needs from its host:
@@ -12,46 +12,109 @@ import { escapeHtml, sanitizeAllowedHtml } from './sanitizer';
 export interface StoryEngineContext {
   /** Registry of raw JS function bodies declared via (fn:"name")[code]. */
   functions: Record<string, string>;
-  /** Evaluates a macro expression (with `call:` substitutions already applied). */
+  /** 
+   * Evaluates a macro expression (with `call:` substitutions already applied). 
+   * 
+   * @param expression - The macro expression to evaluate.
+   * @param variables - The current story variables.
+   * @returns The result of evaluating the expression.
+   */
   evaluate: (expression: string, variables: VariableMap) => unknown;
-  /** Invokes a previously-registered (fn:) function by name. */
-  callFunction: (name: string, args: unknown[], variables: VariableMap) => unknown;
-  /** Encodes a link target/action value before embedding it in rendered HTML. */
+  /** 
+   * Invokes a previously-registered (fn:) function by name. 
+   * 
+   * @param name - The name of the function to call.
+   * @param args - The arguments to pass to the function.
+   * @param variables - The current story variables.
+   * @returns The result of invoking the function.
+   */
+  callFunction: (
+    name: string,
+    args: unknown[],
+    variables: VariableMap,
+  ) => unknown;
+  /** 
+   * Encodes a link target/action value before embedding it in rendered HTML.
+   * 
+   * @param value - The raw attribute value to encode.
+   * @returns The encoded value.
+   */
   encodeAttribute?: (value: string) => string;
-  /** Decodes a value previously produced by `encodeAttribute`. */
+  /** 
+   * Decodes a value previously produced by `encodeAttribute`.
+   * @param value - The encoded attribute value to decode.
+   * @returns The decoded value.
+   */
   decodeAttribute?: (value: string) => string;
-  /** Optional passage-navigation hook threaded through recursive rendering calls. */
+  /** 
+   * Optional passage-navigation hook threaded through recursive rendering calls.
+   * 
+   * @param target - The target passage to navigate to.
+   */
   routeTo?: (target: string) => void;
 }
 
-export function encodeAttributeValue(ctx: StoryEngineContext, value: string): string {
+/**
+ * Applies `ctx.encodeAttribute` if provided, otherwise returns `value` unchanged.
+ *
+ * @param ctx - The active engine context.
+ * @param value - The raw attribute value to encode.
+ * @returns The encoded value, or `value` itself when no encoder is configured.
+ */
+export function encodeAttributeValue(
+  ctx: StoryEngineContext,
+  value: string,
+): string {
   return ctx.encodeAttribute ? ctx.encodeAttribute(value) : value;
 }
 
-export function decodeAttributeValue(ctx: StoryEngineContext, value: string): string {
+/**
+ * Applies `ctx.decodeAttribute` if provided, otherwise returns `value` unchanged.
+ *
+ * @param ctx - The active engine context.
+ * @param value - The encoded attribute value to decode.
+ * @returns The decoded value, or `value` itself when no decoder is configured.
+ */
+export function decodeAttributeValue(
+  ctx: StoryEngineContext,
+  value: string,
+): string {
   return ctx.decodeAttribute ? ctx.decodeAttribute(value) : value;
 }
 
-/** Translates `$var` and `is/eq/ne/and/or/not/contains` macro operators into JS-evaluable source. */
+/**
+ * Translates `$var` and `is/eq/ne/and/or/not/contains` macro operators into JS-evaluable source.
+ *
+ * @param expression - The raw macro expression.
+ * @returns Equivalent JavaScript source, referencing a `vars` object for `$var` lookups.
+ */
 export function compileExpressionSource(expression: string): string {
   const compiled = expression
-    .replace(/\$([A-Za-z_][A-Za-z0-9_]*)/g, (_all, name: string) => `vars["${name}"]`)
-    .replace(/\bnot\b/gi, '!')
-    .replace(/\b(?:is not|ne)\b/gi, '!==')
-    .replace(/\b(?:is|eq)\b/gi, '===')
-    .replace(/\band\b/gi, '&&')
-    .replace(/\bor\b/gi, '||');
+    .replace(
+      /\$([A-Za-z_][A-Za-z0-9_]*)/g,
+      (_all, name: string) => `vars["${name}"]`,
+    )
+    .replace(/\bnot\b/gi, "!")
+    .replace(/\b(?:is not|ne)\b/gi, "!==")
+    .replace(/\b(?:is|eq)\b/gi, "===")
+    .replace(/\band\b/gi, "&&")
+    .replace(/\bor\b/gi, "||");
 
   return compiled.replace(
     /([A-Za-z0-9_\]\)"'`.[\]]+)\s+contains\s+("[^"]*"|'[^']*'|[A-Za-z0-9_\]\)"'`.[\]]+)/g,
-    '__contains__($1,$2)',
+    "__contains__($1,$2)",
   );
 }
 
-/** Default browser-safe evaluator backed by `eval`/`Function`. Intended for client-side use only. */
+/**
+ * Default browser-safe evaluator backed by `eval`/`Function`. Intended for client-side use only.
+ *
+ * @param functions - Registry of raw JS function bodies declared via `(fn:"name")[code]`.
+ * @returns A partial `StoryEngineContext` supplying `functions`/`evaluate`/`callFunction`.
+ */
 export function createDefaultEvaluator(
   functions: Record<string, string>,
-): Pick<StoryEngineContext, 'functions' | 'evaluate' | 'callFunction'> {
+): Pick<StoryEngineContext, "functions" | "evaluate" | "callFunction"> {
   return {
     functions,
     evaluate(expression: string, variables: VariableMap): unknown {
@@ -61,7 +124,7 @@ export function createDefaultEvaluator(
         const __contains__ = function (a: any, b: any) {
           try {
             if (a == null) return false;
-            if (typeof a === 'string') return String(a).includes(b);
+            if (typeof a === "string") return String(a).includes(b);
             if (Array.isArray(a)) return a.includes(b);
             return false;
           } catch {
@@ -71,11 +134,15 @@ export function createDefaultEvaluator(
         return eval(compiled);
       })();
     },
-    callFunction(name: string, args: unknown[], variables: VariableMap): unknown {
+    callFunction(
+      name: string,
+      args: unknown[],
+      variables: VariableMap,
+    ): unknown {
       const code = functions[name];
       if (!code) return undefined;
       try {
-        const fn = new Function('vars', 'args', code);
+        const fn = new Function("vars", "args", code);
         return fn(variables, args);
       } catch {
         return undefined;
@@ -84,14 +151,20 @@ export function createDefaultEvaluator(
   };
 }
 
+/** Matches `call:"name" arg1 arg2 ...` occurrences embedded inside a larger expression. */
 export const CALL_IN_EXPRESSION_PATTERN =
   /call:\s*["']([^"']+)["']((?:\s+(?:"[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'|\$[A-Za-z_][A-Za-z0-9_]*|-?\d+(?:\.\d+)?|true|false|null|undefined))*)/gi;
+/** Matches a single literal argument token (string/`$var`/number/boolean/`null`/`undefined`). */
 export const CALL_ARG_TOKEN_PATTERN =
   /"[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'|\$[A-Za-z_][A-Za-z0-9_]*|-?\d+(?:\.\d+)?|true|false|null|undefined/g;
 
 /**
  * Tokenizes literal argument tokens used in `(call:"name" arg1 arg2 ...)`:
  * quoted strings, `$var` references, numbers, booleans, `null`/`undefined`.
+ *
+ * @param argsSegment - The raw text following the function name in a `call:` invocation.
+ * @param variables - Current variable map, used to resolve `$var` tokens.
+ * @returns The parsed, ordered argument values.
  */
 export function parseCallArgs(
   argsSegment: string | undefined,
@@ -109,23 +182,23 @@ export function parseCallArgs(
       args.push(token.slice(1, -1));
       continue;
     }
-    if (token.startsWith('$')) {
+    if (token.startsWith("$")) {
       args.push(variables[token.slice(1)]);
       continue;
     }
-    if (token === 'true') {
+    if (token === "true") {
       args.push(true);
       continue;
     }
-    if (token === 'false') {
+    if (token === "false") {
       args.push(false);
       continue;
     }
-    if (token === 'null') {
+    if (token === "null") {
       args.push(null);
       continue;
     }
-    if (token === 'undefined') {
+    if (token === "undefined") {
       args.push(undefined);
       continue;
     }
@@ -134,12 +207,26 @@ export function parseCallArgs(
   return args;
 }
 
+/**
+ * JSON-encodes `value` for splicing back into an expression string (`undefined` for `undefined`).
+ *
+ * @param value - The value to encode.
+ * @returns A JS-literal source representation of `value`.
+ */
 export function toExpressionLiteral(value: unknown): string {
-  if (value === undefined) return 'undefined';
+  if (value === undefined) return "undefined";
   const json = JSON.stringify(value);
-  return json === undefined ? 'undefined' : json;
+  return json === undefined ? "undefined" : json;
 }
 
+/**
+ * Replaces any `call:"name" args...` occurrences inside `expression` with their evaluated, literal result.
+ *
+ * @param expression - The raw macro expression, possibly containing embedded `call:` invocations.
+ * @param variables - Current variable map.
+ * @param ctx - The active engine context, used to invoke registered functions.
+ * @returns `expression` with all `call:` invocations replaced by their literal result.
+ */
 export function replaceCallExpressions(
   expression: string,
   variables: VariableMap,
@@ -154,6 +241,14 @@ export function replaceCallExpressions(
   );
 }
 
+/**
+ * Evaluates a macro `expression`, first resolving any embedded `call:` invocations.
+ *
+ * @param expression - The raw macro expression.
+ * @param variables - Current variable map.
+ * @param ctx - The active engine context.
+ * @returns The evaluated result.
+ */
 export function evaluateExpression(
   expression: string,
   variables: VariableMap,
@@ -165,6 +260,14 @@ export function evaluateExpression(
   return ctx.evaluate(withCalls, variables);
 }
 
+/**
+ * Evaluates `condition` as a boolean, coercing the raw expression result.
+ *
+ * @param condition - The raw macro condition expression.
+ * @param variables - Current variable map.
+ * @param ctx - The active engine context.
+ * @returns The boolean-coerced result.
+ */
 export function evaluateCondition(
   condition: string,
   variables: VariableMap,
@@ -175,14 +278,20 @@ export function evaluateCondition(
   return Boolean(evaluateExpression(normalized, variables, ctx));
 }
 
-/** Applies a `set: $x to <expr>` or `call:"name" args...` action, mutating `variables`. */
+/**
+ * Applies a `set: $x to <expr>` or `call:"name" args...` action, mutating `variables`.
+ *
+ * @param action - The raw action text (e.g. from a link's action attribute).
+ * @param variables - Variable map mutated in place by `set:` actions.
+ * @param ctx - The active engine context.
+ */
 export function applyStoryAction(
   action: string,
   variables: VariableMap,
   ctx: StoryEngineContext,
 ): void {
   const normalized = action.trim();
-  const cleaned = normalized.replace(/^\(+|\)+$/g, '').trim();
+  const cleaned = normalized.replace(/^\(+|\)+$/g, "").trim();
 
   function executeCall(name: string, argsRaw?: string): unknown {
     const args = parseCallArgs(argsRaw, variables);
@@ -195,7 +304,9 @@ export function applyStoryAction(
   if (setMatch) {
     const variableName = setMatch[1].slice(1);
     const rhs = setMatch[2].trim();
-    const callMatch = rhs.match(/^\(?call:\s*["']([^"']+)["'](?:\s+(.+?))?\)?$/i);
+    const callMatch = rhs.match(
+      /^\(?call:\s*["']([^"']+)["'](?:\s+(.+?))?\)?$/i,
+    );
     if (callMatch) {
       variables[variableName] = executeCall(callMatch[1], callMatch[2]);
       return;
@@ -204,28 +315,37 @@ export function applyStoryAction(
     return;
   }
 
-  const callOnlyMatch = cleaned.match(/^call:\s*["']([^"']+)["'](?:\s+(.+))?$/i);
+  const callOnlyMatch = cleaned.match(
+    /^call:\s*["']([^"']+)["'](?:\s+(.+))?$/i,
+  );
   if (callOnlyMatch) {
     executeCall(callOnlyMatch[1], callOnlyMatch[2]);
     return;
   }
 }
 
-/** Executes `(set: $x to <expr>)` side effects and returns content unchanged. */
+/**
+ * Executes `(set: $x to <expr>)` side effects and returns content unchanged.
+ *
+ * @param input - Raw passage content, possibly containing `(set: ...)` macros.
+ * @param variables - Variable map mutated in place.
+ * @param ctx - The active engine context.
+ * @returns `input` unchanged (side effects only).
+ */
 export function applySetMacros(
   input: string,
   variables: VariableMap,
   ctx: StoryEngineContext,
 ): string {
-  let result = '';
+  let result = "";
   let cursor = 0;
   let searchFrom = 0;
 
   while (searchFrom < input.length) {
-    const setStart = input.indexOf('(set:', searchFrom);
+    const setStart = input.indexOf("(set:", searchFrom);
     if (setStart === -1) break;
 
-    const parsed = readBalancedBlock(input, setStart, '(', ')');
+    const parsed = readBalancedBlock(input, setStart, "(", ")");
     if (!parsed) {
       searchFrom = setStart + 5;
       continue;
@@ -252,17 +372,22 @@ export function applySetMacros(
   return result;
 }
 
-/** Removes `(set: ...)` macros from content so they don't appear in rendered HTML. */
+/**
+ * Removes `(set: ...)` macros from content so they don't appear in rendered HTML.
+ *
+ * @param input - Raw passage content.
+ * @returns `input` with all `(set: ...)` macros removed.
+ */
 export function stripSetMacros(input: string): string {
-  let result = '';
+  let result = "";
   let cursor = 0;
   let searchFrom = 0;
 
   while (searchFrom < input.length) {
-    const setStart = input.indexOf('(set:', searchFrom);
+    const setStart = input.indexOf("(set:", searchFrom);
     if (setStart === -1) break;
 
-    const parsed = readBalancedBlock(input, setStart, '(', ')');
+    const parsed = readBalancedBlock(input, setStart, "(", ")");
     if (!parsed) {
       searchFrom = setStart + 5;
       continue;
@@ -285,6 +410,13 @@ export function stripSetMacros(input: string): string {
   return result;
 }
 
+/**
+ * Runs a passage's `(set: ...)` side effects when it is entered, ignoring the returned text.
+ *
+ * @param content - The entered passage's raw content.
+ * @param variables - Variable map mutated in place.
+ * @param ctx - The active engine context.
+ */
 export function applyPassageEntryEffects(
   content: string,
   variables: VariableMap,
@@ -293,44 +425,49 @@ export function applyPassageEntryEffects(
   applySetMacros(content, variables, ctx);
 }
 
-// Tags treated as raw HTML block wrappers by the markdown renderer.
+/** Tags treated as raw HTML block wrappers by the markdown renderer. */
 export const MARKDOWN_RAW_HTML_BLOCK_TAGS = new Set([
-  'div',
-  'section',
-  'article',
-  'aside',
-  'header',
-  'footer',
-  'main',
-  'nav',
-  'pre',
-  'blockquote',
-  'table',
-  'thead',
-  'tbody',
-  'tfoot',
-  'tr',
-  'td',
-  'th',
-  'ul',
-  'ol',
-  'li',
-  'p',
-  'h1',
-  'h2',
-  'h3',
-  'h4',
-  'h5',
-  'h6',
+  "div",
+  "section",
+  "article",
+  "aside",
+  "header",
+  "footer",
+  "main",
+  "nav",
+  "pre",
+  "blockquote",
+  "table",
+  "thead",
+  "tbody",
+  "tfoot",
+  "tr",
+  "td",
+  "th",
+  "ul",
+  "ol",
+  "li",
+  "p",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
 ]);
 
-/** Lightweight inline markdown renderer: inline code, bold/italic/del, links. */
+/**
+ * Lightweight inline markdown renderer: inline code, bold/italic/del, links.
+ *
+ * @param input - Raw inline text/HTML mix.
+ * @returns HTML with inline markdown syntax converted to tags.
+ */
 export function renderMarkdownInline(input: string): string {
   const segments = input.split(/(<[^>]+>)/g);
 
   return segments
     .map((segment) => {
-      if (!segment || segment.startsWith('<')) {
+      if (!segment || segment.startsWith("<")) {
         return segment;
       }
 
@@ -341,11 +478,11 @@ export function renderMarkdownInline(input: string): string {
         return placeholder;
       });
 
-      working = working.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-      working = working.replace(/__([^_]+)__/g, '<strong>$1</strong>');
-      working = working.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
-      working = working.replace(/_([^_\n]+)_/g, '<em>$1</em>');
-      working = working.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+      working = working.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+      working = working.replace(/__([^_]+)__/g, "<strong>$1</strong>");
+      working = working.replace(/\*([^*\n]+)\*/g, "<em>$1</em>");
+      working = working.replace(/_([^_\n]+)_/g, "<em>$1</em>");
+      working = working.replace(/~~([^~]+)~~/g, "<del>$1</del>");
       working = working.replace(
         /\[([^\]]+)\]\(([^)]+)\)/g,
         (_full, label, href) => {
@@ -356,32 +493,37 @@ export function renderMarkdownInline(input: string): string {
 
       working = working.replace(
         /__INLINE_CODE_(\d+)__/g,
-        (_full, index: string) => codePlaceholders[Number(index)] ?? '',
+        (_full, index: string) => codePlaceholders[Number(index)] ?? "",
       );
       return working;
     })
-    .join('');
+    .join("");
 }
 
-/** Lightweight block-level markdown renderer: headings, lists, quotes, code fences, raw HTML blocks. */
+/**
+ * Lightweight block-level markdown renderer: headings, lists, quotes, code fences, raw HTML blocks.
+ *
+ * @param input - Raw text with block-level markdown syntax.
+ * @returns HTML with block-level markdown syntax converted to tags.
+ */
 export function renderMarkdownBlocks(input: string): string {
-  const lines = input.replace(/\r\n/g, '\n').split('\n');
+  const lines = input.replace(/\r\n/g, "\n").split("\n");
   const output: string[] = [];
   const paragraphLines: string[] = [];
   const quoteLines: string[] = [];
   const listItems: string[] = [];
-  let listType: 'ul' | 'ol' | null = null;
+  let listType: "ul" | "ol" | null = null;
   let inCodeBlock = false;
   let codeLines: string[] = [];
-  let codeLanguage = '';
+  let codeLanguage = "";
   let inRawHtmlBlock = false;
-  let rawHtmlTag = '';
+  let rawHtmlTag = "";
   let rawHtmlLines: string[] = [];
 
   const flushParagraph = () => {
     if (!paragraphLines.length) return;
     output.push(
-      `<p>${renderMarkdownInline(paragraphLines.join('<br />'))}</p>`,
+      `<p>${renderMarkdownInline(paragraphLines.join("<br />"))}</p>`,
     );
     paragraphLines.length = 0;
   };
@@ -389,7 +531,7 @@ export function renderMarkdownBlocks(input: string): string {
   const flushQuote = () => {
     if (!quoteLines.length) return;
     output.push(
-      `<blockquote>${renderMarkdownInline(quoteLines.join('<br />'))}</blockquote>`,
+      `<blockquote>${renderMarkdownInline(quoteLines.join("<br />"))}</blockquote>`,
     );
     quoteLines.length = 0;
   };
@@ -398,7 +540,7 @@ export function renderMarkdownBlocks(input: string): string {
     if (!listItems.length || !listType) return;
     const items = listItems
       .map((item) => `<li>${renderMarkdownInline(item)}</li>`)
-      .join('');
+      .join("");
     output.push(`<${listType}>${items}</${listType}>`);
     listItems.length = 0;
     listType = null;
@@ -417,11 +559,11 @@ export function renderMarkdownBlocks(input: string): string {
     if (inCodeBlock) {
       if (/^```\s*$/.test(trimmed)) {
         output.push(
-          `<pre><code${codeLanguage ? ` class="language-${escapeHtml(codeLanguage)}"` : ''}>${escapeHtml(codeLines.join('\n'))}</code></pre>`,
+          `<pre><code${codeLanguage ? ` class="language-${escapeHtml(codeLanguage)}"` : ""}>${escapeHtml(codeLines.join("\n"))}</code></pre>`,
         );
         inCodeBlock = false;
         codeLines = [];
-        codeLanguage = '';
+        codeLanguage = "";
       } else {
         codeLines.push(line);
       }
@@ -431,9 +573,9 @@ export function renderMarkdownBlocks(input: string): string {
     if (inRawHtmlBlock) {
       rawHtmlLines.push(line);
       if (trimmed.toLowerCase() === `</${rawHtmlTag}>`) {
-        output.push(rawHtmlLines.join('\n'));
+        output.push(rawHtmlLines.join("\n"));
         inRawHtmlBlock = false;
-        rawHtmlTag = '';
+        rawHtmlTag = "";
         rawHtmlLines = [];
       }
       continue;
@@ -448,7 +590,7 @@ export function renderMarkdownBlocks(input: string): string {
     if (codeFenceMatch) {
       flushAllBlocks();
       inCodeBlock = true;
-      codeLanguage = codeFenceMatch[1] ?? '';
+      codeLanguage = codeFenceMatch[1] ?? "";
       codeLines = [];
       continue;
     }
@@ -491,7 +633,7 @@ export function renderMarkdownBlocks(input: string): string {
     const orderedListMatch = trimmed.match(/^\d+\.\s+(.+)$/);
     if (unorderedListMatch || orderedListMatch) {
       flushParagraph();
-      const nextType: 'ul' | 'ol' = unorderedListMatch ? 'ul' : 'ol';
+      const nextType: "ul" | "ol" = unorderedListMatch ? "ul" : "ol";
       if (listType && listType !== nextType) {
         flushList();
       }
@@ -499,7 +641,7 @@ export function renderMarkdownBlocks(input: string): string {
       const listItem = unorderedListMatch
         ? unorderedListMatch[1]
         : orderedListMatch?.[1];
-      listItems.push((listItem ?? '').trim());
+      listItems.push((listItem ?? "").trim());
       continue;
     }
 
@@ -514,15 +656,15 @@ export function renderMarkdownBlocks(input: string): string {
 
   if (inCodeBlock) {
     output.push(
-      `<pre><code${codeLanguage ? ` class="language-${escapeHtml(codeLanguage)}"` : ''}>${escapeHtml(codeLines.join('\n'))}</code></pre>`,
+      `<pre><code${codeLanguage ? ` class="language-${escapeHtml(codeLanguage)}"` : ""}>${escapeHtml(codeLines.join("\n"))}</code></pre>`,
     );
   }
 
   if (inRawHtmlBlock && rawHtmlLines.length) {
-    output.push(rawHtmlLines.join('\n'));
+    output.push(rawHtmlLines.join("\n"));
   }
 
-  return output.join('\n');
+  return output.join("\n");
 }
 
 interface ParsedIfMacroBranch {
@@ -535,12 +677,18 @@ interface ParsedIfMacro {
   branches: ParsedIfMacroBranch[];
 }
 
-/** Extracts an `(if: ...) [true] (else-if: ...)[...] (else:)[false]` macro chain. */
+/**
+ * Extracts an `(if: ...) [true] (else-if: ...)[...] (else:)[false]` macro chain.
+ *
+ * @param source - The full source text to scan.
+ * @param startIndex - Index of the opening `(` of the `(if: ...)` signature.
+ * @returns The parsed branch chain and end index, or `null` if not a valid `if:` macro.
+ */
 export function consumeIfMacro(
   source: string,
   startIndex: number,
 ): ParsedIfMacro | null {
-  const signature = readBalancedBlock(source, startIndex, '(', ')');
+  const signature = readBalancedBlock(source, startIndex, "(", ")");
   if (!signature) return null;
 
   const conditionMatch = signature.content.trim().match(/^if:\s*([\s\S]+)$/i);
@@ -549,7 +697,7 @@ export function consumeIfMacro(
   let cursor = signature.endIndex;
   while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
 
-  const trueBranchBlock = readBalancedBlock(source, cursor, '[', ']');
+  const trueBranchBlock = readBalancedBlock(source, cursor, "[", "]");
   if (!trueBranchBlock) return null;
 
   cursor = trueBranchBlock.endIndex;
@@ -562,8 +710,8 @@ export function consumeIfMacro(
   });
 
   while (cursor < source.length) {
-    if (source.slice(cursor, cursor + 9).toLowerCase() === '(else-if:') {
-      const sig = readBalancedBlock(source, cursor, '(', ')');
+    if (source.slice(cursor, cursor + 9).toLowerCase() === "(else-if:") {
+      const sig = readBalancedBlock(source, cursor, "(", ")");
       if (!sig) break;
       const m = sig.content.trim().match(/^else[-\s]?if:\s*([\s\S]+)$/i);
       if (!m) {
@@ -572,7 +720,7 @@ export function consumeIfMacro(
       }
       cursor = sig.endIndex;
       while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
-      const branchBlock = readBalancedBlock(source, cursor, '[', ']');
+      const branchBlock = readBalancedBlock(source, cursor, "[", "]");
       if (!branchBlock) return null;
       branches.push({ condition: m[1].trim(), branch: branchBlock.content });
       cursor = branchBlock.endIndex;
@@ -580,8 +728,8 @@ export function consumeIfMacro(
       continue;
     }
 
-    if (source.slice(cursor, cursor + 8).toLowerCase() === '(elseif:') {
-      const sig = readBalancedBlock(source, cursor, '(', ')');
+    if (source.slice(cursor, cursor + 8).toLowerCase() === "(elseif:") {
+      const sig = readBalancedBlock(source, cursor, "(", ")");
       if (!sig) break;
       const m = sig.content.trim().match(/^elseif:\s*([\s\S]+)$/i);
       if (!m) {
@@ -590,7 +738,7 @@ export function consumeIfMacro(
       }
       cursor = sig.endIndex;
       while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
-      const branchBlock = readBalancedBlock(source, cursor, '[', ']');
+      const branchBlock = readBalancedBlock(source, cursor, "[", "]");
       if (!branchBlock) return null;
       branches.push({ condition: m[1].trim(), branch: branchBlock.content });
       cursor = branchBlock.endIndex;
@@ -598,10 +746,10 @@ export function consumeIfMacro(
       continue;
     }
 
-    if (source.slice(cursor, cursor + 7).toLowerCase() === '(else:)') {
+    if (source.slice(cursor, cursor + 7).toLowerCase() === "(else:)") {
       cursor += 7;
       while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
-      const elseBlock = readBalancedBlock(source, cursor, '[', ']');
+      const elseBlock = readBalancedBlock(source, cursor, "[", "]");
       if (!elseBlock) return null;
       branches.push({ condition: null, branch: elseBlock.content });
       cursor = elseBlock.endIndex;
@@ -618,19 +766,27 @@ export function consumeIfMacro(
   };
 }
 
-/** Walks input replacing conditional macros with the rendered branch content. */
+/**
+ * Walks input replacing conditional macros with the rendered branch content.
+ *
+ * @param input - Raw passage content, possibly containing `(if: ...)` macros.
+ * @param variables - Current variable map.
+ * @param story - The full story, needed to recursively render selected branches.
+ * @param ctx - The active engine context.
+ * @returns `input` with all `(if: ...)` macros replaced by their selected, rendered branch.
+ */
 export function replaceIfMacros(
   input: string,
   variables: VariableMap,
   story: StoryData,
   ctx: StoryEngineContext,
 ): string {
-  let result = '';
+  let result = "";
   let cursor = 0;
   let searchFrom = 0;
 
   while (searchFrom < input.length) {
-    const ifStart = input.indexOf('(if:', searchFrom);
+    const ifStart = input.indexOf("(if:", searchFrom);
     if (ifStart === -1) break;
 
     const parsed = consumeIfMacro(input, ifStart);
@@ -641,7 +797,7 @@ export function replaceIfMacros(
 
     result += input.slice(cursor, ifStart);
 
-    let selected = '';
+    let selected = "";
     for (const b of parsed.branches) {
       if (b.condition === null) {
         selected = b.branch;
@@ -663,13 +819,29 @@ export function replaceIfMacros(
   return result;
 }
 
+/**
+ * Extracts the target passage name from a `(goto:"Target")` action block, if present.
+ *
+ * @param actionBlock - Raw action block text (e.g. a `(link:...)`'s body).
+ * @returns The target passage name, or `undefined` if no `goto:` is found.
+ */
 export function extractGotoTarget(actionBlock: string): string | undefined {
   const normalized = actionBlock.trim();
-  const gotoMatch = normalized.match(/goto:\s*(?:["']([^"']+)["']|([^\]\)]+))/i);
+  const gotoMatch = normalized.match(
+    /goto:\s*(?:["']([^"']+)["']|([^\]\)]+))/i,
+  );
   return (gotoMatch?.[1] ?? gotoMatch?.[2])?.trim();
 }
 
-/** Builds a `<button data-story-target=... data-story-action=...>` link, encoding attrs via `ctx`. */
+/**
+ * Builds a `<button data-story-target=... data-story-action=...>` link, encoding attrs via `ctx`.
+ *
+ * @param label - Visible link text.
+ * @param target - Destination passage name.
+ * @param action - Optional `set:`/`call:` action to run before navigating.
+ * @param ctx - The active engine context, used to encode attribute values.
+ * @returns The rendered `<button>` HTML.
+ */
 export function buildStoryLink(
   label: string,
   target: string,
@@ -679,10 +851,19 @@ export function buildStoryLink(
   const encTarget = encodeAttributeValue(ctx, target);
   const actionAttribute = action
     ? ` data-story-action="${escapeHtml(encodeAttributeValue(ctx, action))}"`
-    : '';
+    : "";
   return `<button type="button" class="story-link" data-story-target="${escapeHtml(encTarget)}"${actionAttribute}>${escapeHtml(label)}</button>`;
 }
 
+/**
+ * Expands story macros (links, if/display/print/call, style blocks) into sanitized HTML.
+ *
+ * @param raw - Raw passage content.
+ * @param variables - Current variable map.
+ * @param story - The full story, needed to resolve `display:` targets and recursive rendering.
+ * @param ctx - The active engine context.
+ * @returns Sanitized HTML with all supported macros expanded.
+ */
 export function replaceTextWithHtml(
   raw: string,
   variables: VariableMap,
@@ -710,12 +891,17 @@ export function replaceTextWithHtml(
       rawLabel: string,
       actionBlock: string,
     ) => {
-      const label = literalLabel || rawLabel || '继续';
+      const label = literalLabel || rawLabel || "继续";
       const target = extractGotoTarget(actionBlock) || label;
-      const actionMatch = (actionBlock || '').match(
+      const actionMatch = (actionBlock || "").match(
         /(?:set:\s*[^)\]]+|call:\s*[^)\]]+)/i,
       );
-      return buildStoryLink(label, target, actionMatch ? actionMatch[0] : undefined, ctx);
+      return buildStoryLink(
+        label,
+        target,
+        actionMatch ? actionMatch[0] : undefined,
+        ctx,
+      );
     },
   );
 
@@ -734,7 +920,7 @@ export function replaceTextWithHtml(
     (_full: string, name: string, argsRaw?: string) => {
       const args = parseCallArgs(argsRaw, variables);
       const result = ctx.callFunction(name, args, variables);
-      return escapeHtml(String(result ?? ''));
+      return escapeHtml(String(result ?? ""));
     },
   );
 
@@ -742,8 +928,10 @@ export function replaceTextWithHtml(
 
   const displayPattern = /\(display:\s*["']([^"']+)["']\s*\)/g;
   working = working.replace(displayPattern, (_all, targetName: string) => {
-    const target = story.passages.find((passage) => passage.name === targetName);
-    if (!target) return '';
+    const target = story.passages.find(
+      (passage) => passage.name === targetName,
+    );
+    if (!target) return "";
     const placeholder = `$HTML_FRAGMENT$${htmlFragments.length}$`;
     htmlFragments.push(renderStoryText(target.content, variables, story, ctx));
     return placeholder;
@@ -760,11 +948,11 @@ export function replaceTextWithHtml(
     buildStoryLink(targetName, targetName, undefined, ctx),
   );
 
-  working = working.replace(/''([^']+)''/g, '<strong>$1</strong>');
-  working = working.replace(/(?<!:)\/\/([^/\n]+?)\/\//g, '<em>$1</em>');
-  working = working.replace(/~~([^~]+)~~/g, '<del>$1</del>');
-  working = working.replace(/\^\^([^^]+)\^\^/g, '<sup>$1</sup>');
-  working = working.replace(/,,([^,]+),,/g, '<sub>$1</sub>');
+  working = working.replace(/''([^']+)''/g, "<strong>$1</strong>");
+  working = working.replace(/(?<!:)\/\/([^/\n]+?)\/\//g, "<em>$1</em>");
+  working = working.replace(/~~([^~]+)~~/g, "<del>$1</del>");
+  working = working.replace(/\^\^([^^]+)\^\^/g, "<sup>$1</sup>");
+  working = working.replace(/,,([^,]+),,/g, "<sub>$1</sub>");
 
   working = renderMarkdownBlocks(working);
 
@@ -778,6 +966,15 @@ export function replaceTextWithHtml(
   return working;
 }
 
+/**
+ * Renders a passage's raw content into sanitized HTML, expanding all supported macros.
+ *
+ * @param input - Raw passage content.
+ * @param variables - Current variable map.
+ * @param story - The full story.
+ * @param ctx - The active engine context.
+ * @returns Sanitized, ready-to-embed HTML.
+ */
 export function renderStoryText(
   input: string,
   variables: VariableMap,
@@ -787,6 +984,12 @@ export function renderStoryText(
   return replaceTextWithHtml(input, variables, story, ctx);
 }
 
+/**
+ * Strips surrounding quotes and whitespace from a raw passage-name token.
+ *
+ * @param name - Raw passage-name token, possibly quoted.
+ * @returns The normalized passage name.
+ */
 export function normalizePassageName(name: string): string {
-  return name.trim().replace(/^"|"$/g, '');
+  return name.trim().replace(/^"|"$/g, "");
 }

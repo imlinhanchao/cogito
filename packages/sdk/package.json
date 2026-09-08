@@ -1,7 +1,7 @@
 {
   "name": "tellory",
   "version": "0.0.1",
-  "description": "织言 (Tellory) 互动故事引擎共享 SDK：故事源码解析与序列化、宏语法扫描工具、HTML 白名单净化器。",
+  "description": "The Tellory interactive story engine shared SDK: story source parsing, serialization and rendering.",
   "main": "dist/index.mjs",
   "module": "dist/index.mjs",
   "types": "dist/index.d.mts",
@@ -28,11 +28,18 @@
     "node": ">=12.0"
   },
   "scripts": {
+    "format": "prettier --write src/",
+    "prebuild": "npm run format",
+    "prepare": "npm run build",
     "build": "tsdown src/index.ts",
-    "dev": "tsdown src/index.ts --watch"
+    "dev": "tsdown src/index.ts --watch",
+    "docs:build": "typedoc",
+    "docs:watch": "typedoc --watch"
   },
   "devDependencies": {
     "tsdown": "^0.18.4",
+    "typedoc": "^0.28.20",
+    "typedoc-plugin-markdown": "^4.13.0",
     "typescript": "^5.1.6"
   },
   "release": {

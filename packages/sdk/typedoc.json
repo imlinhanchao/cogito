@@ -1,0 +1,12 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/index.ts"],
+  "out": "docs",
+  "theme": "default",
+  "name": "Tellory SDK Documentation",
+  "includeVersion": true,
+  "readme": "README.md",
+  "exclude": ["**/node_modules/**", "**/dist/**"],
+  "cleanOutputDir": true,
+  "githubPages": true
+}

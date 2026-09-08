@@ -1,4 +1,4 @@
-import type { StoryData, VariableMap } from './types';
+import type { StoryData, VariableMap } from "./types";
 import {
   ALLOWED_HTML_TAGS,
   BLOCK_TAGS,
@@ -7,8 +7,12 @@ import {
   formatTextNode,
   sanitizeTag,
   sanitizeAllowedHtml,
-} from './sanitizer';
-import { readBalancedBlock, consumeFnDefinition, extractAndRegisterFunctions } from './scanner';
+} from "./sanitizer";
+import {
+  readBalancedBlock,
+  consumeFnDefinition,
+  extractAndRegisterFunctions,
+} from "./scanner";
 import {
   CALL_IN_EXPRESSION_PATTERN,
   CALL_ARG_TOKEN_PATTERN,
@@ -34,46 +38,47 @@ import {
   buildStoryLink,
   replaceTextWithHtml,
   renderStoryText,
-} from './renderer';
+} from "./renderer";
+import { buildInitialVariables } from "./parser";
 
 // Functions/constants that must be embedded verbatim (via `.toString()`) into
 // the exported standalone HTML so the page can run the same DSL without any
 // bundler. Order matters: later entries may reference earlier ones by name.
 const HELPER_ORDER = [
-  'ALLOWED_HTML_TAGS',
-  'BLOCK_TAGS',
-  'PRESERVE_NEWLINE_TAGS',
-  'escapeHtml',
-  'formatTextNode',
-  'sanitizeTag',
-  'sanitizeAllowedHtml',
-  'readBalancedBlock',
-  'consumeFnDefinition',
-  'extractAndRegisterFunctions',
-  'CALL_IN_EXPRESSION_PATTERN',
-  'CALL_ARG_TOKEN_PATTERN',
-  'MARKDOWN_RAW_HTML_BLOCK_TAGS',
-  'compileExpressionSource',
-  'createDefaultEvaluator',
-  'encodeAttributeValue',
-  'decodeAttributeValue',
-  'parseCallArgs',
-  'toExpressionLiteral',
-  'replaceCallExpressions',
-  'evaluateExpression',
-  'evaluateCondition',
-  'applyStoryAction',
-  'applySetMacros',
-  'stripSetMacros',
-  'applyPassageEntryEffects',
-  'renderMarkdownInline',
-  'renderMarkdownBlocks',
-  'consumeIfMacro',
-  'replaceIfMacros',
-  'extractGotoTarget',
-  'buildStoryLink',
-  'replaceTextWithHtml',
-  'renderStoryText',
+  "ALLOWED_HTML_TAGS",
+  "BLOCK_TAGS",
+  "PRESERVE_NEWLINE_TAGS",
+  "escapeHtml",
+  "formatTextNode",
+  "sanitizeTag",
+  "sanitizeAllowedHtml",
+  "readBalancedBlock",
+  "consumeFnDefinition",
+  "extractAndRegisterFunctions",
+  "CALL_IN_EXPRESSION_PATTERN",
+  "CALL_ARG_TOKEN_PATTERN",
+  "MARKDOWN_RAW_HTML_BLOCK_TAGS",
+  "compileExpressionSource",
+  "createDefaultEvaluator",
+  "encodeAttributeValue",
+  "decodeAttributeValue",
+  "parseCallArgs",
+  "toExpressionLiteral",
+  "replaceCallExpressions",
+  "evaluateExpression",
+  "evaluateCondition",
+  "applyStoryAction",
+  "applySetMacros",
+  "stripSetMacros",
+  "applyPassageEntryEffects",
+  "renderMarkdownInline",
+  "renderMarkdownBlocks",
+  "consumeIfMacro",
+  "replaceIfMacros",
+  "extractGotoTarget",
+  "buildStoryLink",
+  "replaceTextWithHtml",
+  "renderStoryText",
 ] as const;
 
 const HELPER_MAP: Record<(typeof HELPER_ORDER)[number], unknown> = {
@@ -116,15 +121,16 @@ const HELPER_MAP: Record<(typeof HELPER_ORDER)[number], unknown> = {
 function serializeHelpers(): string {
   return HELPER_ORDER.map((name) => {
     const value = HELPER_MAP[name];
-    if (typeof value === 'function') return value.toString();
+    if (typeof value === "function") return value.toString();
     if (value instanceof RegExp) return `const ${name} = ${value.toString()};`;
-    if (value instanceof Set) return `const ${name} = new Set(${JSON.stringify(Array.from(value))});`;
+    if (value instanceof Set)
+      return `const ${name} = new Set(${JSON.stringify(Array.from(value))});`;
     try {
       return `const ${name} = ${JSON.stringify(value)};`;
     } catch {
       return `// could not serialize ${name}`;
     }
-  }).join('\n\n');
+  }).join("\n\n");
 }
 
 /**
@@ -133,15 +139,20 @@ function serializeHelpers(): string {
  * (unminified, see packages/sdk/tsdown.config.ts) so it can run standalone
  * without any bundler. Links/attributes are rendered as-is (no encoding),
  * matching this module's default no-op `encodeAttribute`/`decodeAttribute`.
+ *
+ * @param story - The story to export.
+ * @param variables - Current variable values to embed.
+ * @param currentPassage - Name of the passage to render first.
+ * @returns A complete, standalone HTML document string.
  */
 export function buildStandaloneExport(
   story: StoryData,
-  variables: VariableMap,
-  currentPassage: string,
+  variables?: VariableMap,
+  currentPassage?: string,
 ): string {
   const safeStory = JSON.stringify(story);
-  const safeVariables = JSON.stringify(variables);
-  const safeCurrent = JSON.stringify(currentPassage);
+  const safeVariables = JSON.stringify(variables || buildInitialVariables(story));
+  const safeCurrent = JSON.stringify(currentPassage || story.startPassage);
   const helpersSrc = serializeHelpers();
 
   return `<!DOCTYPE html>
@@ -152,7 +163,6 @@ export function buildStandaloneExport(
     <title>${escapeHtml(story.title)}</title>
     <style>
       body { font-family: "Segoe UI", sans-serif; background: #f6f7fb; color: #1a1b2a; margin: 0; }
-      .hidden { display: none; }
       .story-shell { max-width: 880px; margin: 48px auto; padding: 32px; background: white; border-radius: 18px; box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08); }
       .story-title { font-size: 2rem; font-weight: 700; margin-bottom: 18px; }
       .story-content { line-height: 1.9; font-size: 1.05rem; }
@@ -161,6 +171,7 @@ export function buildStandaloneExport(
       .meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
       .badge { background: #eef2ff; color: #3730a3; border-radius: 999px; padding: 0.35rem 0.6rem; font-size: 0.75rem; }
       .sidebar { margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 12px; }
+      .hidden { display: none; }
       .var-list { display: grid; gap: 0.5rem; }
       .var-item { display: flex; justify-content: space-between; }
 
@@ -194,7 +205,7 @@ export function buildStandaloneExport(
   <body>
     <div class="story-shell">
       <div class="meta">
-        <span class="badge">独立可玩故事</span>
+        <span class="badge">织言 · Tellory</span>
       </div>
       <h1 class="story-title">${escapeHtml(story.title)}</h1>
       <div id="story-root" class="story-content"></div>

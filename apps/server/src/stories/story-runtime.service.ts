@@ -12,13 +12,14 @@ import {
 import ivm from 'isolated-vm';
 import { ConfigService } from 'src/config/config.service';
 import {
-  parseStorySource,
-  applyPassageEntryEffects as sdkApplyPassageEntryEffects,
-  applyStoryAction as sdkApplyStoryAction,
-  renderStoryText as sdkRenderStoryText,
   type StoryEngineContext,
   type StoryData,
   type StoryPassage,
+  parseStorySource,
+  applyPassageEntryEffects,
+  applyStoryAction,
+  renderStoryText,
+  buildInitialVariables,
 } from 'tellory';
 
 type Variables = Record<string, unknown>;
@@ -56,13 +57,7 @@ export class StoryRuntimeService {
       storyTitle: parsed.title,
       prevPassage: '',
     };
-    for (const passage of parsed.passages) {
-      for (const match of passage.content.matchAll(
-        /\$([A-Za-z_][A-Za-z0-9_]*)/g,
-      )) {
-        variables[match[1]] ??= 0;
-      }
-    }
+    Object.assign(variables, buildInitialVariables(parsed));
 
     return this.renderAndSeal(
       {
@@ -84,7 +79,7 @@ export class StoryRuntimeService {
     const ctx = this.buildContext(state);
     // decrypt target/action which are expected to be encrypted data-* attribute values
     if (action) {
-      sdkApplyStoryAction(this.decryptAttribute(action), state.variables, ctx);
+      applyStoryAction(this.decryptAttribute(action), state.variables, ctx);
     }
     if (target) this.changePassage(state, this.decryptAttribute(target));
     state.expiresAt = Date.now() + DATASET_TTL_MS;
@@ -98,12 +93,12 @@ export class StoryRuntimeService {
     const passage = this.getPassage(state, state.currentPassage);
     const ctx = this.buildContext(state);
     if (applyEntryEffects) {
-      sdkApplyPassageEntryEffects(passage.content, state.variables, ctx);
+      applyPassageEntryEffects(passage.content, state.variables, ctx);
     }
     return {
       dataset: this.encryptDataset(state),
       passage: state.currentPassage,
-      html: sdkRenderStoryText(
+      html: renderStoryText(
         passage.content,
         state.variables,
         this.toStoryData(state),

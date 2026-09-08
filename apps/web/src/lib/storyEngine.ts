@@ -60,14 +60,9 @@ import {
   type StoryPassage,
   type StoryData,
   type StoryEngineContext,
-  parseStorySource as sdkParseStorySource,
-  serializeStory as sdkSerializeStory,
-  collectVariableNamesFromStory as sdkCollectVariableNamesFromStory,
-  buildInitialVariables as sdkBuildInitialVariables,
+  parseStorySource,
   createDefaultEvaluator,
   applyPassageEntryEffects as sdkApplyPassageEntryEffects,
-  evaluateExpression as sdkEvaluateExpression,
-  evaluateCondition as sdkEvaluateCondition,
   applyStoryAction as sdkApplyStoryAction,
   renderStoryText as sdkRenderStoryText,
   buildStandaloneExport as sdkBuildStandaloneExport,
@@ -181,10 +176,7 @@ const GLOBAL_JS_FUNCTIONS: Record<string, string> = {};
 // doesn't need to for the browser).
 const engineCtx: StoryEngineContext = createDefaultEvaluator(GLOBAL_JS_FUNCTIONS);
 
-export const parseStorySource = sdkParseStorySource;
-export const serializeStory = sdkSerializeStory;
-export const collectVariableNamesFromStory = sdkCollectVariableNamesFromStory;
-export const buildInitialVariables = sdkBuildInitialVariables;
+export { parseStorySource, serializeStory, buildInitialVariables } from 'tellory';
 
 export function createDefaultStory(): StoryData {
   return parseStorySource(DEFAULT_STORY_SOURCE);
@@ -215,20 +207,6 @@ export function applyPassageEntryEffects(
   sdkApplyPassageEntryEffects(content, variables, engineCtx);
 }
 
-export function evaluateExpression(
-  expression: string,
-  variables: VariableMap,
-): unknown {
-  return sdkEvaluateExpression(expression, variables, engineCtx);
-}
-
-export function evaluateCondition(
-  condition: string,
-  variables: VariableMap,
-): boolean {
-  return sdkEvaluateCondition(condition, variables, engineCtx);
-}
-
 export function applyStoryAction(action: string, variables: VariableMap): void {
   sdkApplyStoryAction(action, variables, engineCtx);
 }
@@ -240,10 +218,6 @@ export function renderStoryText(
   routeTo: (target: string) => void,
 ): string {
   return sdkRenderStoryText(input, variables, story, { ...engineCtx, routeTo });
-}
-
-export function normalizePassageName(name: string): string {
-  return name.trim().replace(/^"|"$/g, "");
 }
 
 export function buildStandaloneExport(
