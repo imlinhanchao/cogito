@@ -5,6 +5,7 @@ on:
     branches: ["master"]
     paths:
       - 'packages/sdk/**'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -29,14 +30,12 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-      - name: Goto SDK
-        run: cd packages/sdk
-      - name: Print working directory
-        run: pwd
-      - name: Install dependencies
-        run: npm install --ignore-scripts
-      - name: Build documentation
-        run: npm run docs:build
+      - name: Install dependencies and Build Document
+        run: |
+          cd packages/sdk
+          npm install --ignore-scripts
+          npm run docs:build
+          mv docs ../../docs
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
