@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from "vue-router";
 import MainLayout from "@/layouts/MainLayout.vue";
+import { useAuthStore } from "@/stores/modules/auth";
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -22,6 +23,7 @@ const router = createRouter({
           component: () => import("@/views/StoryEditorView.vue"),
           meta: {
             title: "故事编辑器",
+            loginRequired: true,
           },
         },
         {
@@ -34,7 +36,7 @@ const router = createRouter({
           path: "/my-stories",
           name: "my-story-list",
           component: () => import("@/views/StoryListView.vue"),
-          meta: { title: "我的故事" },
+          meta: { title: "我的故事", loginRequired: true },
         },
         {
           path: "/play/:storyId",
@@ -52,27 +54,27 @@ const router = createRouter({
           path: "/admin/reviews",
           name: "admin-reviews",
           component: () => import("@/views/AdminReviewView.vue"),
-          meta: { title: "审核中心" },
+          meta: { title: "审核中心", loginRequired: true, adminRequired: true },
         }
         ,
         {
           path: "/admin/reviews/:id",
           name: "admin-review-detail",
           component: () => import("@/views/AdminReviewDetailView.vue"),
-          meta: { title: "审核详情" },
+          meta: { title: "审核详情", loginRequired: true, adminRequired: true },
         }
         ,
         {
           path: "/:from/:username",
           name: "user-profile-from",
           component: () => import("@/views/UserProfileView.vue"),
-          meta: { title: "个人主页" },
+          meta: { title: "个人主页", loginRequired: true },
         },
         {
           path: "/:username",
           name: "user-profile",
           component: () => import("@/views/UserProfileView.vue"),
-          meta: { title: "个人主页" },
+          meta: { title: "个人主页", loginRequired: true },
         }
       ]
     },
@@ -111,6 +113,13 @@ router.beforeEach((to) => {
     ? `${to.meta.title} | 织言 · Tellory`
     : "织言 · Tellory";
   document.title = pageTitle;
+  const authStore = useAuthStore();
+  if (to.meta.loginRequired && !authStore.isAuthenticated) {
+    return { path: '/login' };
+  }
+  if (to.meta.adminRequired && !authStore.isAdmin) {
+    return { path: '/' };
+  }
 });
 
 export default router;

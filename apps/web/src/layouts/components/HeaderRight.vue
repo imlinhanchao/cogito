@@ -1,6 +1,7 @@
 <template>
   <div class="navbar-end flex items-center gap-1.5 sm:gap-2">
     <router-link
+      v-if="isAuthenticated"
       to="/story-editor"
       class="btn btn-primary btn-xs sm:btn-sm gap-1 font-medium shadow-xs"
       title="创建故事"
