@@ -118,3 +118,7 @@ body,
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+div.CodeMirror {
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+}

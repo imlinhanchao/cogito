@@ -125,7 +125,7 @@ export const DEFAULT_STORY_SOURCE = `标题：语法示例 Demo
 (if: $score eq 0)[分数现在是零。](else:)[分数已经变化。]
 (if: $name ne "匿名")[名字已填写。](else:)[名字还是空的。]
 (if: $hasKey is not true)[这把钥匙还没拿到。](else:)[这把钥匙已经拿到。]
-[[拿起钥匙并前往大厅|Hall]](set: $hasKey to true)
+[[拿起钥匙|Hall]](set: $hasKey to true)
 (link:"回到起点")[(goto:"Start")]
 
 :: Hall

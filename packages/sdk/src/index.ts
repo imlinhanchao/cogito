@@ -4,7 +4,7 @@ export {
   buildInitialVariables,
 } from "./parser";
 export {
-  StoryEngineContext,
+  type StoryEngineContext,
   applyPassageEntryEffects,
   applyStoryAction,
   renderStoryText,

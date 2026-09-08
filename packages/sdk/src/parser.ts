@@ -1,7 +1,7 @@
 import type { StoryData, StoryPassage, VariableMap } from "./types";
 
 /** Minimal story source used to seed a brand-new, empty story. */
-export const EMPTY_STORY_SOURCE = `标题：未命名故事
+export const EMPTY_STORY_SOURCE = `title：未命名故事
 
 :: Start
 新故事开始了。
@@ -76,13 +76,14 @@ export function parseStorySource(source: string): StoryData {
 
   const title =
     (
-      normalized.match(/^\s*标题\s*[:：]\s*(.+)$/m)?.[1] ?? "Interactive Story"
+      normalized.match(/^\s*title\s*[:：]\s*(.+)$/m)?.[1] ?? "Interactive Story"
     ).trim() || "Interactive Story";
 
   const description =
-    (normalized.match(/^\s*简述\s*[:：]\s*(.+)$/m)?.[1] ?? "").trim() || "";
+    (normalized.match(/^\s*description\s*[:：]\s*(.+)$/m)?.[1] ?? "").trim() ||
+    "";
   const tagsLine =
-    (normalized.match(/^\s*标签\s*[:：]\s*(.+)$/m)?.[1] ?? "").trim() || "";
+    (normalized.match(/^\s*tags\s*[:：]\s*(.+)$/m)?.[1] ?? "").trim() || "";
   const tags = tagsLine
     ? tagsLine
         .split(",")
@@ -90,7 +91,7 @@ export function parseStorySource(source: string): StoryData {
         .filter(Boolean)
     : [];
   const explicitStart = (
-    normalized.match(/^\s*(?:起始段落|起始)\s*[:：]\s*(.+)$/m)?.[1] ?? ""
+    normalized.match(/^\s*(?:start|start passage)\s*[:：]\s*(.+)$/m)?.[1] ?? ""
   ).trim();
 
   return {
@@ -111,11 +112,12 @@ export function parseStorySource(source: string): StoryData {
  */
 export function serializeStory(story: StoryData): string {
   const headerLines: string[] = [];
-  headerLines.push(`标题：${story.title || "Untitled"}`);
-  if (story.description) headerLines.push(`简述：${story.description}`);
+  headerLines.push(`title：${story.title || "Untitled"}`);
+  if (story.description) headerLines.push(`description：${story.description}`);
   if (story.tags && story.tags.length)
-    headerLines.push(`标签：${story.tags.join(",")}`);
-  if (story.startPassage) headerLines.push(`起始段落：${story.startPassage}`);
+    headerLines.push(`tags：${story.tags.join(",")}`);
+  if (story.startPassage)
+    headerLines.push(`start passage：${story.startPassage}`);
 
   const passagesText = story.passages
     .map((passage) => {

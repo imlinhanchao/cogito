@@ -9,7 +9,6 @@
 - Vite
 - Vue Router
 - Pinia
-- UnoCSS
 - Tailwind CSS v4 + daisyUI
 
 ## 启动

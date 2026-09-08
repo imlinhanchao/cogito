@@ -249,7 +249,7 @@ async function onContentClick(e: MouseEvent) {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  margin: 0;
+  margin: 2px;
   padding: 2px 4px;
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 0.925rem;

@@ -12,17 +12,17 @@ import { escapeHtml, sanitizeAllowedHtml } from "./sanitizer";
 export interface StoryEngineContext {
   /** Registry of raw JS function bodies declared via (fn:"name")[code]. */
   functions: Record<string, string>;
-  /** 
-   * Evaluates a macro expression (with `call:` substitutions already applied). 
-   * 
+  /**
+   * Evaluates a macro expression (with `call:` substitutions already applied).
+   *
    * @param expression - The macro expression to evaluate.
    * @param variables - The current story variables.
    * @returns The result of evaluating the expression.
    */
   evaluate: (expression: string, variables: VariableMap) => unknown;
-  /** 
-   * Invokes a previously-registered (fn:) function by name. 
-   * 
+  /**
+   * Invokes a previously-registered (fn:) function by name.
+   *
    * @param name - The name of the function to call.
    * @param args - The arguments to pass to the function.
    * @param variables - The current story variables.
@@ -33,22 +33,22 @@ export interface StoryEngineContext {
     args: unknown[],
     variables: VariableMap,
   ) => unknown;
-  /** 
+  /**
    * Encodes a link target/action value before embedding it in rendered HTML.
-   * 
+   *
    * @param value - The raw attribute value to encode.
    * @returns The encoded value.
    */
   encodeAttribute?: (value: string) => string;
-  /** 
+  /**
    * Decodes a value previously produced by `encodeAttribute`.
    * @param value - The encoded attribute value to decode.
    * @returns The decoded value.
    */
   decodeAttribute?: (value: string) => string;
-  /** 
+  /**
    * Optional passage-navigation hook threaded through recursive rendering calls.
-   * 
+   *
    * @param target - The target passage to navigate to.
    */
   routeTo?: (target: string) => void;
@@ -325,7 +325,59 @@ export function applyStoryAction(
 }
 
 /**
+ * Finds ranges that belong to a link's click action — the `(set: ...)`/
+ * `(call: ...)` attached right after `[[label|target]]`, or the whole
+ * bracket body of `(link:"label")[...]` — so those macros are only run
+ * on click, not while scanning a passage for entry/render-time side effects.
+ *
+ * @param input - Raw passage content.
+ * @returns `[start, end)` index pairs covering each link action's source text.
+ */
+function findLinkActionRanges(input: string): Array<[number, number]> {
+  const ranges: Array<[number, number]> = [];
+
+  const linkOpenPattern = /\(link:\s*(?:["'][^"']*["']|[^)]*?)\)\s*\[/g;
+  let openMatch: RegExpExecArray | null;
+  while ((openMatch = linkOpenPattern.exec(input))) {
+    const bracketStart = openMatch.index + openMatch[0].length - 1;
+    const block = readBalancedBlock(input, bracketStart, "[", "]");
+    if (block) {
+      ranges.push([bracketStart, block.endIndex]);
+      linkOpenPattern.lastIndex = block.endIndex;
+    }
+  }
+
+  const linkClosePattern = /\[\[[^\]]*\]\]/g;
+  let closeMatch: RegExpExecArray | null;
+  while ((closeMatch = linkClosePattern.exec(input))) {
+    const afterIndex = closeMatch.index + closeMatch[0].length;
+    if (input[afterIndex] === "(") {
+      const block = readBalancedBlock(input, afterIndex, "(", ")");
+      if (block && /^\s*(?:set|call):/i.test(block.content)) {
+        ranges.push([afterIndex, block.endIndex]);
+      }
+    }
+  }
+
+  return ranges;
+}
+
+/**
+ * @param index - Index to test.
+ * @param ranges - `[start, end)` ranges as produced by `findLinkActionRanges`.
+ * @returns Whether `index` falls inside any of `ranges`.
+ */
+function isWithinRanges(
+  index: number,
+  ranges: Array<[number, number]>,
+): boolean {
+  return ranges.some(([start, end]) => index >= start && index < end);
+}
+
+/**
  * Executes `(set: $x to <expr>)` side effects and returns content unchanged.
+ * Macros attached to a link as its click action (see `findLinkActionRanges`)
+ * are left untouched so they only run when the link is actually clicked.
  *
  * @param input - Raw passage content, possibly containing `(set: ...)` macros.
  * @param variables - Variable map mutated in place.
@@ -337,6 +389,7 @@ export function applySetMacros(
   variables: VariableMap,
   ctx: StoryEngineContext,
 ): string {
+  const linkActionRanges = findLinkActionRanges(input);
   let result = "";
   let cursor = 0;
   let searchFrom = 0;
@@ -344,6 +397,11 @@ export function applySetMacros(
   while (searchFrom < input.length) {
     const setStart = input.indexOf("(set:", searchFrom);
     if (setStart === -1) break;
+
+    if (isWithinRanges(setStart, linkActionRanges)) {
+      searchFrom = setStart + 5;
+      continue;
+    }
 
     const parsed = readBalancedBlock(input, setStart, "(", ")");
     if (!parsed) {
@@ -374,11 +432,14 @@ export function applySetMacros(
 
 /**
  * Removes `(set: ...)` macros from content so they don't appear in rendered HTML.
+ * Macros attached to a link as its click action (see `findLinkActionRanges`)
+ * are left in place so the link-parsing regexes can still capture them.
  *
  * @param input - Raw passage content.
- * @returns `input` with all `(set: ...)` macros removed.
+ * @returns `input` with all standalone `(set: ...)` macros removed.
  */
 export function stripSetMacros(input: string): string {
+  const linkActionRanges = findLinkActionRanges(input);
   let result = "";
   let cursor = 0;
   let searchFrom = 0;
@@ -386,6 +447,11 @@ export function stripSetMacros(input: string): string {
   while (searchFrom < input.length) {
     const setStart = input.indexOf("(set:", searchFrom);
     if (setStart === -1) break;
+
+    if (isWithinRanges(setStart, linkActionRanges)) {
+      searchFrom = setStart + 5;
+      continue;
+    }
 
     const parsed = readBalancedBlock(input, setStart, "(", ")");
     if (!parsed) {

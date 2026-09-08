@@ -900,10 +900,6 @@ const submitForReview = async () => {
   }
 };
 
-const closeDialog = () => {
-  dialogRef.value?.close();
-};
-
 const selectPassage = (name: string) => {
   selectedPassage.value = name;
 };
@@ -959,8 +955,6 @@ const deletePassage = () => {
   selectedPassage.value = story.value.passages[0].name;
 };
 
-
-
 const copyPassageName = async (name: string) => {
   if (!name) return;
   try {
@@ -1013,7 +1007,11 @@ onMounted(() => {
     return;
   }
 
-  const draft = localStorage.getItem("haide-story-draft");
+  init();
+});
+
+function init() {
+    const draft = localStorage.getItem("haide-story-draft");
   if (draft) {
     try {
       story.value = JSON.parse(draft) as StoryData;
@@ -1043,7 +1041,7 @@ onMounted(() => {
   } else {
     selectedPassage.value = story.value.startPassage || story.value.passages[0]?.name || "Start";
   }
-});
+}
 
 watch([previewPassage, () => story.value, variables], () => {
   refreshPreview();

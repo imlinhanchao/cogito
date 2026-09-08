@@ -151,7 +151,9 @@ export function buildStandaloneExport(
   currentPassage?: string,
 ): string {
   const safeStory = JSON.stringify(story);
-  const safeVariables = JSON.stringify(variables || buildInitialVariables(story));
+  const safeVariables = JSON.stringify(
+    variables || buildInitialVariables(story),
+  );
   const safeCurrent = JSON.stringify(currentPassage || story.startPassage);
   const helpersSrc = serializeHelpers();
 
@@ -166,7 +168,7 @@ export function buildStandaloneExport(
       .story-shell { max-width: 880px; margin: 48px auto; padding: 32px; background: white; border-radius: 18px; box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08); }
       .story-title { font-size: 2rem; font-weight: 700; margin-bottom: 18px; }
       .story-content { line-height: 1.9; font-size: 1.05rem; }
-      .story-link { background: #4f46e5; color: white; border: none; border-radius: 999px; padding: 0.45rem 0.9rem; cursor: pointer; margin: 0.25rem; }
+      .story-link { background: #4f46e5; color: white; border: none; border-radius: 2px; padding: 2px 4px; cursor: pointer; margin: 2px; }
       .story-link:hover { background: #4338ca; }
       .meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
       .badge { background: #eef2ff; color: #3730a3; border-radius: 999px; padding: 0.35rem 0.6rem; font-size: 0.75rem; }
