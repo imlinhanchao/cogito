@@ -1,0 +1,792 @@
+import type { StoryData, VariableMap } from './types';
+import { readBalancedBlock, extractAndRegisterFunctions } from './scanner';
+import { escapeHtml, sanitizeAllowedHtml } from './sanitizer';
+
+/**
+ * Platform-specific hooks the shared renderer needs from its host:
+ * - `evaluate`/`callFunction` let the browser use `eval`/`Function` while a
+ *   server can run the same macro expressions inside a sandbox (e.g. isolated-vm).
+ * - `encodeAttribute`/`decodeAttribute` let a server encrypt link target/action
+ *   values embedded in rendered HTML; when omitted, values are rendered as-is.
+ */
+export interface StoryEngineContext {
+  /** Registry of raw JS function bodies declared via (fn:"name")[code]. */
+  functions: Record<string, string>;
+  /** Evaluates a macro expression (with `call:` substitutions already applied). */
+  evaluate: (expression: string, variables: VariableMap) => unknown;
+  /** Invokes a previously-registered (fn:) function by name. */
+  callFunction: (name: string, args: unknown[], variables: VariableMap) => unknown;
+  /** Encodes a link target/action value before embedding it in rendered HTML. */
+  encodeAttribute?: (value: string) => string;
+  /** Decodes a value previously produced by `encodeAttribute`. */
+  decodeAttribute?: (value: string) => string;
+  /** Optional passage-navigation hook threaded through recursive rendering calls. */
+  routeTo?: (target: string) => void;
+}
+
+export function encodeAttributeValue(ctx: StoryEngineContext, value: string): string {
+  return ctx.encodeAttribute ? ctx.encodeAttribute(value) : value;
+}
+
+export function decodeAttributeValue(ctx: StoryEngineContext, value: string): string {
+  return ctx.decodeAttribute ? ctx.decodeAttribute(value) : value;
+}
+
+/** Translates `$var` and `is/eq/ne/and/or/not/contains` macro operators into JS-evaluable source. */
+export function compileExpressionSource(expression: string): string {
+  const compiled = expression
+    .replace(/\$([A-Za-z_][A-Za-z0-9_]*)/g, (_all, name: string) => `vars["${name}"]`)
+    .replace(/\bnot\b/gi, '!')
+    .replace(/\b(?:is not|ne)\b/gi, '!==')
+    .replace(/\b(?:is|eq)\b/gi, '===')
+    .replace(/\band\b/gi, '&&')
+    .replace(/\bor\b/gi, '||');
+
+  return compiled.replace(
+    /([A-Za-z0-9_\]\)"'`.[\]]+)\s+contains\s+("[^"]*"|'[^']*'|[A-Za-z0-9_\]\)"'`.[\]]+)/g,
+    '__contains__($1,$2)',
+  );
+}
+
+/** Default browser-safe evaluator backed by `eval`/`Function`. Intended for client-side use only. */
+export function createDefaultEvaluator(
+  functions: Record<string, string>,
+): Pick<StoryEngineContext, 'functions' | 'evaluate' | 'callFunction'> {
+  return {
+    functions,
+    evaluate(expression: string, variables: VariableMap): unknown {
+      const compiled = compileExpressionSource(expression);
+      const vars = variables;
+      return (function runInScope() {
+        const __contains__ = function (a: any, b: any) {
+          try {
+            if (a == null) return false;
+            if (typeof a === 'string') return String(a).includes(b);
+            if (Array.isArray(a)) return a.includes(b);
+            return false;
+          } catch {
+            return false;
+          }
+        };
+        return eval(compiled);
+      })();
+    },
+    callFunction(name: string, args: unknown[], variables: VariableMap): unknown {
+      const code = functions[name];
+      if (!code) return undefined;
+      try {
+        const fn = new Function('vars', 'args', code);
+        return fn(variables, args);
+      } catch {
+        return undefined;
+      }
+    },
+  };
+}
+
+export const CALL_IN_EXPRESSION_PATTERN =
+  /call:\s*["']([^"']+)["']((?:\s+(?:"[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'|\$[A-Za-z_][A-Za-z0-9_]*|-?\d+(?:\.\d+)?|true|false|null|undefined))*)/gi;
+export const CALL_ARG_TOKEN_PATTERN =
+  /"[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'|\$[A-Za-z_][A-Za-z0-9_]*|-?\d+(?:\.\d+)?|true|false|null|undefined/g;
+
+/**
+ * Tokenizes literal argument tokens used in `(call:"name" arg1 arg2 ...)`:
+ * quoted strings, `$var` references, numbers, booleans, `null`/`undefined`.
+ */
+export function parseCallArgs(
+  argsSegment: string | undefined,
+  variables: VariableMap,
+): unknown[] {
+  if (!argsSegment) return [];
+
+  const args: unknown[] = [];
+  for (const match of argsSegment.matchAll(CALL_ARG_TOKEN_PATTERN)) {
+    const token = match[0];
+    if (
+      (token.startsWith('"') && token.endsWith('"')) ||
+      (token.startsWith("'") && token.endsWith("'"))
+    ) {
+      args.push(token.slice(1, -1));
+      continue;
+    }
+    if (token.startsWith('$')) {
+      args.push(variables[token.slice(1)]);
+      continue;
+    }
+    if (token === 'true') {
+      args.push(true);
+      continue;
+    }
+    if (token === 'false') {
+      args.push(false);
+      continue;
+    }
+    if (token === 'null') {
+      args.push(null);
+      continue;
+    }
+    if (token === 'undefined') {
+      args.push(undefined);
+      continue;
+    }
+    args.push(Number(token));
+  }
+  return args;
+}
+
+export function toExpressionLiteral(value: unknown): string {
+  if (value === undefined) return 'undefined';
+  const json = JSON.stringify(value);
+  return json === undefined ? 'undefined' : json;
+}
+
+export function replaceCallExpressions(
+  expression: string,
+  variables: VariableMap,
+  ctx: StoryEngineContext,
+): string {
+  return expression.replace(
+    CALL_IN_EXPRESSION_PATTERN,
+    (_full: string, name: string, argsSegment?: string) => {
+      const args = parseCallArgs(argsSegment, variables);
+      return toExpressionLiteral(ctx.callFunction(name, args, variables));
+    },
+  );
+}
+
+export function evaluateExpression(
+  expression: string,
+  variables: VariableMap,
+  ctx: StoryEngineContext,
+): unknown {
+  const normalized = expression.trim();
+  if (!normalized) return 0;
+  const withCalls = replaceCallExpressions(normalized, variables, ctx);
+  return ctx.evaluate(withCalls, variables);
+}
+
+export function evaluateCondition(
+  condition: string,
+  variables: VariableMap,
+  ctx: StoryEngineContext,
+): boolean {
+  const normalized = condition.trim();
+  if (!normalized) return false;
+  return Boolean(evaluateExpression(normalized, variables, ctx));
+}
+
+/** Applies a `set: $x to <expr>` or `call:"name" args...` action, mutating `variables`. */
+export function applyStoryAction(
+  action: string,
+  variables: VariableMap,
+  ctx: StoryEngineContext,
+): void {
+  const normalized = action.trim();
+  const cleaned = normalized.replace(/^\(+|\)+$/g, '').trim();
+
+  function executeCall(name: string, argsRaw?: string): unknown {
+    const args = parseCallArgs(argsRaw, variables);
+    return ctx.callFunction(name, args, variables);
+  }
+
+  const setMatch = cleaned.match(
+    /^set:\s*(\$[A-Za-z_][A-Za-z0-9_]*)\s+to\s+(.+)$/i,
+  );
+  if (setMatch) {
+    const variableName = setMatch[1].slice(1);
+    const rhs = setMatch[2].trim();
+    const callMatch = rhs.match(/^\(?call:\s*["']([^"']+)["'](?:\s+(.+?))?\)?$/i);
+    if (callMatch) {
+      variables[variableName] = executeCall(callMatch[1], callMatch[2]);
+      return;
+    }
+    variables[variableName] = evaluateExpression(rhs, variables, ctx);
+    return;
+  }
+
+  const callOnlyMatch = cleaned.match(/^call:\s*["']([^"']+)["'](?:\s+(.+))?$/i);
+  if (callOnlyMatch) {
+    executeCall(callOnlyMatch[1], callOnlyMatch[2]);
+    return;
+  }
+}
+
+/** Executes `(set: $x to <expr>)` side effects and returns content unchanged. */
+export function applySetMacros(
+  input: string,
+  variables: VariableMap,
+  ctx: StoryEngineContext,
+): string {
+  let result = '';
+  let cursor = 0;
+  let searchFrom = 0;
+
+  while (searchFrom < input.length) {
+    const setStart = input.indexOf('(set:', searchFrom);
+    if (setStart === -1) break;
+
+    const parsed = readBalancedBlock(input, setStart, '(', ')');
+    if (!parsed) {
+      searchFrom = setStart + 5;
+      continue;
+    }
+
+    const setMatch = parsed.content
+      .trim()
+      .match(/^set:\s*(\$[A-Za-z_][A-Za-z0-9_]*)\s+to\s+([\s\S]+)$/i);
+    if (!setMatch) {
+      searchFrom = setStart + 5;
+      continue;
+    }
+
+    const variableName = setMatch[1].slice(1);
+    const nextValue = setMatch[2].trim();
+    variables[variableName] = evaluateExpression(nextValue, variables, ctx);
+
+    result += input.slice(cursor, setStart);
+    cursor = parsed.endIndex;
+    searchFrom = parsed.endIndex;
+  }
+
+  result += input.slice(cursor);
+  return result;
+}
+
+/** Removes `(set: ...)` macros from content so they don't appear in rendered HTML. */
+export function stripSetMacros(input: string): string {
+  let result = '';
+  let cursor = 0;
+  let searchFrom = 0;
+
+  while (searchFrom < input.length) {
+    const setStart = input.indexOf('(set:', searchFrom);
+    if (setStart === -1) break;
+
+    const parsed = readBalancedBlock(input, setStart, '(', ')');
+    if (!parsed) {
+      searchFrom = setStart + 5;
+      continue;
+    }
+
+    const setMatch = parsed.content
+      .trim()
+      .match(/^set:\s*(\$[A-Za-z_][A-Za-z0-9_]*)\s+to\s+([\s\S]+)$/i);
+    if (!setMatch) {
+      searchFrom = setStart + 5;
+      continue;
+    }
+
+    result += input.slice(cursor, setStart);
+    cursor = parsed.endIndex;
+    searchFrom = parsed.endIndex;
+  }
+
+  result += input.slice(cursor);
+  return result;
+}
+
+export function applyPassageEntryEffects(
+  content: string,
+  variables: VariableMap,
+  ctx: StoryEngineContext,
+): void {
+  applySetMacros(content, variables, ctx);
+}
+
+// Tags treated as raw HTML block wrappers by the markdown renderer.
+export const MARKDOWN_RAW_HTML_BLOCK_TAGS = new Set([
+  'div',
+  'section',
+  'article',
+  'aside',
+  'header',
+  'footer',
+  'main',
+  'nav',
+  'pre',
+  'blockquote',
+  'table',
+  'thead',
+  'tbody',
+  'tfoot',
+  'tr',
+  'td',
+  'th',
+  'ul',
+  'ol',
+  'li',
+  'p',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+]);
+
+/** Lightweight inline markdown renderer: inline code, bold/italic/del, links. */
+export function renderMarkdownInline(input: string): string {
+  const segments = input.split(/(<[^>]+>)/g);
+
+  return segments
+    .map((segment) => {
+      if (!segment || segment.startsWith('<')) {
+        return segment;
+      }
+
+      const codePlaceholders: string[] = [];
+      let working = segment.replace(/`([^`]+)`/g, (_full, code) => {
+        const placeholder = `__INLINE_CODE_${codePlaceholders.length}__`;
+        codePlaceholders.push(`<code>${escapeHtml(code)}</code>`);
+        return placeholder;
+      });
+
+      working = working.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      working = working.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+      working = working.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+      working = working.replace(/_([^_\n]+)_/g, '<em>$1</em>');
+      working = working.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+      working = working.replace(
+        /\[([^\]]+)\]\(([^)]+)\)/g,
+        (_full, label, href) => {
+          const safeHref = escapeHtml(String(href).trim());
+          return `<a href="${safeHref}" rel="noreferrer noopener">${renderMarkdownInline(String(label))}</a>`;
+        },
+      );
+
+      working = working.replace(
+        /__INLINE_CODE_(\d+)__/g,
+        (_full, index: string) => codePlaceholders[Number(index)] ?? '',
+      );
+      return working;
+    })
+    .join('');
+}
+
+/** Lightweight block-level markdown renderer: headings, lists, quotes, code fences, raw HTML blocks. */
+export function renderMarkdownBlocks(input: string): string {
+  const lines = input.replace(/\r\n/g, '\n').split('\n');
+  const output: string[] = [];
+  const paragraphLines: string[] = [];
+  const quoteLines: string[] = [];
+  const listItems: string[] = [];
+  let listType: 'ul' | 'ol' | null = null;
+  let inCodeBlock = false;
+  let codeLines: string[] = [];
+  let codeLanguage = '';
+  let inRawHtmlBlock = false;
+  let rawHtmlTag = '';
+  let rawHtmlLines: string[] = [];
+
+  const flushParagraph = () => {
+    if (!paragraphLines.length) return;
+    output.push(
+      `<p>${renderMarkdownInline(paragraphLines.join('<br />'))}</p>`,
+    );
+    paragraphLines.length = 0;
+  };
+
+  const flushQuote = () => {
+    if (!quoteLines.length) return;
+    output.push(
+      `<blockquote>${renderMarkdownInline(quoteLines.join('<br />'))}</blockquote>`,
+    );
+    quoteLines.length = 0;
+  };
+
+  const flushList = () => {
+    if (!listItems.length || !listType) return;
+    const items = listItems
+      .map((item) => `<li>${renderMarkdownInline(item)}</li>`)
+      .join('');
+    output.push(`<${listType}>${items}</${listType}>`);
+    listItems.length = 0;
+    listType = null;
+  };
+
+  const flushAllBlocks = () => {
+    flushParagraph();
+    flushQuote();
+    flushList();
+  };
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const trimmed = line.trim();
+
+    if (inCodeBlock) {
+      if (/^```\s*$/.test(trimmed)) {
+        output.push(
+          `<pre><code${codeLanguage ? ` class="language-${escapeHtml(codeLanguage)}"` : ''}>${escapeHtml(codeLines.join('\n'))}</code></pre>`,
+        );
+        inCodeBlock = false;
+        codeLines = [];
+        codeLanguage = '';
+      } else {
+        codeLines.push(line);
+      }
+      continue;
+    }
+
+    if (inRawHtmlBlock) {
+      rawHtmlLines.push(line);
+      if (trimmed.toLowerCase() === `</${rawHtmlTag}>`) {
+        output.push(rawHtmlLines.join('\n'));
+        inRawHtmlBlock = false;
+        rawHtmlTag = '';
+        rawHtmlLines = [];
+      }
+      continue;
+    }
+
+    if (!trimmed) {
+      flushAllBlocks();
+      continue;
+    }
+
+    const codeFenceMatch = trimmed.match(/^```([A-Za-z0-9_-]+)?\s*$/);
+    if (codeFenceMatch) {
+      flushAllBlocks();
+      inCodeBlock = true;
+      codeLanguage = codeFenceMatch[1] ?? '';
+      codeLines = [];
+      continue;
+    }
+
+    const headingMatch = trimmed.match(/^(#{1,6})\s+(.+)$/);
+    if (headingMatch) {
+      flushAllBlocks();
+      const level = headingMatch[1].length;
+      output.push(
+        `<h${level}>${renderMarkdownInline(headingMatch[2])}</h${level}>`,
+      );
+      continue;
+    }
+
+    const rawHtmlStartMatch = trimmed.match(/^<([A-Za-z][\w:-]*)(\s[^>]*)?>$/);
+    if (
+      rawHtmlStartMatch &&
+      MARKDOWN_RAW_HTML_BLOCK_TAGS.has(rawHtmlStartMatch[1].toLowerCase())
+    ) {
+      flushAllBlocks();
+      inRawHtmlBlock = true;
+      rawHtmlTag = rawHtmlStartMatch[1].toLowerCase();
+      rawHtmlLines = [line];
+      continue;
+    }
+
+    const quoteMatch = trimmed.match(/^>\s?(.*)$/);
+    if (quoteMatch) {
+      flushParagraph();
+      flushList();
+      quoteLines.push(quoteMatch[1]);
+      continue;
+    }
+
+    if (quoteLines.length) {
+      flushQuote();
+    }
+
+    const unorderedListMatch = trimmed.match(/^[-*+]\s+(.+)$/);
+    const orderedListMatch = trimmed.match(/^\d+\.\s+(.+)$/);
+    if (unorderedListMatch || orderedListMatch) {
+      flushParagraph();
+      const nextType: 'ul' | 'ol' = unorderedListMatch ? 'ul' : 'ol';
+      if (listType && listType !== nextType) {
+        flushList();
+      }
+      listType = nextType;
+      const listItem = unorderedListMatch
+        ? unorderedListMatch[1]
+        : orderedListMatch?.[1];
+      listItems.push((listItem ?? '').trim());
+      continue;
+    }
+
+    if (listItems.length) {
+      flushList();
+    }
+
+    paragraphLines.push(line);
+  }
+
+  flushAllBlocks();
+
+  if (inCodeBlock) {
+    output.push(
+      `<pre><code${codeLanguage ? ` class="language-${escapeHtml(codeLanguage)}"` : ''}>${escapeHtml(codeLines.join('\n'))}</code></pre>`,
+    );
+  }
+
+  if (inRawHtmlBlock && rawHtmlLines.length) {
+    output.push(rawHtmlLines.join('\n'));
+  }
+
+  return output.join('\n');
+}
+
+interface ParsedIfMacroBranch {
+  condition: string | null;
+  branch: string;
+}
+
+interface ParsedIfMacro {
+  fullEndIndex: number;
+  branches: ParsedIfMacroBranch[];
+}
+
+/** Extracts an `(if: ...) [true] (else-if: ...)[...] (else:)[false]` macro chain. */
+export function consumeIfMacro(
+  source: string,
+  startIndex: number,
+): ParsedIfMacro | null {
+  const signature = readBalancedBlock(source, startIndex, '(', ')');
+  if (!signature) return null;
+
+  const conditionMatch = signature.content.trim().match(/^if:\s*([\s\S]+)$/i);
+  if (!conditionMatch) return null;
+
+  let cursor = signature.endIndex;
+  while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+
+  const trueBranchBlock = readBalancedBlock(source, cursor, '[', ']');
+  if (!trueBranchBlock) return null;
+
+  cursor = trueBranchBlock.endIndex;
+  while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+
+  const branches: ParsedIfMacroBranch[] = [];
+  branches.push({
+    condition: conditionMatch[1].trim(),
+    branch: trueBranchBlock.content,
+  });
+
+  while (cursor < source.length) {
+    if (source.slice(cursor, cursor + 9).toLowerCase() === '(else-if:') {
+      const sig = readBalancedBlock(source, cursor, '(', ')');
+      if (!sig) break;
+      const m = sig.content.trim().match(/^else[-\s]?if:\s*([\s\S]+)$/i);
+      if (!m) {
+        cursor = sig.endIndex;
+        continue;
+      }
+      cursor = sig.endIndex;
+      while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+      const branchBlock = readBalancedBlock(source, cursor, '[', ']');
+      if (!branchBlock) return null;
+      branches.push({ condition: m[1].trim(), branch: branchBlock.content });
+      cursor = branchBlock.endIndex;
+      while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+      continue;
+    }
+
+    if (source.slice(cursor, cursor + 8).toLowerCase() === '(elseif:') {
+      const sig = readBalancedBlock(source, cursor, '(', ')');
+      if (!sig) break;
+      const m = sig.content.trim().match(/^elseif:\s*([\s\S]+)$/i);
+      if (!m) {
+        cursor = sig.endIndex;
+        continue;
+      }
+      cursor = sig.endIndex;
+      while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+      const branchBlock = readBalancedBlock(source, cursor, '[', ']');
+      if (!branchBlock) return null;
+      branches.push({ condition: m[1].trim(), branch: branchBlock.content });
+      cursor = branchBlock.endIndex;
+      while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+      continue;
+    }
+
+    if (source.slice(cursor, cursor + 7).toLowerCase() === '(else:)') {
+      cursor += 7;
+      while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+      const elseBlock = readBalancedBlock(source, cursor, '[', ']');
+      if (!elseBlock) return null;
+      branches.push({ condition: null, branch: elseBlock.content });
+      cursor = elseBlock.endIndex;
+      while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+      break;
+    }
+
+    break;
+  }
+
+  return {
+    fullEndIndex: cursor,
+    branches,
+  };
+}
+
+/** Walks input replacing conditional macros with the rendered branch content. */
+export function replaceIfMacros(
+  input: string,
+  variables: VariableMap,
+  story: StoryData,
+  ctx: StoryEngineContext,
+): string {
+  let result = '';
+  let cursor = 0;
+  let searchFrom = 0;
+
+  while (searchFrom < input.length) {
+    const ifStart = input.indexOf('(if:', searchFrom);
+    if (ifStart === -1) break;
+
+    const parsed = consumeIfMacro(input, ifStart);
+    if (!parsed) {
+      searchFrom = ifStart + 4;
+      continue;
+    }
+
+    result += input.slice(cursor, ifStart);
+
+    let selected = '';
+    for (const b of parsed.branches) {
+      if (b.condition === null) {
+        selected = b.branch;
+        break;
+      }
+      if (evaluateCondition(b.condition, variables, ctx)) {
+        selected = b.branch;
+        break;
+      }
+    }
+
+    result += renderStoryText(selected, variables, story, ctx);
+
+    cursor = parsed.fullEndIndex;
+    searchFrom = parsed.fullEndIndex;
+  }
+
+  result += input.slice(cursor);
+  return result;
+}
+
+export function extractGotoTarget(actionBlock: string): string | undefined {
+  const normalized = actionBlock.trim();
+  const gotoMatch = normalized.match(/goto:\s*(?:["']([^"']+)["']|([^\]\)]+))/i);
+  return (gotoMatch?.[1] ?? gotoMatch?.[2])?.trim();
+}
+
+/** Builds a `<button data-story-target=... data-story-action=...>` link, encoding attrs via `ctx`. */
+export function buildStoryLink(
+  label: string,
+  target: string,
+  action: string | undefined,
+  ctx: StoryEngineContext,
+): string {
+  const encTarget = encodeAttributeValue(ctx, target);
+  const actionAttribute = action
+    ? ` data-story-action="${escapeHtml(encodeAttributeValue(ctx, action))}"`
+    : '';
+  return `<button type="button" class="story-link" data-story-target="${escapeHtml(encTarget)}"${actionAttribute}>${escapeHtml(label)}</button>`;
+}
+
+export function replaceTextWithHtml(
+  raw: string,
+  variables: VariableMap,
+  story: StoryData,
+  ctx: StoryEngineContext,
+): string {
+  const styleBlocks: string[] = [];
+  const htmlFragments: string[] = [];
+  let working = raw.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, (match) => {
+    const placeholder = `$STYLE_BLOCK$${styleBlocks.length}$`;
+    styleBlocks.push(match);
+    return placeholder;
+  });
+
+  working = extractAndRegisterFunctions(working, ctx.functions);
+  working = stripSetMacros(working);
+
+  const linkPattern =
+    /\(link:\s*(?:["']([^"']*)["']|([^)]*?))\)\s*\[((?:.|\n)*?)\]/g;
+  working = working.replace(
+    linkPattern,
+    (
+      _full: string,
+      literalLabel: string,
+      rawLabel: string,
+      actionBlock: string,
+    ) => {
+      const label = literalLabel || rawLabel || '继续';
+      const target = extractGotoTarget(actionBlock) || label;
+      const actionMatch = (actionBlock || '').match(
+        /(?:set:\s*[^)\]]+|call:\s*[^)\]]+)/i,
+      );
+      return buildStoryLink(label, target, actionMatch ? actionMatch[0] : undefined, ctx);
+    },
+  );
+
+  working = working.replace(
+    /\[\[([^\]|]+)(?:\|([^\]]+))?\]\](?:\(((?:set:\s*[^)]+|call:\s*[^)]+))\))?/g,
+    (_all, label: string, target?: string, action?: string) => {
+      const passageName = label.trim();
+      const actualTarget = (target ?? label).trim();
+      return buildStoryLink(passageName, actualTarget, action, ctx);
+    },
+  );
+
+  const callPattern = /\(call:\s*["']([^"']+)["'](?:\s+([^)]*?))?\)/g;
+  working = working.replace(
+    callPattern,
+    (_full: string, name: string, argsRaw?: string) => {
+      const args = parseCallArgs(argsRaw, variables);
+      const result = ctx.callFunction(name, args, variables);
+      return escapeHtml(String(result ?? ''));
+    },
+  );
+
+  working = replaceIfMacros(working, variables, story, ctx);
+
+  const displayPattern = /\(display:\s*["']([^"']+)["']\s*\)/g;
+  working = working.replace(displayPattern, (_all, targetName: string) => {
+    const target = story.passages.find((passage) => passage.name === targetName);
+    if (!target) return '';
+    const placeholder = `$HTML_FRAGMENT$${htmlFragments.length}$`;
+    htmlFragments.push(renderStoryText(target.content, variables, story, ctx));
+    return placeholder;
+  });
+
+  const printPattern = /\(print:\s*([^)]*?)\)/g;
+  working = working.replace(printPattern, (_all, expression: string) => {
+    const resolved = evaluateExpression(expression, variables, ctx);
+    return escapeHtml(String(resolved));
+  });
+
+  const gotoPattern = /\(goto:\s*["']([^"']+)['"]\s*\)/g;
+  working = working.replace(gotoPattern, (_all, targetName: string) =>
+    buildStoryLink(targetName, targetName, undefined, ctx),
+  );
+
+  working = working.replace(/''([^']+)''/g, '<strong>$1</strong>');
+  working = working.replace(/(?<!:)\/\/([^/\n]+?)\/\//g, '<em>$1</em>');
+  working = working.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+  working = working.replace(/\^\^([^^]+)\^\^/g, '<sup>$1</sup>');
+  working = working.replace(/,,([^,]+),,/g, '<sub>$1</sub>');
+
+  working = renderMarkdownBlocks(working);
+
+  working = sanitizeAllowedHtml(working);
+  for (const [index, styleBlock] of styleBlocks.entries()) {
+    working = working.replace(`$STYLE_BLOCK$${index}$`, styleBlock);
+  }
+  for (const [index, fragment] of htmlFragments.entries()) {
+    working = working.replace(`$HTML_FRAGMENT$${index}$`, fragment);
+  }
+  return working;
+}
+
+export function renderStoryText(
+  input: string,
+  variables: VariableMap,
+  story: StoryData,
+  ctx: StoryEngineContext,
+): string {
+  return replaceTextWithHtml(input, variables, story, ctx);
+}
+
+export function normalizePassageName(name: string): string {
+  return name.trim().replace(/^"|"$/g, '');
+}

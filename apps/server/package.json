@@ -37,6 +37,7 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "swagger-ui-express": "^5.0.1",
+    "tellory": "^0.0.1",
     "typeorm": "^1.1.0"
   },
   "devDependencies": {

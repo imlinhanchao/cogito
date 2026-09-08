@@ -13,17 +13,27 @@ body,
   min-height: 100%;
 }
 
-body {
-  margin: 0;
-  background: oklch(98% 0.01 240);
-}
-
 ::selection {
   background: color-mix(in oklab, oklch(58% 0.19 262) 28%, transparent);
 }
 
 .story-link {
-  @apply text-primary border-b border-current border-dashed inline-block hover:font-bold cursor-pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 2px;
+  padding: 2px 4px;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.925rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-primary, oklch(0.48 0.24 270));
+  background: color-mix(in oklch, currentColor 8%, transparent);
+  border: 1px solid color-mix(in oklch, currentColor 20%, transparent);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
 }
 
 /* Markdown element styles for story content */
@@ -38,7 +48,7 @@ body {
   font-weight: 700;
 }
 .story-content p {
-  margin: 0.6rem 0;
+  margin: 0;
 }
 .story-content ul,
 .story-content ol {
@@ -74,11 +84,7 @@ body {
   padding: 0;
 }
 .story-content blockquote {
-  border-left: 4px solid rgba(99, 102, 241, 0.12);
-  padding: 0.5rem 1rem;
-  margin: 0.6rem 0;
-  background: #fbfbfe;
-  color: #334155;
+  @apply p-4 bg-base-300/50 my-1 border-l-4 border-primary/50;
 }
 .story-content table {
   width: 100%;

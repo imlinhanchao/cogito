@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsArray } from 'class-validator';
 
 export class StoryDto {
   @IsString()
@@ -12,8 +12,12 @@ export class StoryDto {
   authorId?: string;
 
   @IsOptional()
-  @IsString()
+  @IsArray()
   tags?: string[];
+
+  @IsOptional()
+  @IsString()
+  description?: string;
 
   @IsOptional()
   @IsString()

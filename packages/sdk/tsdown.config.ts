@@ -10,7 +10,7 @@ export default defineConfig([
         removeComments: false,
       },
     },
-    minify: true,
+    minify: false,
     clean: true,
     sourcemap: true,
     external: []
@@ -25,7 +25,7 @@ export default defineConfig([
         removeComments: false,
       },
     },
-    minify: true,
+    minify: false,
     sourcemap: true,
     clean: true,
     treeshake: true,

@@ -42,7 +42,7 @@
             >
               <span class="truncate font-medium">{{ passage.name }}</span>
               <span class="badge badge-ghost badge-sm">{{
-                passage.tags.length || 0
+                passage.tags?.length || 0
               }}</span>
             </button>
             <div class="flex items-center gap-1">

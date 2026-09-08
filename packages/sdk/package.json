@@ -1,7 +1,7 @@
 {
   "name": "tellory",
   "version": "0.0.1",
-  "description": "A SDK sample for template.",
+  "description": "织言 (Tellory) 互动故事引擎共享 SDK：故事源码解析与序列化、宏语法扫描工具、HTML 白名单净化器。",
   "main": "dist/index.mjs",
   "module": "dist/index.mjs",
   "types": "dist/index.d.mts",
@@ -10,7 +10,9 @@
     "README.md"
   ],
   "keywords": [
-    "sdk"
+    "sdk",
+    "interactive-fiction",
+    "story-engine"
   ],
   "bugs": {
     "url": "https://github.com/imlinhanchao/tellory/issues"
