@@ -1,10 +1,16 @@
-# Tellory
-
 English | [简体中文](./README_zh.md)
 
-> A parser/renderer engine for describing Interactive Fiction with a plain-text DSL: parse story source, render it into safe HTML, and export it as a single, build-free HTML page.
+<h1>
+<img align="center" height="28" src="https://github.com/imlinhanchao/tellory/blob/master/apps/web/public/logo.svg?raw=true">
+<span>Tellory</span>
+</h1>
 
-## Features
+[![Documentation](https://img.shields.io/badge/documentation-online-blue
+)](https://tellory.adventext.fun/)
+
+A parser/renderer engine for describing Interactive Fiction with a plain-text DSL: parse story source, render it into safe HTML, and export it as a single, build-free HTML page.
+
+## ✨ Features
 
 - **Plain-text story DSL**: declare passages with `段落 "name":` / `:: name`, with support for `(set:)`, `(if:)/(else-if:)/(else:)`, `(display:)`, `(print:)`, `(call:)`, `[[Link|Target]]` and a lightweight Markdown subset (headings, lists, blockquotes, code blocks, bold/italic, etc.).
 - **Safe rendering**: a built-in whitelist-based HTML sanitizer strips `on*` event attributes and `javascript:`/`data:` URIs, protecting against malicious HTML injected by story authors.
@@ -12,7 +18,7 @@ English | [简体中文](./README_zh.md)
 - **Zero dependencies**: no DOM or Node built-in module dependencies — the same code runs in both the browser and Node.js.
 - **Standalone export**: a single call packages the story, current save variables, and the rendering engine into one self-contained HTML file that can be played offline by double-clicking it, with no build tools or server required.
 
-## Install
+## 📦 Install
 
 ```sh
 npm install tellory
@@ -28,7 +34,7 @@ Inside a monorepo, it can also be referenced as a workspace dependency:
 }
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
 ```ts
 import {
@@ -77,7 +83,7 @@ applyStoryAction('goto:"Left"', variables, ctx);
 const standaloneHtml = buildStandaloneExport(story, variables, story.startPassage);
 ```
 
-## Host Context
+## 🧩 Host Context
 
 `applyStoryAction`, `applyPassageEntryEffects`, and `renderStoryText` never call `eval` themselves. Instead, they take a host context object (as their third/last parameter) that performs expression evaluation and function calls. Its shape is:
 
@@ -103,7 +109,7 @@ This lets the same rendering logic be safely reused across hosts, for example:
 - **Browser**: use the default evaluator provided by `createDefaultEvaluator`, since the story author and player trust each other.
 - **Server**: swap `evaluate`/`callFunction` for a sandbox (e.g. `isolated-vm`) to keep untrusted save data/expressions out of the main process, and use `encodeAttribute`/`decodeAttribute` to encrypt/decrypt the actions carried by links, preventing players from tampering with navigation targets or variable assignments on the client.
 
-## API
+## 🛠 API
 
 | Function | Description |
 | --- | --- |
@@ -116,13 +122,13 @@ This lets the same rendering logic be safely reused across hosts, for example:
 | `renderStoryText(input, variables, story, ctx): string` | Renders a passage's raw content into sanitized HTML, expanding all supported macros. |
 | `buildStandaloneExport(story, variables, currentPassage): string` | Generates a self-contained HTML document (embedding the story data and rendering engine) that can be opened offline. |
 
-### Types
+### 🧾 Types
 
 - `StoryData` — A full story: `title`, optional `description`/`tags`, `startPassage`, `passages`.
 - `StoryPassage` — A single passage: `name`, optional `tags`, `content` (raw, unrendered source).
 - `VariableMap` — The story's runtime variable table, `Record<string, unknown>`.
 - `StoryEngineContext` — The host-supplied evaluation/function-call/attribute-codec/routing hook interface (see above).
 
-## License
+## 📝 License
 
 MIT © [Hancel.Lin](https://github.com/imlinhanchao)

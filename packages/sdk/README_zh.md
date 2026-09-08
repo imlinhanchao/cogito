@@ -1,10 +1,16 @@
-# Tellory
-
 [English](./README.md) | 简体中文
 
-> 一个用纯文本 DSL 描述互动故事的解析与渲染引擎：解析故事源码、渲染为安全的 HTML，并支持导出为单文件、免构建即可运行的 HTML 页面。
+<h1>
+<img align="center" height="30" src="https://github.com/imlinhanchao/tellory/blob/master/apps/web/public/logo.svg?raw=true">
+<span>织言 · Tellory</span>
+</h1>
 
-## 特性
+[![Documentation](https://img.shields.io/badge/documentation-online-blue
+)](https://tellory.adventext.fun/)
+
+一个用纯文本 DSL 描述互动故事的解析与渲染引擎：解析故事源码、渲染为安全的 HTML，并支持导出为单文件、免构建即可运行的 HTML 页面。
+
+## ✨ 功能
 
 - **纯文本故事 DSL**：用 `段落 "name":` / `:: name` 声明段落，支持 `(set:)`、`(if:)/(else-if:)/(else:)`、`(display:)`、`(print:)`、`(call:)`、`[[链接|目标]]` 等宏语法，以及轻量 Markdown（标题/列表/引用/代码块/加粗斜体等）。
 - **安全渲染**：内置基于白名单的 HTML 净化器，自动剔除 `on*` 事件属性与 `javascript:`/`data:` URI，避免故事作者注入恶意 HTML。
@@ -12,7 +18,7 @@
 - **零依赖**：不依赖 DOM 或 Node 内置模块，同一份代码可在浏览器与 Node.js 中运行。
 - **单文件导出**：一行调用即可把故事、当前存档变量与渲染引擎打包进一个独立 HTML 文件，双击即可离线游玩，无需任何构建工具或服务器。
 
-## 安装
+## 📦 安装
 
 ```sh
 npm install tellory
@@ -28,7 +34,7 @@ npm install tellory
 }
 ```
 
-## 快速开始
+## 🚀 快速开始
 
 ```ts
 import {
@@ -77,7 +83,7 @@ applyStoryAction('goto:"Left"', variables, ctx);
 const standaloneHtml = buildStandaloneExport(story, variables, story.startPassage);
 ```
 
-## 宿主上下文（Context）
+## 🧩 宿主上下文（Context）
 
 `applyStoryAction`、`applyPassageEntryEffects`、`renderStoryText` 都不会自行 `eval` 表达式，而是通过第三个/最后一个参数接收一个宿主上下文对象来完成表达式求值与函数调用，形状如下：
 
@@ -103,7 +109,7 @@ interface StoryEngineContext {
 - **浏览器端**：用 `createDefaultEvaluator` 提供的默认求值器即可，故事作者与玩家互相信任。
 - **服务端**：`evaluate`/`callFunction` 换成 `isolated-vm` 等沙箱执行，避免不可信的存档/表达式影响主进程；同时用 `encodeAttribute`/`decodeAttribute` 对链接携带的动作做加解密，防止玩家在客户端篡改跳转目标或变量赋值。
 
-## API
+## 🛠 API
 
 | 函数 | 说明 |
 | --- | --- |
@@ -116,13 +122,13 @@ interface StoryEngineContext {
 | `renderStoryText(input, variables, story, ctx): string` | 将段落原始内容渲染为经过净化的 HTML，展开全部宏语法。 |
 | `buildStandaloneExport(story, variables, currentPassage): string` | 生成可离线双击打开的自包含 HTML 文档（内嵌故事数据与渲染引擎）。 |
 
-### 类型
+### 🧾 类型
 
 - `StoryData` — 完整故事：`title`、可选 `description`/`tags`、`startPassage`、`passages`。
 - `StoryPassage` — 单个段落：`name`、可选 `tags`、`content`（未渲染的原始源码）。
 - `VariableMap` — 故事运行时变量表，`Record<string, unknown>`。
 - `StoryEngineContext` — 宿主注入的求值/函数调用/属性编解码/路由钩子接口（见上文）。
 
-## License
+## 📝 License
 
 MIT © [Hancel.Lin](https://github.com/imlinhanchao)
