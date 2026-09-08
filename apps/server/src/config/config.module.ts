@@ -3,7 +3,9 @@ import { ConfigController, ConfigedController } from './config.controller';
 import { ConfigService } from './config.service';
 
 @Module({
-  controllers: [ConfigService.isConfigured() ? ConfigedController : ConfigController],
+  controllers: [
+    ConfigService.isConfigured() ? ConfigedController : ConfigController,
+  ],
   providers: [ConfigService],
   exports: [ConfigService],
 })

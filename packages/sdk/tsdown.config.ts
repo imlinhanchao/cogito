@@ -1,10 +1,10 @@
-import { defineConfig } from 'tsdown';
+import { defineConfig } from "tsdown";
 
 export default defineConfig([
   {
-    entry: ['src/index.ts'],
-    outDir: './dist/',
-    format: ['esm', 'cjs'],
+    entry: ["src/index.ts"],
+    outDir: "./dist/",
+    format: ["esm", "cjs"],
     dts: {
       compilerOptions: {
         removeComments: false,
@@ -13,13 +13,13 @@ export default defineConfig([
     minify: false,
     clean: true,
     sourcemap: true,
-    external: []
+    external: [],
   },
   {
-    entry: ['src/index.ts'],
-    outDir: './dist/',
-    format: ['esm'],
-    platform: 'browser',
+    entry: ["src/index.ts"],
+    outDir: "./dist/",
+    format: ["esm"],
+    platform: "browser",
     dts: {
       compilerOptions: {
         removeComments: false,
@@ -29,6 +29,6 @@ export default defineConfig([
     sourcemap: true,
     clean: true,
     treeshake: true,
-    external: []
+    external: [],
   },
 ]);

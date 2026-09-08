@@ -1,2 +1,2 @@
-import Icon from './src/Icon.vue'
-export default Icon
+import Icon from "./src/Icon.vue";
+export default Icon;

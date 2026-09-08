@@ -1,9 +1,10 @@
-import { Message } from '@/components/msg';
-import { MessageBox} from '@/components/msgbox/';
-import { useAuthStore } from '@/stores/modules/auth';
-import { omit } from 'lodash-es';
+import { Message } from "@/components/msg";
+import { MessageBox } from "@/components/msgbox/";
+import { useAuthStore } from "@/stores/modules/auth";
+import { omit } from "lodash-es";
 
-export type ErrorMessageMode = 'none' | 'modal' | 'message' | 'console' | undefined;
+export type ErrorMessageMode =
+  "none" | "modal" | "message" | "console" | undefined;
 export type SuccessMessageMode = ErrorMessageMode;
 
 export interface RetryRequest {
@@ -21,11 +22,11 @@ export class HttpOptions {
   // Whether to join url
   joinPrefix?: boolean = true;
   // Interface address, use the default apiUrl if you leave it blank
-  apiUrl?: string = '/api';
+  apiUrl?: string = "/api";
   // URL prefix
   urlPrefix?: string;
   // Error message prompt type
-  errorMessageMode?: ErrorMessageMode = 'message';
+  errorMessageMode?: ErrorMessageMode = "message";
   // Success message prompt type
   successMessageMode?: SuccessMessageMode;
   // Whether to add a timestamp
@@ -55,24 +56,39 @@ class Http {
     this.options = options;
   }
 
-  public get<T = any>(options: RequestOptions, config?: HttpOptions): Promise<T> {
-    const requestOptions = { ...omit(options, ['data']), method: 'GET' };
+  public get<T = any>(
+    options: RequestOptions,
+    config?: HttpOptions,
+  ): Promise<T> {
+    const requestOptions = { ...omit(options, ["data"]), method: "GET" };
     return this.request<T>(requestOptions, config);
   }
 
-  public post<T = any>(options: RequestOptions, config?: HttpOptions): Promise<T> {
-    return this.request<T>({ ...options, method: 'POST' }, config);
+  public post<T = any>(
+    options: RequestOptions,
+    config?: HttpOptions,
+  ): Promise<T> {
+    return this.request<T>({ ...options, method: "POST" }, config);
   }
 
-  public put<T = any>(options: RequestOptions, config?: HttpOptions): Promise<T> {
-    return this.request<T>({ ...options, method: 'PUT' }, config);
+  public put<T = any>(
+    options: RequestOptions,
+    config?: HttpOptions,
+  ): Promise<T> {
+    return this.request<T>({ ...options, method: "PUT" }, config);
   }
 
-  public delete<T = any>(options: RequestOptions, config?: HttpOptions): Promise<T> {
-    return this.request<T>({ ...options, method: 'DELETE' }, config);
+  public delete<T = any>(
+    options: RequestOptions,
+    config?: HttpOptions,
+  ): Promise<T> {
+    return this.request<T>({ ...options, method: "DELETE" }, config);
   }
 
-  private request<T = any>(options: RequestOptions, config?: HttpOptions): Promise<T> {
+  private request<T = any>(
+    options: RequestOptions,
+    config?: HttpOptions,
+  ): Promise<T> {
     // 使用 fetch 实现请求
     const { url, data, params, headers, timeout } = options;
     const cfg = { ...this.options, ...config };
@@ -91,21 +107,21 @@ class Http {
     const signal = controller.signal;
     const fetchOptions = {
       method: options.method,
-      headers: { ...headers, 'Content-Type': 'application/json' } as any,
+      headers: { ...headers, "Content-Type": "application/json" } as any,
       body: data ? JSON.stringify(data) : undefined,
       signal,
     };
 
     const queryString = params
-      ? (apiUrl.includes('?') ? '&' : '?') 
-      + new URLSearchParams(params).toString()
-      : '';
+      ? (apiUrl.includes("?") ? "&" : "?") +
+        new URLSearchParams(params).toString()
+      : "";
 
     apiUrl = apiUrl + queryString;
 
     if (cfg.joinTime) {
       const timestamp = Date.now();
-      const separator = apiUrl.includes('?') ? '&' : '?';
+      const separator = apiUrl.includes("?") ? "&" : "?";
       apiUrl = `${apiUrl}${separator}t=${timestamp}`;
     }
 
@@ -117,11 +133,11 @@ class Http {
     }
 
     let timeoutId: ReturnType<typeof setTimeout>;
-    const fetchPromise = fetch(apiUrl, fetchOptions).then(
-      async (response) => {
+    const fetchPromise = fetch(apiUrl, fetchOptions)
+      .then(async (response) => {
         if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(errorText || '请求失败');
+          throw new Error(errorText || "请求失败");
         }
         if (cfg.returnNativeResponse) {
           return response;
@@ -131,34 +147,35 @@ class Http {
           return res;
         }
         if (res.code == 401) {
-          location.href = './#/login'; // Redirect to login page on 401 Unauthorized
-          throw new Error('请先登录');
+          location.href = "./#/login"; // Redirect to login page on 401 Unauthorized
+          throw new Error("请先登录");
         }
         if (res.code !== 0) {
-          throw new Error(res.msg || '请求失败');
+          throw new Error(res.msg || "请求失败");
         }
         return res.data;
-      }
-    ).catch((error) => {
-      if (cfg.errorMessageMode === 'message') {
-        Message.error(error.message);
-      } else if (cfg.errorMessageMode === 'modal') {
-        MessageBox.alert(error.message);
-      } else if (cfg.errorMessageMode === 'console') {
-        console.log(error.message);
-      }
-      throw error;
-    }).finally(() => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    });
+      })
+      .catch((error) => {
+        if (cfg.errorMessageMode === "message") {
+          Message.error(error.message);
+        } else if (cfg.errorMessageMode === "modal") {
+          MessageBox.alert(error.message);
+        } else if (cfg.errorMessageMode === "console") {
+          console.log(error.message);
+        }
+        throw error;
+      })
+      .finally(() => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      });
 
     if (timeout) {
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => {
           controller.abort();
-          reject(new Error('请求超时'));
+          reject(new Error("请求超时"));
         }, timeout);
       });
       return Promise.race([fetchPromise, timeoutPromise]);

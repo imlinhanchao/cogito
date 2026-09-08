@@ -1,7 +1,9 @@
 <template>
   <div class="w-full max-w-4xl mx-auto p-2 space-y-4">
     <!-- 顶部导航与控制栏 -->
-    <header class="navbar bg-base-100 rounded-2xl border border-base-200/80 shadow-xs px-4 py-2 flex flex-wrap items-center justify-between gap-3">
+    <header
+      class="navbar bg-base-100 rounded-2xl border border-base-200/80 shadow-xs px-4 py-2 flex flex-wrap items-center justify-between gap-3"
+    >
       <div class="flex items-center gap-2 min-w-0">
         <button
           v-if="!external"
@@ -14,13 +16,20 @@
         </button>
 
         <div class="flex flex-col min-w-0">
-          <h1 class="text-base sm:text-lg font-bold truncate tracking-tight text-base-content">
-            {{ story.title || '互动故事' }}
+          <h1
+            class="text-base sm:text-lg font-bold truncate tracking-tight text-base-content"
+          >
+            {{ story.title || "互动故事" }}
           </h1>
           <div class="flex items-center gap-2 text-xs text-base-content/60">
             <span class="inline-flex items-center gap-1">
-              <Icon icon="mdi:book-open-page-variant-outline" class="w-3.5 h-3.5 text-primary" />
-              <span class="truncate max-w-30 sm:max-w-50">{{ currentPassageName }}</span>
+              <Icon
+                icon="mdi:book-open-page-variant-outline"
+                class="w-3.5 h-3.5 text-primary"
+              />
+              <span class="truncate max-w-30 sm:max-w-50">{{
+                currentPassageName
+              }}</span>
             </span>
           </div>
         </div>
@@ -40,7 +49,9 @@
     </header>
 
     <!-- 故事正文主体区 -->
-    <main class="card bg-base-100 border border-base-200/80 shadow-sm rounded-2xl overflow-hidden transition-all">
+    <main
+      class="card bg-base-100 border border-base-200/80 shadow-sm rounded-2xl overflow-hidden transition-all"
+    >
       <div class="card-body p-5 sm:p-8 lg:p-10">
         <article
           ref="storyContentRef"
@@ -51,9 +62,18 @@
     </main>
 
     <!-- 底部辅助状态/变量查看面板（非嵌入模式下提供） -->
-    <footer v-if="!external && Object.keys(variables).length > 0" class="collapse collapse-arrow bg-base-100 rounded-xl border border-base-200/60 shadow-2xs">
-      <input type="checkbox" :checked="!variablesCollapsed" @change="toggleVariables" />
-      <div class="collapse-title text-xs sm:text-sm font-medium flex items-center gap-2 py-3 min-h-0 text-base-content/70">
+    <footer
+      v-if="!external && Object.keys(variables).length > 0"
+      class="collapse collapse-arrow bg-base-100 rounded-xl border border-base-200/60 shadow-2xs"
+    >
+      <input
+        type="checkbox"
+        :checked="!variablesCollapsed"
+        @change="toggleVariables"
+      />
+      <div
+        class="collapse-title text-xs sm:text-sm font-medium flex items-center gap-2 py-3 min-h-0 text-base-content/70"
+      >
         <Icon icon="mdi:variable" class="w-4 h-4 text-primary" />
         <span>查看当前全局状态变量 ({{ Object.keys(variables).length }})</span>
       </div>
@@ -64,8 +84,12 @@
             :key="key"
             class="flex justify-between items-center bg-base-200/50 px-2.5 py-1.5 rounded-md truncate"
           >
-            <span class="font-mono text-base-content/60 truncate mr-2">{{ key }}:</span>
-            <span class="font-mono font-semibold text-primary truncate">{{ formatVariable(val) }}</span>
+            <span class="font-mono text-base-content/60 truncate mr-2"
+              >{{ key }}:</span
+            >
+            <span class="font-mono font-semibold text-primary truncate">{{
+              formatVariable(val)
+            }}</span>
           </div>
         </div>
       </div>
@@ -255,8 +279,7 @@ onMounted(() => {
       props.storyProp.startPassage ||
       story.value.passages[0]?.name ||
       "Start";
-    variables.value =
-      props.variablesProp || buildInitialVariables(story.value);
+    variables.value = props.variablesProp || buildInitialVariables(story.value);
     renderCurrentPassage();
     return;
   }

@@ -174,9 +174,14 @@ const GLOBAL_JS_FUNCTIONS: Record<string, string> = {};
 // Browser-side rendering context: eval/Function-based evaluation; link
 // targets/actions render as-is (the server encrypts them instead, since it
 // doesn't need to for the browser).
-const engineCtx: StoryEngineContext = createDefaultEvaluator(GLOBAL_JS_FUNCTIONS);
+const engineCtx: StoryEngineContext =
+  createDefaultEvaluator(GLOBAL_JS_FUNCTIONS);
 
-export { parseStorySource, serializeStory, buildInitialVariables } from 'tellory';
+export {
+  parseStorySource,
+  serializeStory,
+  buildInitialVariables,
+} from "tellory";
 
 export function createDefaultStory(): StoryData {
   return parseStorySource(DEFAULT_STORY_SOURCE);

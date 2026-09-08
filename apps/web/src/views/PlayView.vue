@@ -1,12 +1,18 @@
 <template>
-  <div class="min-h-screen bg-base-200/50 flex flex-col font-serif text-base-content antialiased selection:bg-primary/20 selection:text-primary">
+  <div
+    class="min-h-screen bg-base-200/50 flex flex-col font-serif text-base-content antialiased selection:bg-primary/20 selection:text-primary"
+  >
     <!-- 主阅读区域：典雅纸张感设计 -->
-    <main class="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-8 py-6 sm:py-10 flex flex-col">
+    <main
+      class="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-8 py-6 sm:py-10 flex flex-col"
+    >
       <!-- 故事操作快捷工具栏 -->
-      <div class="flex items-center justify-between mb-4 px-2 text-xs font-sans text-base-content/60">
+      <div
+        class="flex items-center justify-between mb-4 px-2 text-xs font-sans text-base-content/60"
+      >
         <div class="flex items-center gap-2">
-          <button 
-            class="btn btn-ghost btn-xs gap-1 hover:text-base-content" 
+          <button
+            class="btn btn-ghost btn-xs gap-1 hover:text-base-content"
             @click="router.push('/stories')"
           >
             <span class="icon-[solar--arrow-left-linear] text-sm"></span>
@@ -18,16 +24,16 @@
         </div>
 
         <div class="flex items-center gap-1">
-          <button 
-            class="btn btn-ghost btn-xs gap-1 hover:text-base-content" 
+          <button
+            class="btn btn-ghost btn-xs gap-1 hover:text-base-content"
             title="重新开始"
             @click="showRestartConfirm = true"
           >
             <span class="icon-[solar--restart-linear] text-sm"></span>
             <span>重置</span>
           </button>
-          <button 
-            class="btn btn-ghost btn-xs gap-1 hover:text-base-content" 
+          <button
+            class="btn btn-ghost btn-xs gap-1 hover:text-base-content"
             title="故事详情"
             @click="showDetailModal = true"
           >
@@ -38,45 +44,71 @@
       </div>
 
       <!-- 故事主卡片 -->
-      <article class="bg-base-100/90 shadow-sm hover:shadow-md transition-shadow duration-300 rounded-2xl p-6 sm:p-12 border border-base-300/60 min-h-[60vh] flex flex-col justify-between">
-        
+      <article
+        class="bg-base-100/90 shadow-sm hover:shadow-md transition-shadow duration-300 rounded-2xl p-6 sm:p-12 border border-base-300/60 min-h-[60vh] flex flex-col justify-between"
+      >
         <!-- 正文渲染区 -->
-        <div 
-          ref="contentRef" 
-          class="story-content prose prose-stone lg:prose-lg max-w-none focus:outline-none" 
+        <div
+          ref="contentRef"
+          class="story-content prose prose-stone lg:prose-lg max-w-none focus:outline-none"
           v-html="currentHtml"
           @click="onContentClick"
         ></div>
 
         <!-- 底部微交互/状态指示 -->
-        <footer class="mt-12 pt-6 border-t border-base-200/80 flex items-center justify-between text-xs text-base-content/40 font-sans">
+        <footer
+          class="mt-12 pt-6 border-t border-base-200/80 flex items-center justify-between text-xs text-base-content/40 font-sans"
+        >
           <span class="flex items-center gap-1.5">
-            <span class="inline-block w-1.5 h-1.5 rounded-full bg-success/80 animate-pulse"></span>
-            当前章节: {{ play?.passage || play?.currentPassage || '序幕' }}
+            <span
+              class="inline-block w-1.5 h-1.5 rounded-full bg-success/80 animate-pulse"
+            ></span>
+            当前章节: {{ play?.passage || play?.currentPassage || "序幕" }}
           </span>
         </footer>
       </article>
     </main>
 
     <!-- 开始游玩 / 简介弹窗 -->
-    <div v-if="showModal === true" class="modal modal-open backdrop-blur-sm bg-base-900/40">
-      <div class="modal-box max-w-lg border border-base-300/80 shadow-2xl p-6 sm:p-8 rounded-2xl bg-base-100 font-sans">
+    <div
+      v-if="showModal === true"
+      class="modal modal-open backdrop-blur-sm bg-base-900/40"
+    >
+      <div
+        class="modal-box max-w-lg border border-base-300/80 shadow-2xl p-6 sm:p-8 rounded-2xl bg-base-100 font-sans"
+      >
         <div class="flex items-center justify-between mb-4">
-          <span class="badge badge-outline badge-primary text-xs font-mono tracking-wider">INTERACTIVE STORY</span>
+          <span
+            class="badge badge-outline badge-primary text-xs font-mono tracking-wider"
+            >INTERACTIVE STORY</span
+          >
         </div>
-        
-        <h3 class="font-serif font-bold text-2xl text-base-content mb-2 tracking-tight">{{ story?.title }}</h3>
+
+        <h3
+          class="font-serif font-bold text-2xl text-base-content mb-2 tracking-tight"
+        >
+          {{ story?.title }}
+        </h3>
         <p class="text-xs text-base-content/60 mb-6 flex items-center gap-1.5">
           <span>作者：{{ authorName }}</span>
         </p>
 
-        <div class="bg-base-200/50 rounded-xl p-4 mb-6 border border-base-200 text-sm text-base-content/80 leading-relaxed font-serif max-h-48 overflow-y-auto">
-          <div v-html="story?.description || '探索属于你的剧情分支与故事世界。'"></div>
+        <div
+          class="bg-base-200/50 rounded-xl p-4 mb-6 border border-base-200 text-sm text-base-content/80 leading-relaxed font-serif max-h-48 overflow-y-auto"
+        >
+          <div
+            v-html="story?.description || '探索属于你的剧情分支与故事世界。'"
+          ></div>
         </div>
 
         <div class="modal-action flex items-center justify-end gap-3 pt-2">
-          <button class="btn btn-ghost text-sm font-normal" @click="closeModal">返回列表</button>
-          <button class="btn btn-primary px-6 shadow-sm shadow-primary/30" @click="startPlay">
+          <button class="btn btn-ghost text-sm font-normal" @click="closeModal">
+            返回列表
+          </button>
+          <button
+            class="btn btn-primary px-6 shadow-sm shadow-primary/30"
+            @click="startPlay"
+          >
             开始阅读体验
           </button>
         </div>
@@ -84,27 +116,50 @@
     </div>
 
     <!-- 故事详情弹窗 -->
-    <div v-if="showDetailModal" class="modal modal-open backdrop-blur-sm bg-base-900/40">
-      <div class="modal-box max-w-md border border-base-300/80 rounded-2xl p-6 bg-base-100 font-sans">
+    <div
+      v-if="showDetailModal"
+      class="modal modal-open backdrop-blur-sm bg-base-900/40"
+    >
+      <div
+        class="modal-box max-w-md border border-base-300/80 rounded-2xl p-6 bg-base-100 font-sans"
+      >
         <h3 class="font-serif font-bold text-xl mb-3">{{ story?.title }}</h3>
         <p class="text-xs text-base-content/60 mb-4">作者：{{ authorName }}</p>
-        <div class="text-sm text-base-content/80 leading-relaxed font-serif max-h-60 overflow-y-auto bg-base-200/40 p-4 rounded-xl mb-6">
+        <div
+          class="text-sm text-base-content/80 leading-relaxed font-serif max-h-60 overflow-y-auto bg-base-200/40 p-4 rounded-xl mb-6"
+        >
           <div v-html="story?.description || '暂无故事简介'"></div>
         </div>
         <div class="modal-action">
-          <button class="btn btn-sm btn-ghost" @click="showDetailModal = false">关闭</button>
+          <button class="btn btn-sm btn-ghost" @click="showDetailModal = false">
+            关闭
+          </button>
         </div>
       </div>
     </div>
 
     <!-- 重新开始确认弹窗 -->
-    <div v-if="showRestartConfirm" class="modal modal-open backdrop-blur-sm bg-base-900/40">
-      <div class="modal-box max-w-sm border border-base-300/80 rounded-2xl p-6 bg-base-100 font-sans">
+    <div
+      v-if="showRestartConfirm"
+      class="modal modal-open backdrop-blur-sm bg-base-900/40"
+    >
+      <div
+        class="modal-box max-w-sm border border-base-300/80 rounded-2xl p-6 bg-base-100 font-sans"
+      >
         <h4 class="font-bold text-lg mb-2">重新开始故事？</h4>
-        <p class="text-sm text-base-content/70 mb-6">当前的故事进度将被重置并从头开始。</p>
+        <p class="text-sm text-base-content/70 mb-6">
+          当前的故事进度将被重置并从头开始。
+        </p>
         <div class="modal-action flex gap-2">
-          <button class="btn btn-sm btn-ghost" @click="showRestartConfirm = false">取消</button>
-          <button class="btn btn-sm btn-error" @click="confirmRestart">确认重置</button>
+          <button
+            class="btn btn-sm btn-ghost"
+            @click="showRestartConfirm = false"
+          >
+            取消
+          </button>
+          <button class="btn btn-sm btn-error" @click="confirmRestart">
+            确认重置
+          </button>
         </div>
       </div>
     </div>
@@ -112,42 +167,50 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { getStory } from '@/api/stories';
-import { createPlay, getPlay, updatePlay, getReleaseStory } from '@/api/play';
-import { useAppStore } from '@/stores/modules/app';
+import { ref, onMounted, onUnmounted, watch, computed } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { getStory } from "@/api/stories";
+import { createPlay, getPlay, updatePlay, getReleaseStory } from "@/api/play";
+import { useAppStore } from "@/stores/modules/app";
 
 const route = useRoute();
 const router = useRouter();
 const appStore = useAppStore();
-const storyId = String(route.params.storyId || '');
+const storyId = String(route.params.storyId || "");
 
 const story = ref<any>(null);
 const play = ref<any>(null);
-const currentHtml = ref('');
+const currentHtml = ref("");
 const showModal = ref<boolean | null>(null);
 const showDetailModal = ref(false);
 const showRestartConfirm = ref(false);
 
-const authorName = computed(() => story.value?.author?.nickname || story.value?.author?.username || '佚名');
+const authorName = computed(
+  () =>
+    story.value?.author?.nickname || story.value?.author?.username || "佚名",
+);
 
 function localKey(id: string) {
   return `play:${id}`;
 }
 
-watch(() => story.value?.title, (newTitle) => {
-  if (newTitle) {
-    appStore.setCustomHeaderTitle(newTitle);
-  }
-});
+watch(
+  () => story.value?.title,
+  (newTitle) => {
+    if (newTitle) {
+      appStore.setCustomHeaderTitle(newTitle);
+    }
+  },
+);
 
 onUnmounted(() => {
   appStore.setCustomHeaderTitle(null);
 });
 
 async function loadStory() {
-  const res = await (route.name == 'play' ? getReleaseStory : getStory)(storyId);
+  const res = await (route.name == "play" ? getReleaseStory : getStory)(
+    storyId,
+  );
   story.value = res as any;
   if (story.value?.title) {
     appStore.setCustomHeaderTitle(story.value.title);
@@ -158,10 +221,10 @@ async function loadExistingPlay() {
   try {
     const p = await getPlay(storyId);
     play.value = p;
-    currentHtml.value = p.html || '';
+    currentHtml.value = p.html || "";
     return true;
   } catch (err) {
-    console.warn('[PlayView] loadExistingPlay failed', err);
+    console.warn("[PlayView] loadExistingPlay failed", err);
     localStorage.removeItem(localKey(storyId));
     return false;
   }
@@ -169,15 +232,17 @@ async function loadExistingPlay() {
 
 async function startPlay() {
   try {
-    const res = await createPlay(storyId, { currentPassage: story.value?.startPassage });
+    const res = await createPlay(storyId, {
+      currentPassage: story.value?.startPassage,
+    });
     play.value = res as any;
-    currentHtml.value = res.html || '';
+    currentHtml.value = res.html || "";
     if (res?.id) {
       localStorage.setItem(localKey(storyId), res.id);
     }
     showModal.value = false;
   } catch (err) {
-    console.error('startPlay error', err);
+    console.error("startPlay error", err);
   }
 }
 
@@ -188,7 +253,7 @@ async function confirmRestart() {
 
 function closeModal() {
   showModal.value = false;
-  router.push('/stories');
+  router.push("/stories");
 }
 
 const contentRef = ref<HTMLElement>();
@@ -203,7 +268,9 @@ onMounted(async () => {
 });
 
 async function onContentClick(e: MouseEvent) {
-  const targetEl = (e.target as HTMLElement)?.closest('[data-story-target], [data-story-action]') as HTMLElement | null;
+  const targetEl = (e.target as HTMLElement)?.closest(
+    "[data-story-target], [data-story-action]",
+  ) as HTMLElement | null;
   if (!targetEl || !Object.keys(targetEl.dataset).length) return;
   const target = targetEl.dataset.storyTarget || undefined;
   const action = targetEl.dataset.storyAction || undefined;
@@ -218,10 +285,10 @@ async function onContentClick(e: MouseEvent) {
     play.value = res as any;
     if (res.html) {
       currentHtml.value = res.html;
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   } catch (err) {
-    console.error('[PlayView] interaction update failed', err);
+    console.error("[PlayView] interaction update failed", err);
   }
 }
 </script>
@@ -246,7 +313,14 @@ async function onContentClick(e: MouseEvent) {
   gap: 0.25rem;
   margin: 2px;
   padding: 2px 4px;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
   font-size: 0.925rem;
   font-weight: 500;
   line-height: 1.4;

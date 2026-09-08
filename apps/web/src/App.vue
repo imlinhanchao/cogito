@@ -10,5 +10,4 @@ const authStore = useAuthStore();
 if (authStore.isAuthenticated) {
   authStore.loadProfile();
 }
-
 </script>

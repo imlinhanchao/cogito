@@ -1,4 +1,4 @@
-import request from '@/utils/http';
+import request from "@/utils/http";
 
 export async function getReleaseStory(storyId: string) {
   return request.get({ url: `/play/story/${storyId}` });

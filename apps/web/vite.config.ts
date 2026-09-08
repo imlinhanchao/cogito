@@ -1,19 +1,18 @@
 import tailwindcss from "@tailwindcss/vite";
 import vue from "@vitejs/plugin-vue";
-import { createSvgIconsPlugin } from 'vite-plugin-svg-icons';
+import { createSvgIconsPlugin } from "vite-plugin-svg-icons";
 import { resolve } from "path";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: './',
+  base: "./",
   plugins: [
-    vue(), 
+    vue(),
     tailwindcss(),
     createSvgIconsPlugin({
-      iconDirs: [resolve(process.cwd(), 'src/assets/icons')],
-      symbolId: 'icon-[dir]-[name]',
+      iconDirs: [resolve(process.cwd(), "src/assets/icons")],
+      symbolId: "icon-[dir]-[name]",
     }),
-
   ],
   resolve: {
     alias: {
@@ -21,8 +20,8 @@ export default defineConfig({
     },
   },
   build: {
-    target: 'es2015',
-    outDir: '../../release/public',
+    target: "es2015",
+    outDir: "../../release/public",
     emptyOutDir: true,
   },
   server: {

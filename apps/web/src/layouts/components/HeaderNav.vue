@@ -29,13 +29,13 @@ const authStore = useAuthStore();
 const navItems = ref<NavItem[]>([
   {
     label: "首页",
-    path: "/"
+    path: "/",
   },
   {
     label: "我的故事",
     path: "/my-stories",
-    hidden: !authStore.isAuthenticated
-  }
+    hidden: !authStore.isAuthenticated,
+  },
 ]);
 
 const route = useRoute();

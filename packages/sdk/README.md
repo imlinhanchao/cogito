@@ -45,7 +45,7 @@ import {
   applyStoryAction,
   renderStoryText,
   buildStandaloneExport,
-} from 'tellory';
+} from "tellory";
 
 const source = `标题：示例故事
 
@@ -80,7 +80,11 @@ const html = renderStoryText(passage.content, variables, story, ctx);
 applyStoryAction('goto:"Left"', variables, ctx);
 
 // 6. Export it at any time as a standalone HTML file that needs no server
-const standaloneHtml = buildStandaloneExport(story, variables, story.startPassage);
+const standaloneHtml = buildStandaloneExport(
+  story,
+  variables,
+  story.startPassage,
+);
 ```
 
 ## 🧩 Host Context
@@ -94,7 +98,11 @@ interface StoryEngineContext {
   /** Evaluates a macro expression (with embedded call: substitutions already applied). */
   evaluate: (expression: string, variables: Record<string, unknown>) => unknown;
   /** Invokes a previously-registered (fn:) function. */
-  callFunction: (name: string, args: unknown[], variables: Record<string, unknown>) => unknown;
+  callFunction: (
+    name: string,
+    args: unknown[],
+    variables: Record<string, unknown>,
+  ) => unknown;
   /** Optional: encode a link's target/action value before rendering (e.g. encryption). */
   encodeAttribute?: (value: string) => string;
   /** Optional: decode a value previously produced by encodeAttribute. */

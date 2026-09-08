@@ -1,6 +1,6 @@
-import request from '@/utils/http';
-import type { User } from './auth';
-import { StoryData } from '@/lib/storyEngine';
+import request from "@/utils/http";
+import type { User } from "./auth";
+import { StoryData } from "@/lib/storyEngine";
 
 export interface StoryPayload {
   title: string;
@@ -22,12 +22,22 @@ export interface IStory extends StoryData {
   authorName?: string;
   createdAt?: number;
   updatedAt?: number;
-  status?: 'draft' | 'pending' | 'published' | 'rejected';
+  status?: "draft" | "pending" | "published" | "rejected";
   reviewReason?: string;
 }
 
-export async function listStories(params: { authorId?: string, search?: string, page?: number, limit?: number } = {}) {
-  return request.get<{ data: IStory[]; total: number }>({ url: '/stories', params });
+export async function listStories(
+  params: {
+    authorId?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  } = {},
+) {
+  return request.get<{ data: IStory[]; total: number }>({
+    url: "/stories",
+    params,
+  });
 }
 
 export async function getStory(id: string) {
@@ -35,7 +45,7 @@ export async function getStory(id: string) {
 }
 
 export async function createStory(payload: StoryPayload) {
-  return request.post({ url: '/stories', data: payload });
+  return request.post({ url: "/stories", data: payload });
 }
 
 export async function updateStory(id: string, payload: Partial<StoryPayload>) {
@@ -51,7 +61,10 @@ export async function publishStory(id: string) {
 }
 
 export async function adminPending(limit = 50) {
-  return request.get<{ data: IStory[]; total: number }>({ url: '/stories/admin/pending', params: { limit } });
+  return request.get<{ data: IStory[]; total: number }>({
+    url: "/stories/admin/pending",
+    params: { limit },
+  });
 }
 
 export async function approveStory(id: string) {

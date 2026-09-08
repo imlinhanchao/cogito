@@ -45,7 +45,7 @@ import {
   applyStoryAction,
   renderStoryText,
   buildStandaloneExport,
-} from 'tellory';
+} from "tellory";
 
 const source = `标题：示例故事
 
@@ -80,7 +80,11 @@ const html = renderStoryText(passage.content, variables, story, ctx);
 applyStoryAction('goto:"Left"', variables, ctx);
 
 // 6. 随时可以导出为可独立打开、无需服务器的 HTML 文件
-const standaloneHtml = buildStandaloneExport(story, variables, story.startPassage);
+const standaloneHtml = buildStandaloneExport(
+  story,
+  variables,
+  story.startPassage,
+);
 ```
 
 ## 🧩 宿主上下文（Context）
@@ -94,7 +98,11 @@ interface StoryEngineContext {
   /** 求值一段宏表达式（内嵌的 call: 已被替换）。 */
   evaluate: (expression: string, variables: Record<string, unknown>) => unknown;
   /** 调用一个已注册的 (fn:) 函数。 */
-  callFunction: (name: string, args: unknown[], variables: Record<string, unknown>) => unknown;
+  callFunction: (
+    name: string,
+    args: unknown[],
+    variables: Record<string, unknown>,
+  ) => unknown;
   /** 可选：渲染前对链接的 target/action 值做编码（如加密）。 */
   encodeAttribute?: (value: string) => string;
   /** 可选：解码由 encodeAttribute 生成的值。 */

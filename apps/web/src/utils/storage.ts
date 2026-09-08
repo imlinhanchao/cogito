@@ -1,5 +1,5 @@
-import CryptoJS from 'crypto-js';
-import LZString from 'lz-string';
+import CryptoJS from "crypto-js";
+import LZString from "lz-string";
 
 /**
  * 加密存储类 - 基于 crypto-js 的 localStorage 加密解密方案
@@ -13,9 +13,12 @@ class EncryptedStorage {
    * @param secretKey - 加密密钥（建议使用环境变量）
    * @param prefix - localStorage key 前缀（可选，默认为 'hd_'）
    */
-  constructor(secretKey: string='storage-encrypt-key', prefix: string = 'hd_') {
-    if (!secretKey || secretKey.trim() === '') {
-      throw new Error('Secret key cannot be empty');
+  constructor(
+    secretKey: string = "storage-encrypt-key",
+    prefix: string = "hd_",
+  ) {
+    if (!secretKey || secretKey.trim() === "") {
+      throw new Error("Secret key cannot be empty");
     }
     this.secretKey = secretKey;
     this.prefix = prefix;
@@ -38,8 +41,8 @@ class EncryptedStorage {
       // 2. 加密压缩后的数据
       return CryptoJS.AES.encrypt(compressed, this.secretKey).toString();
     } catch (error) {
-      console.error('Encryption error:', error);
-      throw new Error('Failed to encrypt data');
+      console.error("Encryption error:", error);
+      throw new Error("Failed to encrypt data");
     }
   }
 
@@ -51,24 +54,24 @@ class EncryptedStorage {
       // 1. 解密数据
       const bytes = CryptoJS.AES.decrypt(encryptedData, this.secretKey);
       const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
-      
+
       if (!decryptedData) {
-        throw new Error('Decryption resulted in empty string');
+        throw new Error("Decryption resulted in empty string");
       }
 
       // 2. 尝试解压缩数据
       const decompressed = LZString.decompressFromUTF16(decryptedData);
-      
+
       // 如果解压缩成功且不为空，返回解压后的数据
       // 否则返回原始解密数据以保持对旧版非压缩存档的向下兼容
-      if (decompressed !== null && decompressed !== '') {
+      if (decompressed !== null && decompressed !== "") {
         return decompressed;
       }
-      
+
       return decryptedData;
     } catch (error) {
-      console.error('Decryption error:', error);
-      throw new Error('Failed to decrypt data');
+      console.error("Decryption error:", error);
+      throw new Error("Failed to decrypt data");
     }
   }
 
@@ -96,13 +99,13 @@ class EncryptedStorage {
   getItem<T>(key: string): T | null {
     try {
       const encryptedValue = localStorage.getItem(this.getFullKey(key));
-      
+
       if (encryptedValue === null) {
         return null;
       }
-      
+
       const decryptedValue = this.decrypt(encryptedValue);
-      
+
       // 尝试解析 JSON，失败则返回字符串
       try {
         return JSON.parse(decryptedValue);
@@ -134,13 +137,13 @@ class EncryptedStorage {
   clear(): void {
     try {
       const keys = Object.keys(localStorage);
-      keys.forEach(key => {
+      keys.forEach((key) => {
         if (key.startsWith(this.prefix)) {
           localStorage.removeItem(key);
         }
       });
     } catch (error) {
-      console.error('Failed to clear storage', error);
+      console.error("Failed to clear storage", error);
       throw error;
     }
   }
@@ -153,7 +156,7 @@ class EncryptedStorage {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && key.startsWith(this.prefix)) {
-        keys.push(key.replace(this.prefix, ''));
+        keys.push(key.replace(this.prefix, ""));
       }
     }
     return keys;

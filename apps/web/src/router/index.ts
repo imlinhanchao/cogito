@@ -55,15 +55,13 @@ const router = createRouter({
           name: "admin-reviews",
           component: () => import("@/views/AdminReviewView.vue"),
           meta: { title: "审核中心", loginRequired: true, adminRequired: true },
-        }
-        ,
+        },
         {
           path: "/admin/reviews/:id",
           name: "admin-review-detail",
           component: () => import("@/views/AdminReviewDetailView.vue"),
           meta: { title: "审核详情", loginRequired: true, adminRequired: true },
-        }
-        ,
+        },
         {
           path: "/:from/:username",
           name: "user-profile-from",
@@ -75,8 +73,8 @@ const router = createRouter({
           name: "user-profile",
           component: () => import("@/views/UserProfileView.vue"),
           meta: { title: "个人主页", loginRequired: true },
-        }
-      ]
+        },
+      ],
     },
     {
       path: "/login",
@@ -101,7 +99,7 @@ const router = createRouter({
       meta: {
         title: "系统配置",
       },
-    }
+    },
   ],
   scrollBehavior() {
     return { top: 0 };
@@ -115,10 +113,10 @@ router.beforeEach((to) => {
   document.title = pageTitle;
   const authStore = useAuthStore();
   if (to.meta.loginRequired && !authStore.isAuthenticated) {
-    return { path: '/login' };
+    return { path: "/login" };
   }
   if (to.meta.adminRequired && !authStore.isAdmin) {
-    return { path: '/' };
+    return { path: "/" };
   }
 });
 
