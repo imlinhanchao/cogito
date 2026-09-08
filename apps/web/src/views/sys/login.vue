@@ -82,7 +82,13 @@ async function handleLogin() {
     });
     authStore.setAuth(res);
     emit("success");
-    router.push("/");
+    const redirect = localStorage.getItem('redirect');
+    if (redirect) {
+      localStorage.removeItem('redirect');
+      location.href = redirect;
+    } else {
+      router.push("/");
+    }
   } catch (err: any) {
     error.value =
       err.response?.data?.msg || err.message || "登录失败，请检查用户名和密码";
