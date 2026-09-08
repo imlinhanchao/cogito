@@ -392,7 +392,7 @@ function switchTab(tab: "login" | "register") {
                 class="w-5 h-5 object-contain"
                 alt="摸鱼派"
               />
-              <span class="text-sm font-medium">摸鱼派</span>
+              <span class="text-sm font-medium whitespace-nowrap">摸鱼派</span>
             </button>
 
             <!-- GitHub button -->

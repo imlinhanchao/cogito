@@ -1,46 +1,56 @@
 <template>
   <div class="navbar-end flex items-center gap-1.5 sm:gap-2">
-    <router-link
-      v-if="isAuthenticated"
-      to="/story-editor"
-      class="btn btn-primary btn-xs sm:btn-sm gap-1 font-medium shadow-xs"
-      title="创建故事"
+    <!--
+      桌面端：创作 / 主题切换 直接展示在导航栏。
+      移动端已登录时它们被收纳进头像下拉框，因此这里隐藏；
+      移动端未登录时没有下拉框可用，则保持直接展示。
+    -->
+    <div
+      v-if="!isMobile || !isAuthenticated"
+      class="flex items-center gap-1.5 sm:gap-2"
     >
-      <Icon icon="mdi:plus" class="w-4 h-4" />
-      <span class="hidden sm:inline">创作故事</span>
-    </router-link>
+      <router-link
+        v-if="isAuthenticated"
+        to="/story-editor"
+        class="btn btn-primary btn-xs sm:btn-sm gap-1 font-medium shadow-xs"
+        title="创建故事"
+      >
+        <Icon icon="mdi:plus" class="w-4 h-4" />
+        <span class="hidden sm:inline">创作故事</span>
+      </router-link>
 
-    <label
-      class="toggle"
-      :class="{
-        'text-[#3c3f44]': isDark,
-        'text-[#c2c2c4] bg-[#8e96aa24]': !isDark,
-      }"
-    >
-      <input
-        ref="themeRef"
-        :checked="isDark"
-        class="theme-controller toggle toggle-sm hidden"
-        type="checkbox"
-        value="dark"
-        @change="appStore.toggleTheme()"
-      />
-      <Icon
-        aria-label="enabled"
-        icon="twemoji:sun"
-        size="1.2em"
-        color="#fbb247"
-        class="bg-white rounded-full shadow"
-      />
-      <Icon
-        aria-label="disabled"
-        icon="akar-icons:moon-fill"
-        size="1.2em"
-        color="#f5ec39"
-        class="fill-black rounded-full"
-      />
-    </label>
-    <div class="divider divider-horizontal my-2 mx-2"></div>
+      <label
+        class="toggle"
+        :class="{
+          'text-[#3c3f44]': isDark,
+          'text-[#c2c2c4] bg-[#8e96aa24]': !isDark,
+        }"
+        :title="isDark ? '切换到亮色主题' : '切换到暗色主题'"
+      >
+        <input
+          :checked="isDark"
+          class="theme-controller toggle toggle-sm hidden"
+          type="checkbox"
+          value="dark"
+          @change="appStore.toggleTheme()"
+        />
+        <Icon
+          aria-label="enabled"
+          icon="twemoji:sun"
+          size="1.2em"
+          color="#fbb247"
+          class="bg-white rounded-full shadow"
+        />
+        <Icon
+          aria-label="disabled"
+          icon="akar-icons:moon-fill"
+          size="1.2em"
+          color="#f5ec39"
+          class="fill-black rounded-full"
+        />
+      </label>
+      <div class="divider divider-horizontal my-2 mx-1"></div>
+    </div>
     <div
       v-if="isAuthenticated && authStore.getUser"
       class="dropdown dropdown-end"
@@ -63,17 +73,51 @@
       </label>
       <ul
         tabindex="0"
-        class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-44"
+        class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-60"
       >
+        <!-- 仅移动端展示：创作故事 + 主题切换 -->
+        <li class="md:hidden">
+          <router-link to="/story-editor">
+            <Icon icon="mdi:plus" class="w-4 h-4" />
+            创作故事
+          </router-link>
+        </li>
+        <li class="md:hidden">
+          <a @click.prevent="appStore.toggleTheme()">
+            <Icon
+              :icon="isDark ? 'twemoji:sun' : 'akar-icons:moon-fill'"
+              class="w-4 h-4"
+            />
+            {{ isDark ? "切换到亮色主题" : "切换到暗色主题" }}
+          </a>
+        </li>
+        <li class="md:hidden">
+          <span class="divider my-0"></span>
+        </li>
+        <li class="md:hidden">
+          <router-link :to="{ path: '/my-stories' }">
+            <Icon icon="mdi:book-open-outline" class="w-4 h-4" />
+            我的故事
+          </router-link>
+        </li>
         <li>
-          <router-link :to="{ path: profileUrl }">个人中心</router-link>
+          <router-link :to="{ path: profileUrl }">
+            <Icon icon="mdi:account-circle-outline" class="w-4 h-4" />
+            个人中心
+          </router-link>
         </li>
         <li v-if="authStore.isAdmin">
-          <router-link to="/admin/reviews">审核中心</router-link>
+          <router-link to="/admin/reviews">
+            <Icon icon="mdi:shield-check-outline" class="w-4 h-4" />
+            审核中心
+          </router-link>
         </li>
         <span class="divider my-0"></span>
         <li>
-          <a class="text-error" @click.prevent="handleLogout">退出登录</a>
+          <a class="text-error" @click.prevent="handleLogout">
+            <Icon icon="mdi:logout" class="w-4 h-4" />
+            退出登录
+          </a>
         </li>
       </ul>
     </div>
@@ -89,7 +133,7 @@
 <script setup lang="ts">
 import { useAppStore } from "@/stores/modules/app";
 import { useAuthStore } from "@/stores/modules/auth";
-import { computed } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { Icon } from "@iconify/vue";
 
@@ -99,6 +143,21 @@ const router = useRouter();
 
 const isDark = computed(() => appStore.getTheme === "dark");
 const isAuthenticated = computed(() => authStore.isAuthenticated);
+
+// 监听断点（与 HeaderNav 的 md 断点保持一致，768px 以下视为移动端）
+const isMobile = ref(false);
+let mediaQuery: MediaQueryList | undefined;
+const syncIsMobile = () => {
+  isMobile.value = mediaQuery?.matches ?? false;
+};
+onMounted(() => {
+  mediaQuery = window.matchMedia("(max-width: 767px)");
+  isMobile.value = mediaQuery.matches;
+  mediaQuery.addEventListener("change", syncIsMobile);
+});
+onBeforeUnmount(() => {
+  mediaQuery?.removeEventListener("change", syncIsMobile);
+});
 
 function handleLogout() {
   authStore.logout();
