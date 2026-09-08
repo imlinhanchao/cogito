@@ -147,15 +147,10 @@ onUnmounted(() => {
 });
 
 async function loadStory() {
-  try {
-    const res = await (route.name == 'play' ? getReleaseStory : getStory)(storyId);
-    story.value = res as any;
-    if (story.value?.title) {
-      appStore.setCustomHeaderTitle(story.value.title);
-    }
-  } catch (err) {
-    console.error('loadStory error', err);
-    story.value = null;
+  const res = await (route.name == 'play' ? getReleaseStory : getStory)(storyId);
+  story.value = res as any;
+  if (story.value?.title) {
+    appStore.setCustomHeaderTitle(story.value.title);
   }
 }
 

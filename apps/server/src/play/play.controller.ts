@@ -25,7 +25,7 @@ export class PlayController {
   ) {}
 
   @Get('story/:id')
-  @UseGuards(OptionalAuthGuard)
+  @UseGuards(JwtAuthGuard)
   async getApprovedStory(@Param('id') id: string, @Request() req) {
     const p = await this.storiesService.findApprovedOne(id);
     if (!p) {
@@ -62,7 +62,7 @@ export class PlayController {
     return { html: created.html, history: [] };
   }
 
-  @UseGuards(OptionalAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
   async getPlay(@Param('id') id: string, @Request() req) {
     const p = await this.playService.findLatestByStoryId(id, req.user?.userId);

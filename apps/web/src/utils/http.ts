@@ -130,6 +130,10 @@ class Http {
         if (!cfg.transformResponse) {
           return res;
         }
+        if (res.code == 401) {
+          location.href = './#/login'; // Redirect to login page on 401 Unauthorized
+          throw new Error('请先登录');
+        }
         if (res.code !== 0) {
           throw new Error(res.msg || '请求失败');
         }

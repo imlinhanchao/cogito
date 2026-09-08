@@ -345,7 +345,7 @@ function switchTab(tab: 'login' | 'register') {
             <button
               v-if="thirdParty.includes('steam')"
               type="button"
-              class="btn flex-1 gap-2 bg-[#171a21] text-white hover:bg-[#2a475e] dark:bg-[#2a475e] dark:text-white dark:hover:bg-[#1b2838] border-none"
+              class="btn flex-1 gap-2 bg-[#1b517e] text-white hover:bg-[#2a475e] dark:bg-[#2a475e] dark:text-white dark:hover:bg-[#1b2838] border-none"
               @click="thirdPartyLogin('steam')"
             >
               <Icon icon="mdi:steam" class="text-xl!" />
