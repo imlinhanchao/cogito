@@ -42,13 +42,13 @@ const router = createRouter({
           path: "/play/:storyId",
           name: "play",
           component: () => import("@/views/PlayView.vue"),
-          meta: { title: "游玩" },
+          meta: { title: "游玩", loginRequired: true },
         },
         {
           path: "/test/:storyId",
           name: "test",
           component: () => import("@/views/PlayView.vue"),
-          meta: { title: "测试" },
+          meta: { title: "测试", loginRequired: true },
         },
         {
           path: "/admin/reviews",
