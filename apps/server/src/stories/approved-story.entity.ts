@@ -14,4 +14,7 @@ export class ApprovedStory extends BaseStoryFields {
 
   @Column('bigint', { comment: '审核时间' })
   approvedAt: number = Date.now();
+
+  @Column({ default: false, comment: '是否已下架' })
+  isUnpublished: boolean = false;
 }

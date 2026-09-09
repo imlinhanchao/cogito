@@ -125,6 +125,24 @@
                     statusLabel(s.status)
                   }}</span>
                 </div>
+                <div v-else-if="isAdmin && s.status === 'published'" class="shrink-0 ml-2">
+                  <button
+                    class="btn btn-ghost btn-error btn-xs btn-square hover:bg-error/10 hover:text-error"
+                    @click="confirmUnpublish(s.id!)"
+                    title="下架故事"
+                  >
+                    <Icon icon="mdi:eye-off-outline" class="w-4 h-4" />
+                  </button>
+                </div>
+                <div v-else-if="isAdmin && s.status === 'unpublished'" class="shrink-0 ml-2">
+                  <button
+                    class="btn btn-ghost btn-xs btn-success btn-square hover:bg-success/10 hover:text-success"
+                    @click="confirmRepublish(s.id!)"
+                    title="重新上架"
+                  >
+                    <Icon icon="mdi:eye-outline" class="w-4 h-4" />
+                  </button>
+                </div>
               </div>
               <div
                 class="flex items-center gap-1 text-xs text-base-content/60 truncate mt-0.5"
@@ -172,14 +190,6 @@
             >
               <Icon icon="mdi:tag-outline" class="w-3 h-3" />
               <span>{{ t }}</span>
-            </button>
-            <button
-              v-if="isAdmin && !isCurrentUser && s.status === 'published'"
-              class="btn btn-ghost btn-xs btn-square hover:bg-base-300/50"
-              @click="confirmUnpublish(s.id!)"
-              title="下架故事"
-            >
-              <Icon icon="mdi:eye-off-outline" class="w-4 h-4 text-base-content/70" />
             </button>
           </div>
         </div>
@@ -280,7 +290,7 @@
 import { useRouter } from "vue-router";
 import type { IStory } from "@/api/stories";
 import { useAuthStore } from "@/stores/modules/auth";
-import { listStories, unpublishStory } from "@/api/stories";
+import { listStories, unpublishStory, republishStory } from "@/api/stories";
 import { ref, onMounted, watch, reactive, computed } from "vue";
 import { useRoute } from "vue-router";
 import { Icon } from "@iconify/vue";
@@ -353,12 +363,22 @@ const previewStory = (id: string) => {
 };
 
 const confirmUnpublish = async (id: string) => {
-  if (!window.confirm("确定要下架此故事吗？下架后故事将移回草稿。")) return;
+  if (!window.confirm("确定要下架此故事吗？")) return;
   try {
     await unpublishStory(id);
     await load();
   } catch (err: any) {
     window.alert(err?.response?.data?.message || err?.message || "下架失败");
+  }
+};
+
+const confirmRepublish = async (id: string) => {
+  if (!window.confirm("确定要重新上架此故事吗？")) return;
+  try {
+    await republishStory(id);
+    await load();
+  } catch (err: any) {
+    window.alert(err?.response?.data?.message || err?.message || "重新上架失败");
   }
 };
 
@@ -416,6 +436,8 @@ function statusLabel(status?: string) {
       return "待审核";
     case "published":
       return "已发布";
+    case "unpublished":
+      return "已下架";
     case "rejected":
       return "已拒绝";
     default:
@@ -431,6 +453,8 @@ function statusClass(status?: string) {
       return "badge-warning";
     case "published":
       return "badge-success";
+    case "unpublished":
+      return "badge-error";
     case "rejected":
       return "badge-error";
     default:

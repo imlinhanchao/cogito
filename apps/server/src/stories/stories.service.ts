@@ -52,16 +52,28 @@ export class StoriesService {
     return where;
   }
 
-  private buildWhereForApproved(createdAt: number, search?: string): any {
+  private buildWhereForApproved(
+    createdAt: number,
+    search?: string,
+    isAdmin = false,
+  ): any {
     const createdCond = { approvedAt: LessThanOrEqual(createdAt) };
+    const where: any = { ...createdCond };
+    if (!isAdmin) {
+      where.isUnpublished = false;
+    }
     if (search) {
       const like = `%${search}%`;
-      return [
+      const searchCond: any[] = [
         { title: Like(like), ...createdCond },
         { description: Like(like), ...createdCond },
       ];
+      if (!isAdmin) {
+        searchCond.forEach((c) => (c.isUnpublished = false));
+      }
+      return searchCond;
     }
-    return { ...createdCond };
+    return where;
   }
 
   async create(dto: StoryDto): Promise<Story> {
@@ -75,9 +87,10 @@ export class StoriesService {
     authorId?: string,
     search?: string,
     isPublicRequest = true,
+    isAdmin = false,
   ) {
     if (isPublicRequest) {
-      const where = this.buildWhereForApproved(createdAt, search);
+      const where = this.buildWhereForApproved(createdAt, search, isAdmin);
       const [rows, total] = await this.approvedRepo.findAndCount({
         where,
         order: { approvedAt: 'DESC' },
@@ -100,7 +113,7 @@ export class StoriesService {
           author: authors.find((a) => a.id === r.authorId) || null,
           createdAt: r.approvedAt,
           updatedAt: r.approvedAt,
-          status: 'published',
+          status: r.isUnpublished ? 'unpublished' : 'published',
         };
         return mapped;
       });
@@ -255,21 +268,35 @@ export class StoriesService {
     return story;
   }
 
-  /** 管理员下架已审核并上架的故事：删除 ApprovedStory 快照并将 story 标记为草稿 */
+  /** 管理员下架已审核并上架的故事：标记为已下架 */
   async unpublish(id: string, adminId: string): Promise<boolean> {
     const story = await this.findById(id, false);
     if (!story) return false;
     if (story.status !== 'published') throw new Error('故事尚未发布');
 
-    // mark back to draft and clear review metadata
-    story.status = 'draft';
-    story.approvedAt = undefined;
-    story.reviewerId = undefined;
-    story.updatedAt = Date.now();
-    await this.storiesRepo.save(story);
+    const approved = await this.approvedRepo.findOne({
+      where: { sourceStoryId: story.id },
+    });
+    if (approved) {
+      approved.isUnpublished = true;
+      await this.approvedRepo.save(approved);
+    }
+    return true;
+  }
 
-    // remove approved snapshot if exists
-    await this.approvedRepo.delete({ sourceStoryId: story.id });
+  /** 管理员重新上架已下架的故事 */
+  async republish(id: string, adminId: string): Promise<boolean> {
+    const story = await this.findById(id, false);
+    if (!story) return false;
+    const approved = await this.approvedRepo.findOne({
+      where: { sourceStoryId: story.id },
+    });
+    if (approved) {
+      approved.isUnpublished = false;
+      approved.approvedAt = Date.now();
+      approved.approvedBy = adminId;
+      await this.approvedRepo.save(approved);
+    }
     return true;
   }
 }

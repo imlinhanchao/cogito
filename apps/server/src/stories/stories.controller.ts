@@ -38,7 +38,14 @@ export class StoriesController {
     const l = limit || 20;
     // 接口传 authorId 且与已认证的用户不一致，则视为公开请求，不返回草稿
     const isPublicRequest = authorId !== req?.user?.userId;
-    return this.storiesService.findAll(c, l, authorId, search, isPublicRequest);
+    return this.storiesService.findAll(
+      c,
+      l,
+      authorId,
+      search,
+      isPublicRequest,
+      req?.user?.isAdmin,
+    );
   }
 
   @Get(':id')
@@ -133,5 +140,13 @@ export class StoriesController {
   async unpublish(@Param('id') id: string, @Request() req) {
     const adminId = req.user.userId;
     return this.storiesService.unpublish(id, adminId);
+  }
+
+  // 管理员重新上架已下架的故事
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Post(':id/republish')
+  async republish(@Param('id') id: string, @Request() req) {
+    const adminId = req.user.userId;
+    return this.storiesService.republish(id, adminId);
   }
 }

@@ -22,7 +22,7 @@ export interface IStory extends StoryData {
   authorName?: string;
   createdAt?: number;
   updatedAt?: number;
-  status?: "draft" | "pending" | "published" | "rejected";
+  status?: "draft" | "pending" | "published" | "rejected" | "unpublished";
   reviewReason?: string;
 }
 
@@ -77,4 +77,8 @@ export async function rejectStory(id: string, reason?: string) {
 
 export async function unpublishStory(id: string) {
   return request.post({ url: `/stories/${id}/unpublish` });
+}
+
+export async function republishStory(id: string) {
+  return request.post({ url: `/stories/${id}/republish` });
 }
