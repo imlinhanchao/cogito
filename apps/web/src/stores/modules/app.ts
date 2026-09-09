@@ -34,11 +34,18 @@ export const useAppStore = defineStore("app", () => {
     customHeaderTitle.value = title;
   };
 
+  const isMobile = ref(window.matchMedia("(max-width: 767px)").matches);
+  const updateIsMobile = () => {
+    isMobile.value = window.matchMedia("(max-width: 767px)").matches;
+  };
+  window.addEventListener("resize", updateIsMobile);
+
   return {
     getTheme,
     themeLabel,
     toggleTheme,
     customHeaderTitle,
     setCustomHeaderTitle,
+    isMobile,
   };
 });

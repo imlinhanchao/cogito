@@ -4,7 +4,7 @@
       <!-- 默认导航：logo + 居中菜单 + 右侧操作（daisyUI 三栏式布局） -->
       <template v-if="!appStore.customHeaderTitle">
         <div class="navbar-start gap-3">
-          <HeaderLogo class="inline-flex rounded-full p-3" />
+          <HeaderLogo class="inline-flex rounded-full md:p-3 p-1" />
         </div>
 
         <HeaderNav />
@@ -20,7 +20,7 @@
         避免长标题把 HeaderRight 挤出屏幕。
       -->
       <template v-else>
-        <HeaderLogo class="shrink-0 inline-flex rounded-full p-3 bg-base-300 shadow" />
+        <HeaderLogo class="shrink-0 inline-flex rounded-full md:p-3 p-1" :class="{ 'bg-base-300 shadow': isMobile }" />
 
         <h2
           class="flex-1 min-w-0 truncate px-2 text-center font-serif font-bold text-lg text-base-content tracking-wide"
@@ -33,12 +33,13 @@
     </div>
   </header>
 </template>
-
 <script setup lang="ts">
+import { computed } from "vue";
 import { useAppStore } from "@/stores/modules/app";
 import HeaderLogo from "./HeaderLogo.vue";
 import HeaderNav from "./HeaderNav.vue";
 import HeaderRight from "./HeaderRight.vue";
 
 const appStore = useAppStore();
+const isMobile = computed(() => appStore.isMobile);
 </script>

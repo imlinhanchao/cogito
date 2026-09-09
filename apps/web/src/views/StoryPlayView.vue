@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full max-w-4xl mx-auto p-2 space-y-4">
+  <div class="w-full md:max-w-4xl md:mx-auto md:p-2 space-y-4">
     <!-- 顶部导航与控制栏 -->
     <header
       class="navbar bg-base-100 rounded-2xl border border-base-200/80 shadow-xs px-4 py-2 flex flex-wrap items-center justify-between gap-3"

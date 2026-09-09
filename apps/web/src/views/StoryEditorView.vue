@@ -1,8 +1,8 @@
 <template>
-  <div class="story-shell h-full p-4">
-    <div class="grid h-full gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+  <div class="story-shell h-full md:p-4">
+    <div class="grid h-full md:gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
       <aside
-        class="rounded-2xl border border-base-300 bg-base-100 p-3 shadow-sm"
+        class="hidden lg:block rounded-2xl border border-base-300 bg-base-100 p-3 shadow-sm"
       >
         <div class="mb-3 flex items-center justify-between px-1">
           <h2 class="text-lg font-bold">段落列表</h2>
@@ -24,7 +24,7 @@
           />
         </div>
 
-        <div class="space-y-2">
+        <div class="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
           <div
             v-for="passage in filteredPassages"
             :key="passage.name"
@@ -59,8 +59,42 @@
         </div>
       </aside>
 
+      <!-- 移动端段落抽屉 -->
+      <div class="lg:hidden">
+        <dialog ref="passageRef" class="modal modal-bottom sm:modal-middle w-screen">
+          <div class="modal-box h-[80vh] flex flex-col relative">
+            <h3 class="font-bold text-lg pb-3">段落列表 ({{ filteredPassages.length }})</h3>
+            <div class="mb-4">
+              <input
+                v-model="searchFilter"
+                placeholder="搜索段落..."
+                class="input input-bordered w-full"
+              />
+            </div>
+            <div class="space-y-2 flex-1 overflow-y-auto">
+              <button
+                v-for="passage in filteredPassages"
+                :key="passage.name"
+                class="w-full text-left p-3 rounded-lg border"
+                :class="selectedPassage === passage.name ? 'bg-primary/10 border-primary' : 'bg-base-200'"
+                @click="selectPassage(passage.name); passageRef?.close()"
+              >
+                {{ passage.name }}
+              </button>
+            </div>
+            <div class="modal-action bottom-5 right-5 absolute">
+              <form method="dialog">
+                <button class="btn btn-circle btn-error btn-soft">
+                  <Icon icon="mdi:close" class="text-lg" />
+                </button>
+              </form>
+            </div>
+          </div>
+        </dialog>
+      </div>
+
       <main
-        class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm"
+        class="rounded-2xl border border-base-300 bg-base-100 md:p-4 shadow-sm"
       >
         <div
           class="mb-4 space-y-2.5 bg-base-200/40 p-3 rounded-xl border border-base-200"
@@ -73,12 +107,30 @@
             <span>{{ storyAny.reviewReason || "未填写拒绝理由" }}</span>
           </div>
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <input
-              v-model="story.title"
-              :readonly="props.readOnly"
-              class="input input-bordered input-sm flex-1 min-w-60 font-bold text-base bg-base-100"
-              placeholder="故事标题..."
-            />
+            <div class="flex items-center gap-2 flex-1 min-w-60">
+              <div class="lg:hidden">
+                <button
+                  class="btn btn-sm btn-square btn-ghost"
+                  @click="passageRef?.showModal()"
+                >
+                  <Icon icon="mdi:menu" class="text-lg" />
+                </button>
+              </div>
+              <input
+                v-model="story.title"
+                :readonly="props.readOnly"
+                class="input input-bordered input-sm flex-1 font-bold text-base bg-base-100"
+                placeholder="故事标题..."
+              />
+              <div class="lg:hidden">
+                <button
+                  class="btn btn-sm btn-square btn-ghost"
+                  @click="activeRightTab = 'preview'; (previewRef as any)?.showModal()"
+                >
+                  <Icon icon="mdi:play-circle-outline" class="text-lg" />
+                </button>
+              </div>
+            </div>
             <div class="flex items-center gap-1 shrink-0">
               <template v-if="!props.readOnly">
                 <div class="tooltip tooltip-bottom" data-tip="从剪贴板粘贴导入">
@@ -206,7 +258,7 @@
 
         <div
           v-if="!props.readOnly"
-          class="tools mb-4 flex flex-wrap gap-1 items-center bg-base-200/60 p-1.5 rounded-xl border border-base-200"
+          class="tools sticky top-0 mb-4 flex flex-wrap gap-1 items-center bg-base-200/60 p-1.5 rounded-xl border border-base-200"
         >
           <div class="tooltip tooltip-bottom" data-tip="插入链接 [[段落|显示]]">
             <button
@@ -440,7 +492,7 @@
           </div>
 
           <div
-            class="space-y-4 rounded-xl border border-base-300 bg-base-200/50 p-3"
+            class="space-y-4 rounded-xl border border-base-300 bg-base-200/50 md:p-3"
           >
             <div class="flex items-center justify-between mb-2">
               <div class="tabs tabs-boxed bg-base-200 p-0.5">
@@ -588,6 +640,29 @@
       </main>
     </div>
 
+    <dialog ref="previewRef" class="modal modal-bottom sm:modal-middle">
+      <div class="modal-box h-[80vh] w-screen flex flex-col">
+        <h3 class="font-bold text-lg mb-4">预览</h3>
+        <div class="overflow-y-auto flex-1">
+          <StoryPlayView
+            :external="true"
+            :storyProp="story"
+            :currentPassageProp="previewPassage"
+            :variablesProp="variables"
+            @update:variables="handleUpdateVariables($event)"
+            @update:currentPassage="handleUpdateCurrentPassage($event)"
+          />
+        </div>
+        <div class="modal-action bottom-5 right-5 absolute">
+          <form method="dialog">
+            <button class="btn btn-circle btn-error btn-soft">
+              <Icon icon="mdi:close" class="text-lg" />
+            </button>
+          </form>
+        </div>
+      </div>
+    </dialog>
+
     <dialog id="json-editor-dialog" class="modal">
       <div class="modal-box w-11/12 max-w-3xl">
         <h3 class="text-lg font-bold">编辑变量 JSON</h3>
@@ -674,6 +749,7 @@ import { useAppStore } from "@/stores/modules/app";
 import { omit } from "lodash-es";
 import SyntaxManual from "@/components/SyntaxManual.vue";
 import msgbox from "@/components/msgbox";
+import Icon from "@/components/Icon/src/Icon.vue";
 
 const props = defineProps<{ readOnly?: boolean; initialStory?: any }>();
 
@@ -681,7 +757,8 @@ const appStore = useAppStore();
 const isDark = computed(() => appStore.getTheme === "dark");
 
 const router = useRouter();
-const dialogRef = ref<HTMLDialogElement | null>(null);
+const passageRef = ref<HTMLDialogElement | null>(null);
+const previewRef = ref<HTMLDialogElement | null>(null);
 const jsonEditorRef = ref<HTMLDivElement | null>(null);
 let cmInstance: any = null;
 // CodeMirror instance for story editor

@@ -143,21 +143,7 @@ const router = useRouter();
 
 const isDark = computed(() => appStore.getTheme === "dark");
 const isAuthenticated = computed(() => authStore.isAuthenticated);
-
-// 监听断点（与 HeaderNav 的 md 断点保持一致，768px 以下视为移动端）
-const isMobile = ref(false);
-let mediaQuery: MediaQueryList | undefined;
-const syncIsMobile = () => {
-  isMobile.value = mediaQuery?.matches ?? false;
-};
-onMounted(() => {
-  mediaQuery = window.matchMedia("(max-width: 767px)");
-  isMobile.value = mediaQuery.matches;
-  mediaQuery.addEventListener("change", syncIsMobile);
-});
-onBeforeUnmount(() => {
-  mediaQuery?.removeEventListener("change", syncIsMobile);
-});
+const isMobile = computed(() => appStore.isMobile);
 
 function handleLogout() {
   authStore.logout();
