@@ -18,6 +18,14 @@ A parser/renderer engine for describing Interactive Fiction with a plain-text DS
 - **Zero dependencies**: no DOM or Node built-in module dependencies — the same code runs in both the browser and Node.js.
 - **Standalone export**: a single call packages the story, current save variables, and the rendering engine into one self-contained HTML file that can be played offline by double-clicking it, with no build tools or server required.
 
+Embed a passage at the link position after a click:
+
+```text
+(link:"查看钥匙")[(display: "Key")]
+```
+
+The syntax renders as a link initially. After the click, the `Key` passage is rendered and replaces the link. The host should add the passage name to `displayPassages` in the rendering context after handling the display interaction.
+
 ## 📦 Install
 
 ```sh

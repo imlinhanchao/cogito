@@ -52,6 +52,8 @@ export interface StoryEngineContext {
    * @param target - The target passage to navigate to.
    */
   routeTo?: (target: string) => void;
+  /** Passage names that should replace their corresponding display links. */
+  displayPassages?: Record<string, boolean>;
 }
 
 /**
@@ -910,15 +912,21 @@ export function extractGotoTarget(actionBlock: string): string | undefined {
  */
 export function buildStoryLink(
   label: string,
-  target: string,
+  target: string | undefined,
   action: string | undefined,
   ctx: StoryEngineContext,
+  displayTarget?: string,
 ): string {
-  const encTarget = encodeAttributeValue(ctx, target);
+  const targetAttribute = target
+    ? ` data-story-target="${escapeHtml(encodeAttributeValue(ctx, target))}"`
+    : "";
   const actionAttribute = action
     ? ` data-story-action="${escapeHtml(encodeAttributeValue(ctx, action))}"`
     : "";
-  return `<button type="button" class="story-link" data-story-target="${escapeHtml(encTarget)}"${actionAttribute}>${escapeHtml(label)}</button>`;
+  const displayAttribute = displayTarget
+    ? ` data-story-display="${escapeHtml(encodeAttributeValue(ctx, displayTarget))}"`
+    : "";
+  return `<button type="button" class="story-link"${targetAttribute}${actionAttribute}${displayAttribute}>${escapeHtml(label)}</button>`;
 }
 
 /**
@@ -958,21 +966,33 @@ export function replaceTextWithHtml(
       actionBlock: string,
     ) => {
       const label = literalLabel || rawLabel || "继续";
-      const target = extractGotoTarget(actionBlock) || label;
+      const target = extractGotoTarget(actionBlock);
       const actionMatch = (actionBlock || "").match(
         /(?:set:\s*[^)\]]+|call:\s*[^)\]]+)/i,
       );
+      const displayMatch = (actionBlock || "").match(
+        /display:\s*["']([^"']+)["']/i,
+      );
+      if (displayMatch?.[1] && ctx.displayPassages?.[displayMatch[1]]) {
+        const displayed = story.passages.find(
+          (passage) => passage.name === displayMatch[1],
+        );
+        return displayed
+          ? renderStoryText(displayed.content, variables, story, ctx)
+          : "";
+      }
       return buildStoryLink(
         label,
-        target,
+        displayMatch?.[1] ? undefined : target || label,
         actionMatch ? actionMatch[0] : undefined,
         ctx,
+        displayMatch?.[1],
       );
     },
   );
 
   working = working.replace(
-    /\[\[([^\]|]+)(?:\|([^\]]+))?\]\](?:\(((?:set:\s*[^)]+|call:\s*[^)]+))\))?/g,
+    /\[\[([^\]|]+)(?:\|([^\]]+))?\](?:\(((?:set:\s*[^)]+|call:\s*[^)]+))\))?/g,
     (_all, label: string, target?: string, action?: string) => {
       const passageName = label.trim();
       const actualTarget = (target ?? label).trim();

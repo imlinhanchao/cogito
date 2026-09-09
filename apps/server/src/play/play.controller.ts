@@ -87,15 +87,17 @@ export class PlayController {
       throw new Error('无权修改该游玩记录');
 
     // If runtime action provided, execute via runtime service
-    if (dto.target || dto.action) {
+    if (dto.target || dto.action || dto.display) {
       const runtimeRes = this.storyRuntimeService.execute(
         p.dataset ?? '',
         dto.target,
         dto.action,
+        dto.display,
       );
       const prevHistory = p.history || [];
       let decodedAction: string | undefined = undefined;
       let decodedTarget: string | undefined = undefined;
+      let decodedDisplay: string | undefined = undefined;
       try {
         if (dto.action)
           decodedAction = this.storyRuntimeService.decodeInteraction(
@@ -112,11 +114,23 @@ export class PlayController {
       } catch {
         decodedTarget = dto.target;
       }
+      try {
+        if (dto.display)
+          decodedDisplay = this.storyRuntimeService.decodeInteraction(
+            dto.display,
+          );
+      } catch {
+        decodedDisplay = dto.display;
+      }
 
       const entry = {
         from: p.currentPassage,
         to: runtimeRes.passage,
-        action: decodedAction ?? `goto:${decodedTarget}`,
+        action:
+          decodedAction ??
+          (decodedDisplay
+            ? `display:${decodedDisplay}`
+            : `goto:${decodedTarget}`),
         at: Date.now(),
       };
       const newHistory = [...prevHistory, entry];

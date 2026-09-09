@@ -8,4 +8,8 @@ export class UpdatePlayDto {
   @IsOptional()
   @IsString()
   action?: string;
+
+  @IsOptional()
+  @IsString()
+  display?: string;
 }

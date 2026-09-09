@@ -12,7 +12,10 @@ export async function getPlay(storyId: string) {
   return request.get({ url: `/play/${storyId}` });
 }
 
-export async function updatePlay(storyId: string, body: any) {
+export async function updatePlay(
+  storyId: string,
+  body: { target?: string; action?: string; display?: string },
+) {
   return request.put({ url: `/play/${storyId}`, data: body });
 }
 

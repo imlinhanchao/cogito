@@ -269,19 +269,20 @@ onMounted(async () => {
 
 async function onContentClick(e: MouseEvent) {
   const targetEl = (e.target as HTMLElement)?.closest(
-    "[data-story-target], [data-story-action]",
+    "[data-story-target], [data-story-action], [data-story-display]",
   ) as HTMLElement | null;
   if (!targetEl || !Object.keys(targetEl.dataset).length) return;
   const target = targetEl.dataset.storyTarget || undefined;
   const action = targetEl.dataset.storyAction || undefined;
-  if (!target && !action) return;
+  const display = targetEl.dataset.storyDisplay || undefined;
+  if (!target && !action && !display) return;
 
   try {
     if (!play.value?.id) {
       await startPlay();
     }
 
-    const res = await updatePlay(storyId, { target, action });
+    const res = await updatePlay(storyId, { target, action, display });
     play.value = res as any;
     if (res.html) {
       currentHtml.value = res.html;

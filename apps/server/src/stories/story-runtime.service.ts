@@ -35,6 +35,7 @@ interface RuntimeState {
   passages: Passage[];
   functions: Record<string, string>;
   variables: Variables;
+  displayedPassages: string[];
 }
 
 export interface RuntimeResponse {
@@ -69,12 +70,18 @@ export class StoryRuntimeService {
         passages: parsed.passages,
         functions: this.collectFunctions(parsed.passages),
         variables,
+        displayedPassages: [],
       },
       true,
     );
   }
 
-  execute(dataset: string, target?: string, action?: string): RuntimeResponse {
+  execute(
+    dataset: string,
+    target?: string,
+    action?: string,
+    display?: string,
+  ): RuntimeResponse {
     const state = this.decryptDataset(dataset);
     const ctx = this.buildContext(state);
     // decrypt target/action which are expected to be encrypted data-* attribute values
@@ -82,6 +89,13 @@ export class StoryRuntimeService {
       applyStoryAction(this.decryptAttribute(action), state.variables, ctx);
     }
     if (target) this.changePassage(state, this.decryptAttribute(target));
+    if (display) {
+      const displayTarget = this.decryptAttribute(display);
+      this.getPassage(state, displayTarget);
+      if (!state.displayedPassages.includes(displayTarget)) {
+        state.displayedPassages.push(displayTarget);
+      }
+    }
     state.expiresAt = Date.now() + DATASET_TTL_MS;
     return this.renderAndSeal(state, Boolean(target));
   }
@@ -90,6 +104,7 @@ export class StoryRuntimeService {
     state: RuntimeState,
     applyEntryEffects: boolean,
   ): RuntimeResponse {
+    state.displayedPassages ??= [];
     const passage = this.getPassage(state, state.currentPassage);
     const ctx = this.buildContext(state);
     if (applyEntryEffects) {
@@ -140,6 +155,9 @@ export class StoryRuntimeService {
       },
       encodeAttribute: (value) => this.encryptAttribute(value),
       decodeAttribute: (value) => this.decryptAttribute(value),
+      displayPassages: Object.fromEntries(
+        state.displayedPassages.map((passage) => [passage, true]),
+      ),
     };
   }
 
