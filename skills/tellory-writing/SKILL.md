@@ -82,7 +82,3 @@ Tellory 故事的读者既是读者也是玩家。写作质量看两件事：段
 
 - 只交付故事源码本体（段落文本+宏），不展示创作过程、分支大纲或语法自查记录，除非用户要。
 - 交稿时说明已运行 `audit.py`/`smoke.cjs` 的结果；仍提醒用户在编辑器里试玩一遍关键分支，确认变量状态和跳转符合预期，尤其是"链接后置 set/call"这类容易写反的地方。
-
-## 参考
-
-- 本 SKILL 参考于 @KKKKhazix 的 [human-writing](https://github.com/KKKKhazix/human-writing/)

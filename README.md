@@ -147,6 +147,10 @@ tags: 冒险, 奇幻
 
 ---
 
+## SKILL 辅助创作
+
+[`tellory-writing`](skills/tellory-writing) 是织言提供的辅助创作工具，允许作者借助 AI 创作辅助进行互动故事的创作。
+
 ## 📄 许可证
 
 本项目采用 [MIT License](LICENSE) 开源许可证。
