@@ -14,7 +14,7 @@
 ## 全局配置
 
 - `title`：设置故事标题，必填，通常显示在页面顶部。比如 `title: 我的故事`
-- `description`：设置故事描述。比如 `description: 这是一个冒险故事`
+- `description`：设置故事描述，必填。比如 `description: 这是一个冒险故事`
 - `tags`：设置故事标签。比如 `tags: 冒险, 奇幻`
 
 ## 段落

@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 // Tellory 冒烟测试：真实 SDK 解析 + 逐段多配置渲染
+// Usage: node smoke.cjs <story file>
+// 必须安装 tellory SDK (`npm install tellory`) 才能使用
 const path = require("path");
 const fs = require("fs");
 const sdk = require("tellory");

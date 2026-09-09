@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Tellory 故事结构化审计：段落唯一性 / 死链接 / 孤立段 / 变量先置后读。"""
+"""Tellory 故事结构化审计：段落唯一性 / 死链接 / 孤立段 / 变量先置后读。
+Usage: python3 audit.py <story file>
+"""
 import re
 import sys
 
