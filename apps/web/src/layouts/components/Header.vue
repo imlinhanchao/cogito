@@ -4,7 +4,7 @@
       <!-- 默认导航：logo + 居中菜单 + 右侧操作（daisyUI 三栏式布局） -->
       <template v-if="!appStore.customHeaderTitle">
         <div class="navbar-start gap-3">
-          <HeaderLogo class="inline-flex rounded-full p-3 bg-base-300 shadow" />
+          <HeaderLogo class="inline-flex rounded-full p-3" />
         </div>
 
         <HeaderNav />
