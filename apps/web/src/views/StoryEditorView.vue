@@ -1064,6 +1064,10 @@ const confirmPasteImport = () => {
       return;
     }
 
+    story.value.title = parsed.title || story.value.title;
+    story.value.startPassage = parsed.startPassage || story.value.startPassage;
+    story.value.tags = parsed.tags || story.value.tags;
+    story.value.description = parsed.description || story.value.description;
     story.value.passages = [];
     let added = 0;
     for (const p of parsed.passages) {
