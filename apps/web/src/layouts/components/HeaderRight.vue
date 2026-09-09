@@ -94,7 +94,7 @@
         <li class="md:hidden">
           <span class="divider my-0"></span>
         </li>
-        <li class="md:hidden">
+        <li :class="{ 'md:hidden': !appStore.customHeaderTitle }">
           <router-link :to="{ path: '/my-stories' }">
             <Icon icon="mdi:book-open-outline" class="w-4 h-4" />
             我的故事
