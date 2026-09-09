@@ -214,6 +214,7 @@ async function loadStory() {
   story.value = res as any;
   if (story.value?.title) {
     appStore.setCustomHeaderTitle(story.value.title);
+    document.title = story.value.title + " | 织言 - Tellory";
   }
 }
 

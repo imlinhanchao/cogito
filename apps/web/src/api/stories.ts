@@ -74,3 +74,7 @@ export async function approveStory(id: string) {
 export async function rejectStory(id: string, reason?: string) {
   return request.post({ url: `/stories/${id}/reject`, data: { reason } });
 }
+
+export async function unpublishStory(id: string) {
+  return request.post({ url: `/stories/${id}/unpublish` });
+}

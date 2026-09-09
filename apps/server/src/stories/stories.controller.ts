@@ -126,4 +126,12 @@ export class StoriesController {
     const adminId = req.user.userId;
     return this.storiesService.reject(id, adminId, body?.reason);
   }
+
+  // 管理员下架已审核并上架的故事
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Post(':id/unpublish')
+  async unpublish(@Param('id') id: string, @Request() req) {
+    const adminId = req.user.userId;
+    return this.storiesService.unpublish(id, adminId);
+  }
 }

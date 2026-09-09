@@ -173,6 +173,14 @@
               <Icon icon="mdi:tag-outline" class="w-3 h-3" />
               <span>{{ t }}</span>
             </button>
+            <button
+              v-if="isAdmin && !isCurrentUser && s.status === 'published'"
+              class="btn btn-ghost btn-xs btn-square hover:bg-base-300/50"
+              @click="confirmUnpublish(s.id!)"
+              title="下架故事"
+            >
+              <Icon icon="mdi:eye-off-outline" class="w-4 h-4 text-base-content/70" />
+            </button>
           </div>
         </div>
 
@@ -272,14 +280,14 @@
 import { useRouter } from "vue-router";
 import type { IStory } from "@/api/stories";
 import { useAuthStore } from "@/stores/modules/auth";
-import { listStories } from "@/api/stories";
+import { listStories, unpublishStory } from "@/api/stories";
 import { ref, onMounted, watch, reactive, computed } from "vue";
 import { useRoute } from "vue-router";
 import { Icon } from "@iconify/vue";
 
 const router = useRouter();
 const route = useRoute();
-const { getUser } = useAuthStore();
+const { getUser, isAdmin } = useAuthStore();
 const stories = ref<Array<IStory>>([]);
 const totalCount = ref<number>(0);
 const loading = ref<boolean>(false);
@@ -342,6 +350,16 @@ const previewStory = (id: string) => {
     name: isCurrentUser.value ? "test" : "play",
     params: { storyId: id },
   });
+};
+
+const confirmUnpublish = async (id: string) => {
+  if (!window.confirm("确定要下架此故事吗？下架后故事将移回草稿。")) return;
+  try {
+    await unpublishStory(id);
+    await load();
+  } catch (err: any) {
+    window.alert(err?.response?.data?.message || err?.message || "下架失败");
+  }
 };
 
 const userLink = (s: IStory) => {

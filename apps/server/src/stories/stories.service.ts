@@ -254,4 +254,22 @@ export class StoriesService {
     await this.storiesRepo.save(story);
     return story;
   }
+
+  /** 管理员下架已审核并上架的故事：删除 ApprovedStory 快照并将 story 标记为草稿 */
+  async unpublish(id: string, adminId: string): Promise<boolean> {
+    const story = await this.findById(id, false);
+    if (!story) return false;
+    if (story.status !== 'published') throw new Error('故事尚未发布');
+
+    // mark back to draft and clear review metadata
+    story.status = 'draft';
+    story.approvedAt = undefined;
+    story.reviewerId = undefined;
+    story.updatedAt = Date.now();
+    await this.storiesRepo.save(story);
+
+    // remove approved snapshot if exists
+    await this.approvedRepo.delete({ sourceStoryId: story.id });
+    return true;
+  }
 }

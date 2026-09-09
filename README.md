@@ -8,6 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org/)
 [![Monorepo](https://img.shields.io/badge/Monorepo-npm%20workspaces-orange.svg)](#-项目架构)
+[![Deploy Status](https://github.com/imlinhanchao/tellory/actions/workflows/deploy.yml/badge.svg)](https://github.com/imlinhanchao/tellory/actions/workflows/deploy.yml)
 
 </div>
 
