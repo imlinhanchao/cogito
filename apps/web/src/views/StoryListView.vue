@@ -209,6 +209,15 @@
               <Icon icon="mdi:play" class="w-3.5 h-3.5" />
               <span>阅读</span>
             </button>
+            <button
+              v-else
+              class="btn btn-primary btn-xs gap-1"
+              @click="previewStory(s.id!)"
+              title="试读故事"
+            >
+              <Icon icon="mdi:play" class="w-3.5 h-3.5" />
+              <span>试读</span>
+            </button>
           </div>
         </div>
       </div>
