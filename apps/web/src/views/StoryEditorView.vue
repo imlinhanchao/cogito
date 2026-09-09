@@ -1,6 +1,6 @@
 <template>
-  <div class="story-shell h-full md:p-4">
-    <div class="grid h-full md:gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+  <div class="h-full md:p-4">
+    <div class="flex h-full md:gap-4">
       <aside
         class="hidden lg:block rounded-2xl border border-base-300 bg-base-100 p-3 shadow-sm"
       >
@@ -639,9 +639,8 @@
         </div>
       </main>
     </div>
-
-    <dialog ref="previewRef" class="modal modal-bottom sm:modal-middle">
-      <div class="modal-box h-[80vh] w-screen flex flex-col">
+    <dialog ref="previewRef" class="modal modal-bottom sm:modal-middle p-0">
+      <div class="modal-box h-[80vh] flex flex-col relative p-5!">
         <h3 class="font-bold text-lg mb-4">预览</h3>
         <div class="overflow-y-auto flex-1">
           <StoryPlayView
@@ -653,7 +652,7 @@
             @update:currentPassage="handleUpdateCurrentPassage($event)"
           />
         </div>
-        <div class="modal-action bottom-5 right-5 absolute">
+        <div class="modal-action bottom-5 right-10 absolute">
           <form method="dialog">
             <button class="btn btn-circle btn-error btn-soft">
               <Icon icon="mdi:close" class="text-lg" />
@@ -662,9 +661,8 @@
         </div>
       </div>
     </dialog>
-
     <dialog id="json-editor-dialog" class="modal">
-      <div class="modal-box w-11/12 max-w-3xl">
+      <div class="modal-box w-screen md:w-11/12 max-w-3xl">
         <h3 class="text-lg font-bold">编辑变量 JSON</h3>
         <div class="py-4" ref="jsonEditorRef">
           <textarea style="width: 100%; height: 400px"></textarea>
@@ -683,7 +681,7 @@
       </form>
     </dialog>
     <dialog id="paste-import-dialog" class="modal">
-      <div class="modal-box w-11/12 max-w-3xl">
+      <div class="modal-box w-screen md:w-11/12 max-w-3xl">
         <h3 class="text-lg font-bold">粘贴并导入故事源码</h3>
         <div class="py-4" ref="pasteEditorRef">
           <textarea style="width: 100%; height: 400px"></textarea>
@@ -707,6 +705,7 @@
     </dialog>
     <SyntaxManual v-if="showManual" @close="showManual = false" />
   </div>
+
 </template>
 <script setup lang="ts">
 import {
