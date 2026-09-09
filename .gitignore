@@ -8,7 +8,7 @@ vite.svg
 *.tsbuildinfo
 .agents
 script
-book.txt
 config.json
 docs
 release
+/*.txt
