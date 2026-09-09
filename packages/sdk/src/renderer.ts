@@ -992,7 +992,7 @@ export function replaceTextWithHtml(
   );
 
   working = working.replace(
-    /\[\[([^\]|]+)(?:\|([^\]]+))?\](?:\(((?:set:\s*[^)]+|call:\s*[^)]+))\))?/g,
+    /\[\[([^\]|]+)(?:\|([^\]]+))?\]\](?:\(((?:set:\s*[^)]+|call:\s*[^)]+))\))?/g,
     (_all, label: string, target?: string, action?: string) => {
       const passageName = label.trim();
       const actualTarget = (target ?? label).trim();

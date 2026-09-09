@@ -1,6 +1,6 @@
 {
   "name": "tellory",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "The Tellory interactive story engine shared SDK: story source parsing, serialization and rendering.",
   "main": "dist/index.mjs",
   "module": "dist/index.mjs",

@@ -1,5 +1,5 @@
 {
-  "name": "cogito",
+  "name": "tellory-service",
   "private": true,
   "workspaces": [
     "apps/web",
@@ -23,6 +23,6 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "tellory": "^0.0.3"
+    "tellory": "^0.0.4"
   }
 }
