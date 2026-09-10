@@ -4,9 +4,14 @@ import { Play } from './play.entity';
 import { PlayService } from './play.service';
 import { PlayController } from './play.controller';
 import { StoriesModule } from '../stories/stories.module';
+import { PlayUnlock } from './play.unlock.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Play]), StoriesModule],
+  imports: [
+    TypeOrmModule.forFeature([Play]),
+    TypeOrmModule.forFeature([PlayUnlock]),
+    StoriesModule,
+  ],
   providers: [PlayService],
   controllers: [PlayController],
   exports: [PlayService],

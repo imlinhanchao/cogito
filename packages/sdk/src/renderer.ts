@@ -1344,18 +1344,81 @@ export function detectRenderSpecials(
   variables: VariableMap,
   story: StoryData,
   ctx: StoryEngineContext,
+  options?: { action?: string; includeLinkActions?: boolean },
 ): StoryRenderSpecials | undefined {
-  const probeVariables: VariableMap = { ...variables };
-  applyPassageEntryEffects(input, probeVariables, ctx);
-  const specials: StoryRenderSpecials = { points: [] };
-  renderStoryTextInternal(input, probeVariables, story, ctx, {
-    consumePointQueue: false,
-    captureSpecials: specials,
-  });
-  if (!specials.points.length && !specials.ending) {
+  try {
+    const probeVariables: VariableMap = JSON.parse(JSON.stringify(variables));
+    applyPassageEntryEffects(input, probeVariables, ctx);
+    const specials: StoryRenderSpecials = { points: [] };
+    renderStoryTextInternal(input, probeVariables, story, ctx, {
+      consumePointQueue: false,
+      captureSpecials: specials,
+    });
+    // Optionally detect any (point: ...) that are attached to links (deferred until click).
+    // Only include them when `options.includeLinkActions` is true, or when a specific
+    // `options.action` is provided to simulate that action being executed.
+    const includeLinkActions = Boolean(options?.includeLinkActions);
+    const simulateAction = options?.action?.trim();
+    if (includeLinkActions || simulateAction) {
+      const linkOpenPattern =
+        /\(link:\s*(?:["'][^"']*["']|[^)]*?)\)\s*\[((?:.|\n)*?)\]/g;
+      for (const m of input.matchAll(linkOpenPattern)) {
+        const actionBlock = m[1] || "";
+        const normalized = actionBlock.trim();
+        const actionMatches = Array.from(
+          normalized.matchAll(
+            /(?:set:\s*[^)\]]+|call:\s*[^)\]]+|point:\s*[^)\]]+)/gi,
+          ),
+        ).map((r) => String(r[0]).trim());
+        if (simulateAction) {
+          if (
+            !actionMatches.some(
+              (a) => a.toLowerCase() === simulateAction.toLowerCase(),
+            )
+          ) {
+            continue;
+          }
+        }
+        for (const pm of actionBlock.matchAll(/point:\s*([^\)\]\n]+)/gi)) {
+          const marker = parseSpecialMarker(pm[1]);
+          if (marker) specials.points.push(marker);
+        }
+      }
+
+      // Wiki-style links: [[label|target]]((...action...))
+      const bracketLinkPattern =
+        /\[\[([^\]|]+)(?:\|([^\]]+))?\]\](?:\(((?:set:\s*[^)]+|call:\s*[^)]+|point:\s*[^)]+))\))?/g;
+      for (const m of input.matchAll(bracketLinkPattern)) {
+        const action = m[3];
+        if (!action) continue;
+        const normalized = String(action).trim();
+        const actionMatches = Array.from(
+          normalized.matchAll(
+            /(?:set:\s*[^)]+|call:\s*[^)]+|point:\s*[^)]+)/gi,
+          ),
+        ).map((r) => String(r[0]).trim());
+        if (simulateAction) {
+          if (
+            !actionMatches.some(
+              (a) => a.toLowerCase() === simulateAction.toLowerCase(),
+            )
+          )
+            continue;
+        }
+        for (const pm of String(action).matchAll(/point:\s*([^\)\n]+)/gi)) {
+          const marker = parseSpecialMarker(pm[1]);
+          if (marker) specials.points.push(marker);
+        }
+      }
+    }
+    if (!specials.points.length && !specials.ending) {
+      return undefined;
+    }
+    return specials;
+  } catch (error) {
+    console.error("detectRenderSpecials", error);
     return undefined;
   }
-  return specials;
 }
 
 /**

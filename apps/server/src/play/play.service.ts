@@ -3,18 +3,23 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Play } from './play.entity';
 import { omit } from 'src/utils';
+import { PlayUnlock } from './play.unlock.entity';
 
 @Injectable()
 export class PlayService {
-  constructor(@InjectRepository(Play) private repo: Repository<Play>) {}
+  constructor(
+    @InjectRepository(Play) private playRepo: Repository<Play>,
+    @InjectRepository(PlayUnlock)
+    private playUnlockRepo: Repository<PlayUnlock>,
+  ) {}
 
   async create(payload: Partial<Play>): Promise<Play> {
-    const entity = this.repo.create({
+    const entity = this.playRepo.create({
       ...payload,
       variables: payload.variables ?? {},
       history: payload.history ?? [],
     });
-    const saved = await this.repo.save(entity);
+    const saved = await this.playRepo.save(entity);
     return saved;
   }
 
@@ -22,14 +27,14 @@ export class PlayService {
     storyId: string,
     userId: string,
   ): Promise<Play | null> {
-    return this.repo.findOne({
+    return this.playRepo.findOne({
       where: { storyId, userId },
       order: { createdAt: 'DESC' },
     });
   }
 
   async findOne(id: string): Promise<Play | null> {
-    return this.repo.findOne({ where: { id } });
+    return this.playRepo.findOne({ where: { id } });
   }
 
   async update(id: string, patch: Partial<Play>): Promise<Play | null> {
@@ -39,10 +44,27 @@ export class PlayService {
       existing,
       omit(patch, ['id', 'storyId', 'userId', 'createdAt', 'updatedAt']),
     );
-    return this.repo.save(existing);
+    return this.playRepo.save(existing);
   }
 
   async remove(id: string): Promise<void> {
-    await this.repo.delete(id);
+    await this.playRepo.delete(id);
+  }
+
+  async createUnlock(payload: PlayUnlock): Promise<PlayUnlock> {
+    const unlock = await this.playUnlockRepo.findOne({
+      where: {
+        storyId: payload.storyId,
+        userId: payload.userId,
+        type: payload.type,
+        name: payload.name,
+      },
+    });
+    if (unlock) {
+      return unlock;
+    }
+    const entity = this.playUnlockRepo.create(payload);
+    const saved = await this.playUnlockRepo.save(entity);
+    return saved;
   }
 }

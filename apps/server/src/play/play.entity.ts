@@ -51,6 +51,9 @@ export class Play {
   @Column('json', { comment: '段落历史（JSON 数组）' })
   history: IHistory[] = [];
 
+  @Column({ comment: '是否抵达结局' })
+  isEnd: boolean = false;
+
   @Column('bigint', { comment: '创建时间' })
   createdAt: number;
 

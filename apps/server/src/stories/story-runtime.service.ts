@@ -20,6 +20,8 @@ import {
   applyStoryAction,
   renderStoryText,
   buildInitialVariables,
+  detectRenderSpecials,
+  StoryRenderSpecials,
 } from 'tellory';
 
 type Variables = Record<string, unknown>;
@@ -43,6 +45,7 @@ export interface RuntimeResponse {
   passage: string;
   html: string;
   variables: Variables;
+  specials?: StoryRenderSpecials;
 }
 
 const DATASET_TTL_MS = 60 * 60 * 1000;
@@ -85,8 +88,10 @@ export class StoryRuntimeService {
     const state = this.decryptDataset(dataset);
     const ctx = this.buildContext(state);
     // decrypt target/action which are expected to be encrypted data-* attribute values
+    let decodedAction: string | undefined;
     if (action) {
-      applyStoryAction(this.decryptAttribute(action), state.variables, ctx);
+      decodedAction = this.decryptAttribute(action);
+      applyStoryAction(decodedAction, state.variables, ctx);
     }
     if (target) this.changePassage(state, this.decryptAttribute(target));
     if (display) {
@@ -97,12 +102,13 @@ export class StoryRuntimeService {
       }
     }
     state.expiresAt = Date.now() + DATASET_TTL_MS;
-    return this.renderAndSeal(state, Boolean(target));
+    return this.renderAndSeal(state, Boolean(target), decodedAction);
   }
 
   private renderAndSeal(
     state: RuntimeState,
     applyEntryEffects: boolean,
+    action?: string,
   ): RuntimeResponse {
     state.displayedPassages ??= [];
     const passage = this.getPassage(state, state.currentPassage);
@@ -110,16 +116,28 @@ export class StoryRuntimeService {
     if (applyEntryEffects) {
       applyPassageEntryEffects(passage.content, state.variables, ctx);
     }
+    const html = renderStoryText(
+      passage.content,
+      state.variables,
+      this.toStoryData(state),
+      ctx,
+    );
+
+    // Detect any render-time specials (points / ending)
+    const specials = detectRenderSpecials(
+      passage.content,
+      state.variables,
+      this.toStoryData(state),
+      ctx,
+      action ? { action } : undefined,
+    );
+
     return {
       dataset: this.encryptDataset(state),
       passage: state.currentPassage,
-      html: renderStoryText(
-        passage.content,
-        state.variables,
-        this.toStoryData(state),
-        ctx,
-      ),
+      html,
       variables: { ...state.variables },
+      specials,
     };
   }
 

@@ -142,6 +142,50 @@ export class PlayController {
         html: runtimeRes.html,
       });
       if (!updated) return null;
+
+      // 检查 render-specials（成就/结局），若有则记录为解锁
+      try {
+        const specials = (runtimeRes as any).specials;
+        if (specials) {
+          // achievements / points
+          if (Array.isArray(specials.points)) {
+            for (const pt of specials.points) {
+              try {
+                await this.playService.createUnlock({
+                  playId: updated.id,
+                  storyId: id,
+                  userId: p.userId,
+                  type: 'achievement',
+                  name: String(pt.name || ''),
+                  description: String(pt.description || ''),
+                  meta: { passage: runtimeRes.passage },
+                } as any);
+              } catch {
+                // ignore individual unlock errors
+              }
+            }
+          }
+          // ending
+          if (specials.ending) {
+            try {
+              await this.playService.createUnlock({
+                playId: updated.id,
+                storyId: id,
+                userId: p.userId,
+                type: 'ending',
+                name: String(specials.ending.name || ''),
+                description: String(specials.ending.description || ''),
+                meta: { passage: runtimeRes.passage },
+              } as any);
+            } catch {
+              // ignore
+            }
+          }
+        }
+      } catch {
+        // ignore specials handling errors to avoid failing the update
+      }
+
       return {
         ...updated,
         variables: updated.variables || {},
