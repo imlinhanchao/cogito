@@ -30,7 +30,6 @@ type Passage = StoryPassage;
 
 interface RuntimeState {
   version: 1;
-  expiresAt: number;
   storyId: string;
   title: string;
   currentPassage: string;
@@ -66,7 +65,6 @@ export class StoryRuntimeService {
     return this.renderAndSeal(
       {
         version: 1,
-        expiresAt: Date.now() + DATASET_TTL_MS,
         storyId,
         title: parsed.title,
         currentPassage: parsed.startPassage,
@@ -101,7 +99,6 @@ export class StoryRuntimeService {
         state.displayedPassages.push(displayTarget);
       }
     }
-    state.expiresAt = Date.now() + DATASET_TTL_MS;
     return this.renderAndSeal(state, Boolean(target), decodedAction);
   }
 

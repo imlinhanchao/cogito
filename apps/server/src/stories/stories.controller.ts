@@ -15,7 +15,6 @@ import { OptionalAuthGuard } from '../auth/optional-auth.guard';
 import { AdminGuard } from '../auth/admin.guard';
 import { StoriesService } from './stories.service';
 import { StoryDto, RejectDto } from './stories.dto';
-import { StoryRuntimeExecuteDto } from './story-runtime.dto';
 import { StoryRuntimeService } from './story-runtime.service';
 
 @Controller('stories')

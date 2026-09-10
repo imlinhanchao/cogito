@@ -45,7 +45,7 @@ export class Play {
   @Column('json', { comment: '序列化的变量 JSON' })
   variables: Record<string, any>;
 
-  @Column('text', { comment: '加密的 runtime dataset', nullable: true })
+  @Column('longtext', { comment: '加密的 runtime dataset', nullable: true })
   dataset?: string;
 
   @Column('json', { comment: '段落历史（JSON 数组）' })
