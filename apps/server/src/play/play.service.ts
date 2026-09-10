@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Play } from './play.entity';
 import { omit } from 'src/utils';
 import { PlayUnlock } from './play.unlock.entity';
+import { PlayStoryDto } from './play.dto';
+import { StoriesService } from '../stories/stories.service';
 
 @Injectable()
 export class PlayService {
@@ -11,6 +13,7 @@ export class PlayService {
     @InjectRepository(Play) private playRepo: Repository<Play>,
     @InjectRepository(PlayUnlock)
     private playUnlockRepo: Repository<PlayUnlock>,
+    private readonly storiesService: StoriesService,
   ) {}
 
   async create(payload: Partial<Play>): Promise<Play> {
@@ -72,5 +75,57 @@ export class PlayService {
     const entity = this.playUnlockRepo.create(payload);
     const saved = await this.playUnlockRepo.save(entity);
     return saved;
+  }
+
+  async getUserUnlocksGrouped(
+    userId: string,
+    includePrivate = false,
+  ): Promise<PlayStoryDto[]> {
+    const rows = await this.playUnlockRepo.find({ where: { userId } });
+    const map = new Map<string, { points: any[]; end: any[] }>();
+    for (const r of rows) {
+      const entry = map.get(r.storyId) || { points: [], end: [] };
+      if (r.type === 'achievement')
+        entry.points.push({ name: r.name, description: r.description });
+      else if (r.type === 'ending')
+        entry.end.push({ name: r.name, description: r.description });
+      map.set(r.storyId, entry);
+    }
+    const out: PlayStoryDto[] = [];
+    const storyIds = Array.from(map.keys());
+    const storys = includePrivate
+      ? await this.storiesService.getStorysByIds(storyIds)
+      : [];
+    const approvedStories =
+      await this.storiesService.getApprovedByIds(storyIds);
+
+    // Batch fetch latest plays for these stories to determine isPlaying
+    const latestPlays = storyIds.length
+      ? await this.playRepo.find({
+          where: { userId, storyId: In(storyIds) },
+          order: { createdAt: 'DESC' },
+        })
+      : [];
+    const latestByStory = new Map<string, Play>();
+    for (const p of latestPlays) {
+      if (!latestByStory.has(p.storyId)) latestByStory.set(p.storyId, p);
+    }
+
+    for (const [storyId, v] of map.entries()) {
+      const story =
+        storys.find((s) => s.id === storyId) ||
+        approvedStories.find((s) => s.id === storyId);
+      if (!story) continue;
+      const latest = latestByStory.get(storyId);
+      const isPlaying = !!latest && !latest.isEnding;
+      out.push({
+        ...story,
+        storyId,
+        points: v.points,
+        end: v.end,
+        isPlaying,
+      });
+    }
+    return out;
   }
 }

@@ -954,7 +954,7 @@ const saveDraft = () => {
 const saveToServer = async () => {
   // Create payload compatible with server CreateStoryDto: title + content
   const payload = {
-    ...omit(story.value, ["passages"]),
+    ...omit(story.value, ["passages", "author"]),
     content: serializeStory(story.value),
     passageSize: story.value.passages.length,
   };

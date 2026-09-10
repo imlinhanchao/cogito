@@ -24,6 +24,15 @@ export class PlayController {
     private readonly storyRuntimeService: StoryRuntimeService,
   ) {}
 
+  @UseGuards(OptionalAuthGuard)
+  @Get('unlocks/:userId')
+  async getUserUnlocks(@Param('userId') userId: string, @Request() req) {
+    return await this.playService.getUserUnlocksGrouped(
+      userId,
+      req.user?.userId == userId || req.user?.isAdmin || false,
+    );
+  }
+
   @Get('story/:id')
   @UseGuards(JwtAuthGuard)
   async getApprovedStory(@Param('id') id: string, @Request() req) {

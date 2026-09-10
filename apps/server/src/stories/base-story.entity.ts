@@ -13,6 +13,9 @@ export abstract class BaseStoryFields {
   @Column({ comment: '文章段落数', nullable: true })
   passageSize: number;
 
+  @Column({ comment: '起始段落', nullable: true })
+  startPassage?: string;
+
   @Column({ comment: '作者ID', nullable: true })
   authorId: string;
 

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, LessThanOrEqual } from 'typeorm';
+import { Repository, Like, LessThanOrEqual, In } from 'typeorm';
 import { UsersService } from 'src/users/users.service';
 import { Story } from './story.entity';
 import { ApprovedStory } from './approved-story.entity';
@@ -79,6 +79,22 @@ export class StoriesService {
   async create(dto: StoryDto): Promise<Story> {
     const story = new Story(dto);
     return this.storiesRepo.save(story);
+  }
+
+  async getStorysByIds(ids: string[]): Promise<Story[]> {
+    return this.storiesRepo.find({
+      where: {
+        id: In(ids),
+      },
+    });
+  }
+
+  async getApprovedByIds(ids: string[]): Promise<ApprovedStory[]> {
+    return this.approvedRepo.find({
+      where: {
+        id: In(ids),
+      },
+    });
   }
 
   async findAll(

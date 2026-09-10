@@ -22,3 +22,21 @@ export async function updatePlay(
 export async function resetPlay(storyId: string) {
   return request.post({ url: `/play/reset/${storyId}` });
 }
+
+export interface IUnlock {
+  name: string;
+  description: string;
+}
+
+export interface IUserStoryProgress {
+  id: string;
+  title: string;
+  description: string;
+  points: IUnlock[];
+  end: IUnlock[];
+  isPlaying: boolean;
+}
+
+export const getUserUnlocks = (userId: string) => {
+  return request.get<IUserStoryProgress[]>({ url: `/play/unlocks/${userId}` });
+};
