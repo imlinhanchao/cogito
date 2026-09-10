@@ -1,5 +1,5 @@
 import { IsOptional, IsString } from 'class-validator';
-import { BaseStoryFields } from 'dist/stories/base-story.entity';
+import { BaseStoryFields } from '../stories/base-story.entity';
 
 export class UpdatePlayDto {
   @IsOptional()
