@@ -170,7 +170,7 @@
 import { ref, onMounted, onUnmounted, watch, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { getStory } from "@/api/stories";
-import { createPlay, getPlay, updatePlay, getReleaseStory } from "@/api/play";
+import { createPlay, getPlay, updatePlay, getReleaseStory, resetPlay } from "@/api/play";
 import { useAppStore } from "@/stores/modules/app";
 
 const route = useRoute();
@@ -189,10 +189,6 @@ const authorName = computed(
   () =>
     story.value?.author?.nickname || story.value?.author?.username || "佚名",
 );
-
-function localKey(id: string) {
-  return `play:${id}`;
-}
 
 watch(
   () => story.value?.title,
@@ -226,7 +222,6 @@ async function loadExistingPlay() {
     return true;
   } catch (err) {
     console.warn("[PlayView] loadExistingPlay failed", err);
-    localStorage.removeItem(localKey(storyId));
     return false;
   }
 }
@@ -238,9 +233,6 @@ async function startPlay() {
     });
     play.value = res as any;
     currentHtml.value = res.html || "";
-    if (res?.id) {
-      localStorage.setItem(localKey(storyId), res.id);
-    }
     showModal.value = false;
   } catch (err) {
     console.error("startPlay error", err);
@@ -249,7 +241,9 @@ async function startPlay() {
 
 async function confirmRestart() {
   showRestartConfirm.value = false;
-  await startPlay();
+  const res = await resetPlay(storyId);
+  play.value = res as any;
+  currentHtml.value = res.html || "";
 }
 
 function closeModal() {

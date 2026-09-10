@@ -177,15 +177,22 @@
                 </div>
               </template>
               <template v-if="!props.readOnly">
+                <div class="tooltip tooltip-bottom" data-tip="试玩故事">
+                  <button
+                    class="btn btn-sm btn-ghost btn-secondary btn-circle"
+                    type="button"
+                    @click="$router.push(`/test/${currentStoryId}`)"
+                  >
+                    <Icon icon="mdi:play-circle-outline" size="16px" />
+                  </button>
+                </div>
                 <div class="tooltip tooltip-bottom" data-tip="保存至服务器">
                   <button
-                    class="btn btn-sm btn-primary shadow-xs"
-                    :class="{ 'btn-ghost': isMobile }"
+                    class="btn btn-sm btn-primary btn-ghost btn-circle"
                     type="button"
                     @click="saveToServer"
                   >
                     <Icon icon="mdi:content-save-outline" size="16px" />
-                    <span v-if="!isMobile">保存</span>
                   </button>
                 </div>
                 <div
@@ -194,13 +201,11 @@
                   v-if="currentStoryId"
                 >
                   <button
-                    class="btn btn-sm btn-outline btn-primary shadow-xs"
-                    :class="{ 'btn-ghost': isMobile }"
+                    class="btn btn-sm btn-ghost btn-accent btn-circle"
                     type="button"
                     @click="submitForReview"
                   >
                     <Icon icon="mdi:send" size="16px" />
-                    <span v-if="!isMobile">提审</span>
                   </button>
                 </div>
               </template>

@@ -52,7 +52,7 @@ export class Play {
   history: IHistory[] = [];
 
   @Column({ comment: '是否抵达结局' })
-  isEnd: boolean = false;
+  isEnding: boolean = false;
 
   @Column('bigint', { comment: '创建时间' })
   createdAt: number;

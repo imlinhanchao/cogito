@@ -27,6 +27,11 @@ export class PlayService {
     storyId: string,
     userId: string,
   ): Promise<Play | null> {
+    const playRecord = await this.playRepo.findOne({
+      where: { storyId, userId, isEnding: false },
+      order: { createdAt: 'DESC' },
+    });
+    if (playRecord) return playRecord;
     return this.playRepo.findOne({
       where: { storyId, userId },
       order: { createdAt: 'DESC' },
@@ -44,7 +49,8 @@ export class PlayService {
       existing,
       omit(patch, ['id', 'storyId', 'userId', 'createdAt', 'updatedAt']),
     );
-    return this.playRepo.save(existing);
+    await this.playRepo.update(existing.id, existing);
+    return existing;
   }
 
   async remove(id: string): Promise<void> {

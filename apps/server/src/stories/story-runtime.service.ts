@@ -309,7 +309,12 @@ export class StoryRuntimeService {
 
   // Public helper for controllers/services to decode encrypted data-* attributes
   decodeInteraction(encrypted: string): string {
-    return this.decryptAttribute(encrypted);
+    try {
+      if (!encrypted) return '';
+      return this.decryptAttribute(encrypted);
+    } catch {
+      return encrypted;
+    }
   }
 
   private decryptDataset(dataset: string): RuntimeState {

@@ -19,6 +19,6 @@ export async function updatePlay(
   return request.put({ url: `/play/${storyId}`, data: body });
 }
 
-export async function deletePlay(storyId: string) {
-  return request.delete({ url: `/play/${storyId}` });
+export async function resetPlay(storyId: string) {
+  return request.post({ url: `/play/reset/${storyId}` });
 }

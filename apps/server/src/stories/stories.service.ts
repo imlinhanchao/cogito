@@ -190,7 +190,7 @@ export class StoriesService {
     Object.assign(story, omit(dto, ['id', 'createdAt', 'authorId']));
     if (dto.tags) story.tags = dto.tags.join(',');
     story.updatedAt = Date.now();
-    await this.storiesRepo.save(story);
+    await this.storiesRepo.update(story.id, story);
     return story;
   }
 

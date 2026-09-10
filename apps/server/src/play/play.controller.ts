@@ -95,33 +95,15 @@ export class PlayController {
         dto.display,
       );
       const prevHistory = p.history || [];
-      let decodedAction: string | undefined = undefined;
-      let decodedTarget: string | undefined = undefined;
-      let decodedDisplay: string | undefined = undefined;
-      try {
-        if (dto.action)
-          decodedAction = this.storyRuntimeService.decodeInteraction(
-            dto.action,
-          );
-      } catch {
-        decodedAction = dto.action;
-      }
-      try {
-        if (dto.target)
-          decodedTarget = this.storyRuntimeService.decodeInteraction(
-            dto.target,
-          );
-      } catch {
-        decodedTarget = dto.target;
-      }
-      try {
-        if (dto.display)
-          decodedDisplay = this.storyRuntimeService.decodeInteraction(
-            dto.display,
-          );
-      } catch {
-        decodedDisplay = dto.display;
-      }
+      const decodedAction: string = this.storyRuntimeService.decodeInteraction(
+        dto.action || '',
+      );
+      const decodedTarget: string = this.storyRuntimeService.decodeInteraction(
+        dto.target || '',
+      );
+      const decodedDisplay: string = this.storyRuntimeService.decodeInteraction(
+        dto.display || '',
+      );
 
       const entry = {
         from: p.currentPassage,
@@ -134,15 +116,7 @@ export class PlayController {
         at: Date.now(),
       };
       const newHistory = [...prevHistory, entry];
-      const updated = await this.playService.update(p.id, {
-        currentPassage: runtimeRes.passage,
-        variables: runtimeRes.variables as any,
-        history: newHistory,
-        dataset: runtimeRes.dataset,
-        html: runtimeRes.html,
-      });
-      if (!updated) return null;
-
+      let isEnding = false;
       // 检查 render-specials（成就/结局），若有则记录为解锁
       try {
         const specials = (runtimeRes as any).specials;
@@ -152,7 +126,7 @@ export class PlayController {
             for (const pt of specials.points) {
               try {
                 await this.playService.createUnlock({
-                  playId: updated.id,
+                  playId: p.id,
                   storyId: id,
                   userId: p.userId,
                   type: 'achievement',
@@ -167,9 +141,10 @@ export class PlayController {
           }
           // ending
           if (specials.ending) {
+            isEnding = true;
             try {
               await this.playService.createUnlock({
-                playId: updated.id,
+                playId: p.id,
                 storyId: id,
                 userId: p.userId,
                 type: 'ending',
@@ -185,6 +160,16 @@ export class PlayController {
       } catch {
         // ignore specials handling errors to avoid failing the update
       }
+
+      const updated = await this.playService.update(p.id, {
+        currentPassage: runtimeRes.passage,
+        variables: runtimeRes.variables as any,
+        history: newHistory,
+        dataset: runtimeRes.dataset,
+        html: runtimeRes.html,
+        isEnding,
+      });
+      if (!updated) return null;
 
       return {
         ...updated,
@@ -205,5 +190,21 @@ export class PlayController {
       throw new Error('无权删除该游玩记录');
     await this.playService.remove(p.id);
     return { ok: true };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('reset/:id')
+  async resetPlay(@Param('id') storyId: string, @Request() req) {
+    const p = await this.playService.findLatestByStoryId(
+      storyId,
+      req.user?.userId,
+    );
+    if (!p || p.storyId !== storyId) return null;
+    if (p.userId && p.userId !== req.user.userId)
+      throw new Error('无权重置该游玩记录');
+    if (!p.isEnding) {
+      await this.playService.remove(p.id);
+    }
+    return this.createPlay(storyId, req);
   }
 }
