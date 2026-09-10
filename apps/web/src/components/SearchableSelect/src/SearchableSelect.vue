@@ -1,0 +1,173 @@
+<template>
+  <div class="relative isolation-auto" ref="wrapperRef">
+    <!-- 触发器 -->
+    <div class="flex items-center gap-1 w-full" :class="{ 'input input-bordered p-0 pr-2 h-auto min-h-8': border, ['input-' + size]: size }">
+      <button type="button" class="grow flex flex-wrap items-center gap-1 text-left px-3 py-1 min-h-full overflow-hidden"
+        :class="{ 'text-base-content/40': !hasValue }"
+        @click="toggleOpen">
+        <template v-if="multiple && Array.isArray(selected) && selected.length > 0">
+          <div v-for="val in selected" :key="val" class="badge badge-sm badge-secondary gap-1 pr-1">
+            {{ getLabel(val) }}
+            <span class="hover:bg-base-content/20 rounded-full p-0.5 cursor-pointer" @click.stop="pick(val)">
+              <svg class="w-2 h-2" viewBox="0 0 10 10"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+            </span>
+          </div>
+        </template>
+        <span v-else class="truncate">{{ hasValue && !Array.isArray(selected) ? getLabel(selected) : placeholder }}</span>
+      </button>
+      <button v-if="hasValue && clearable" type="button" class="btn btn-ghost btn-circle btn-xs opacity-40 hover:opacity-100" @click.stop="clear">
+        <svg class="w-2.5 h-2.5" viewBox="0 0 10 10"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+      </button>
+      <svg class="w-3 h-3 opacity-40 shrink-0 transition-transform pointer-events-none" :class="{ 'rotate-180': open }" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+    </div>
+
+    <!-- 下拉面板 -->
+    <Teleport to="body" :disabled="!appendToBody">
+      <div v-if="open" class="fixed inset-0 z-1000" @click="close" @contextmenu.prevent="close"></div>
+      <div v-if="open" ref="panelRef"
+        class="z-1004 bg-base-100 border border-base-300 rounded-lg shadow-lg overflow-hidden flex flex-col"
+        :class="appendToBody ? 'fixed' : 'absolute mt-1'"
+        :style="panelStyle">
+        <!-- 搜索框 -->
+        <div class="p-1.5 border-b border-base-300 shrink-0">
+          <input ref="searchRef" v-model="query" class="input input-bordered input-sm w-full" placeholder="搜索…" @keydown.escape="close" @keydown.enter="selectFirst" />
+        </div>
+        <!-- 选项列表 -->
+        <div class="overflow-y-auto grow max-h-65">
+          <button v-for="opt in filteredOptions" :key="getValue(opt)"
+            class="w-full text-left px-3 py-2 text-sm hover:bg-base-200 transition-colors flex items-center gap-2"
+            :class="{ 'bg-primary/10 text-primary font-bold': isSelected(opt) }"
+            @click="pick(opt)">
+            <input v-if="multiple" type="checkbox" :checked="isSelected(opt)" class="checkbox checkbox-xs pointer-events-none" />
+            <span class="truncate grow">{{ getLabel(opt) }}</span>
+            <span class="text-[10px] opacity-40 shrink-0 font-mono">{{ getValue(opt) }}</span>
+          </button>
+          <div v-if="filteredOptions.length === 0" class="px-3 py-4 text-xs text-base-content/40 text-center">无匹配</div>
+        </div>
+      </div>
+    </Teleport>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch, nextTick } from 'vue'
+
+const props = withDefaults(defineProps<{
+  options: { key?: string; name?: string; label?: string; value?: string }[] | string[]
+  modelValue?: string | string[]
+  placeholder?: string;
+  border?: boolean;
+  size?: string;
+  appendToBody?: boolean;
+  clearable?: boolean;
+  multiple?: boolean;
+}>(), {
+  placeholder: '',
+  border: true,
+  size: 'md',
+  appendToBody: false,
+  clearable: false,
+  multiple: false
+})
+
+const emit = defineEmits<{ 'update:modelValue': [v: string | string[]] }>()
+
+const open = ref(false)
+const query = ref('')
+const wrapperRef = ref<HTMLElement | null>(null)
+const panelRef = ref<HTMLElement | null>(null)
+const searchRef = ref<HTMLInputElement | null>(null)
+const panelStyle = ref<Record<string, string>>({ top: '0px', left: '0px', width: '200px' })
+
+const selected = computed(() => props.modelValue)
+const hasValue = computed(() => {
+  if (props.multiple) return Array.isArray(props.modelValue) && props.modelValue.length > 0
+  return !!props.modelValue
+})
+
+function getValue(opt: any): string {
+  if (typeof opt === 'string') return opt
+  return opt.key ?? opt.value ?? opt.name ?? opt.label ?? String(opt)
+}
+function getLabel(opt: any): string {
+  if (opt === undefined || opt === null) return ''
+  if (typeof opt === 'string') return getLabel(props.options.find(o => getValue(o) === opt)) ?? opt
+  return opt.name ?? opt.label ?? opt.key ?? opt.value ?? String(opt)
+}
+
+function isSelected(opt: any): boolean {
+  const val = getValue(opt)
+  if (props.multiple && Array.isArray(props.modelValue)) {
+    return props.modelValue.includes(val)
+  }
+  return props.modelValue === val
+}
+
+const filteredOptions = computed(() => {
+  const q = query.value.toLowerCase().trim()
+  if (!q) return props.options
+  return props.options.filter(o => {
+    const label = getLabel(o).toLowerCase()
+    const val = getValue(o).toLowerCase()
+    return label.includes(q) || val.includes(q)
+  })
+})
+
+function toggleOpen() {
+  if (open.value) { close(); return }
+  open.value = true
+  query.value = ''
+  nextTick(() => {
+    searchRef.value?.focus()
+    positionPanel()
+  })
+}
+
+function positionPanel() {
+  if (!wrapperRef.value || !panelRef.value) return
+  const rect = wrapperRef.value.getBoundingClientRect()
+  const panelHeight = 260
+  const spaceBelow = window.innerHeight - rect.bottom
+  const showBelow = spaceBelow >= panelHeight
+
+  if (props.appendToBody) {
+    const top = showBelow ? rect.bottom : Math.max(8, rect.top - panelHeight)
+    panelStyle.value = {
+      top: `${top}px`,
+      left: `${rect.left}px`,
+      width: `${rect.width}px`,
+    }
+  } else {
+    panelStyle.value = {
+    }
+  }
+}
+
+function pick(opt: any) {
+  const val = getValue(opt)
+  if (props.multiple) {
+    const current = Array.isArray(props.modelValue) ? [...props.modelValue] : []
+    const index = current.indexOf(val)
+    if (index > -1) {
+      current.splice(index, 1)
+    } else {
+      current.push(val)
+    }
+    emit('update:modelValue', current)
+  } else {
+    emit('update:modelValue', val)
+    close()
+  }
+}
+
+function clear() {
+  emit('update:modelValue', props.multiple ? [] : '')
+  close()
+}
+
+function selectFirst() {
+  if (filteredOptions.value.length > 0) pick(filteredOptions.value[0])
+}
+
+function close() { open.value = false }
+</script>

@@ -73,7 +73,7 @@
                 [[去湖边]]<br />
                 (link:"点击我")[(goto:"NextPassage")]<br />
                 [[开门|Hall]](set: $doorOpen to true)<br />
-                (link:"查看钥匙")[(display: Key)]<br />
+                (link:"查看钥匙")[(display: "Key")]<br />
               </div>
               <p>
                 快捷链接、按钮链接都可用。`[[显示文字|段落名]]`

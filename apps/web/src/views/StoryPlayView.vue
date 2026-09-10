@@ -135,6 +135,7 @@ const router = useRouter();
 
 const storyContentRef = ref<HTMLElement | null>(null);
 const renderedPassage = ref("");
+const POINT_QUEUE_KEY = "__story_point_queue";
 const displayedPassages = ref<Record<string, boolean>>({});
 const story = ref<StoryData>({
   title: "互动故事",
@@ -197,23 +198,33 @@ const renderCurrentPassage = () => {
     (target) => goto(target),
     displayedPassages.value,
   );
+  variables.value[POINT_QUEUE_KEY] = [];
 };
 
 const handleStoryClick = (event: MouseEvent) => {
   const eventTarget = event.target;
   const linkElement =
     eventTarget instanceof Element
-      ? eventTarget.closest("[data-story-target], [data-story-display]")
+      ? eventTarget.closest(
+          "[data-story-target], [data-story-display], [data-story-action]",
+        )
       : null;
   const target =
     linkElement?.getAttribute("data-story-goto") ??
     linkElement?.getAttribute("data-story-target");
   const display = linkElement?.getAttribute("data-story-display");
-  if (!target && !display) {
+  const action = linkElement?.getAttribute("data-story-action");
+  if (!target && !display && !action) {
     return;
   }
 
   event.preventDefault();
+  if (action) {
+    applyStoryAction(action, variables.value);
+    if (props.external) {
+      emits("update:variables", variables.value);
+    }
+  }
   if (display) {
     displayedPassages.value = {
       ...displayedPassages.value,
@@ -222,16 +233,11 @@ const handleStoryClick = (event: MouseEvent) => {
     renderCurrentPassage();
     return;
   }
-  const action = linkElement?.getAttribute("data-story-action");
-  if (action) {
-    applyStoryAction(action, variables.value);
-    if (props.external) {
-      emits("update:variables", variables.value);
-    }
-  }
   if (target) {
     goto(target);
+    return;
   }
+  renderCurrentPassage();
 };
 
 const goto = (target: string) => {

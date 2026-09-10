@@ -116,6 +116,18 @@ body,
   height: auto;
   border-radius: 6px;
 }
+.story-point {
+  @apply m-2 badge badge-sm badge-accent badge-soft;
+  &::before {
+    content: "🏆";
+  }
+}
+.story-end {
+  @apply badge badge-sm badge-secondary badge-soft;
+  &::before {
+    content: "🏁";
+  }
+}
 
 .spin {
   animation: rotate 2s linear infinite;

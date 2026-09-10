@@ -1,8 +1,8 @@
 <template>
-  <div class="h-full md:p-4">
+  <div class="h-full md:p-4 w-full">
     <div class="flex h-full md:gap-4">
       <aside
-        class="hidden lg:block rounded-2xl border border-base-300 bg-base-100 p-3 shadow-sm"
+        class="hidden lg:block rounded-2xl border border-base-300 bg-base-100 p-3 shadow-sm min-w-70"
       >
         <div class="mb-3 flex items-center justify-between px-1">
           <h2 class="text-lg font-bold">段落列表</h2>
@@ -32,7 +32,7 @@
           >
             <button
               type="button"
-              class="flex-1 flex items-center justify-between rounded-xl border px-3 py-2 text-left transition"
+              class="flex-1 flex items-center justify-between rounded-xl border px-3 py-2 text-left transition truncate"
               :class="
                 selectedPassage === passage.name
                   ? 'border-primary bg-primary/10'
@@ -94,7 +94,7 @@
       </div>
 
       <main
-        class="rounded-2xl border border-base-300 bg-base-100 md:p-4 shadow-sm"
+        class="rounded-2xl border border-base-300 bg-base-100 md:p-4 shadow-sm w-full"
       >
         <div
           class="mb-4 space-y-2.5 bg-base-200/40 p-3 rounded-xl border border-base-200"
@@ -106,7 +106,7 @@
             <strong class="mr-2">已拒绝</strong>
             <span>{{ storyAny.reviewReason || "未填写拒绝理由" }}</span>
           </div>
-          <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex-wrap items-center justify-between gap-3" :class="{ 'flex': !isMobile }">
             <div class="flex items-center gap-2 flex-1 min-w-60">
               <div class="lg:hidden">
                 <button
@@ -131,7 +131,7 @@
                 </button>
               </div>
             </div>
-            <div class="flex items-center gap-1 shrink-0">
+            <div class="flex items-center gap-1 md:shrink-0" :class="{ 'py-2 justify-around': isMobile }">
               <template v-if="!props.readOnly">
                 <div class="tooltip tooltip-bottom" data-tip="从剪贴板粘贴导入">
                   <button
@@ -176,15 +176,16 @@
                   </button>
                 </div>
               </template>
-              <div class="space-x-2" v-if="!props.readOnly">
+              <template v-if="!props.readOnly">
                 <div class="tooltip tooltip-bottom" data-tip="保存至服务器">
                   <button
-                    class="btn btn-sm btn-primary shadow-xs gap-1"
+                    class="btn btn-sm btn-primary shadow-xs"
+                    :class="{ 'btn-ghost': isMobile }"
                     type="button"
                     @click="saveToServer"
                   >
-                    <Icon icon="mdi:content-save-outline" class="text-base" />
-                    <span>保存</span>
+                    <Icon icon="mdi:content-save-outline" size="16px" />
+                    <span v-if="!isMobile">保存</span>
                   </button>
                 </div>
                 <div
@@ -193,15 +194,16 @@
                   v-if="currentStoryId"
                 >
                   <button
-                    class="btn btn-sm btn-outline btn-primary shadow-xs gap-1"
+                    class="btn btn-sm btn-outline btn-primary shadow-xs"
+                    :class="{ 'btn-ghost': isMobile }"
                     type="button"
                     @click="submitForReview"
                   >
-                    <Icon icon="mdi:send" class="text-base" />
-                    <span>提交审核</span>
+                    <Icon icon="mdi:send" size="16px" />
+                    <span v-if="!isMobile">提审</span>
                   </button>
                 </div>
-              </div>
+              </template>
             </div>
           </div>
 
@@ -256,240 +258,24 @@
           </div>
         </div>
 
-        <div
-          v-if="!props.readOnly"
-          class="tools sticky top-0 mb-4 flex flex-wrap gap-1 items-center bg-base-200/60 p-1.5 rounded-xl border border-base-200"
-        >
-          <div class="tooltip tooltip-bottom" data-tip="插入链接 [[段落|显示]]">
-            <button
-              class="btn btn-sm btn-ghost btn-square"
-              type="button"
-              @click="insertSnippet('[[' + selectedPassage + '|]]')"
-            >
-              <Icon icon="mdi:link-variant" class="text-lg" />
-            </button>
-          </div>
-
-          <div class="tooltip tooltip-bottom" data-tip="插入条件分支 (if:)">
-            <button
-              class="btn btn-sm btn-ghost btn-square"
-              type="button"
-              @click="insertSnippet('(if: $var > 0)[文本](else:)[文本]')"
-            >
-              <Icon icon="mdi:source-branch" class="text-lg" />
-            </button>
-          </div>
-
-          <div class="tooltip tooltip-bottom" data-tip="变量赋值 (set:)">
-            <button
-              class="btn btn-sm btn-ghost btn-square"
-              type="button"
-              @click="insertSnippet('(set: $score to $score + 1)')"
-            >
-              <Icon icon="mdi:plus-box-outline" class="text-lg" />
-            </button>
-          </div>
-
-          <div class="tooltip tooltip-bottom" data-tip="打印变量 (print:)">
-            <button
-              class="btn btn-sm btn-ghost btn-square"
-              type="button"
-              @click="insertSnippet('(print: $score)')"
-            >
-              <Icon icon="mdi:code-json" class="text-lg" />
-            </button>
-          </div>
-
-          <div class="divider divider-horizontal my-1 mx-0.5"></div>
-
-          <div class="tooltip tooltip-bottom" data-tip="粗体 ''文字''">
-            <button
-              class="btn btn-sm btn-ghost btn-square"
-              type="button"
-              @click="wrapSelection(`''`, `''`)"
-            >
-              <Icon icon="mdi:format-bold" class="text-lg" />
-            </button>
-          </div>
-
-          <div class="tooltip tooltip-bottom" data-tip="斜体 //文字//">
-            <button
-              class="btn btn-sm btn-ghost btn-square"
-              type="button"
-              @click="wrapSelection(`//`, `//`)"
-            >
-              <Icon icon="mdi:format-italic" class="text-lg" />
-            </button>
-          </div>
-
-          <div class="tooltip tooltip-bottom" data-tip="删除线 ~~文字~~">
-            <button
-              class="btn btn-sm btn-ghost btn-square"
-              type="button"
-              @click="wrapSelection(`~~`, `~~`)"
-            >
-              <Icon icon="mdi:format-strikethrough" class="text-lg" />
-            </button>
-          </div>
-
-          <div class="tooltip tooltip-bottom" data-tip="上标 ^^文字^^">
-            <button
-              class="btn btn-sm btn-ghost btn-square"
-              type="button"
-              @click="wrapSelection(`^^`, `^^`)"
-            >
-              <Icon icon="mdi:format-superscript" class="text-lg" />
-            </button>
-          </div>
-
-          <div class="tooltip tooltip-bottom" data-tip="下标 ,,文字,,">
-            <button
-              class="btn btn-sm btn-ghost btn-square"
-              type="button"
-              @click="wrapSelection(',,', ',,')"
-            >
-              <Icon icon="mdi:format-subscript" class="text-lg" />
-            </button>
-          </div>
-
-          <div class="divider divider-horizontal my-1 mx-0.5"></div>
-
-          <div class="tooltip tooltip-bottom" data-tip="嵌入段落 (display:)">
-            <button
-              class="btn btn-sm btn-ghost btn-square"
-              type="button"
-              @click="insertSnippet(`(display: &quot;Intro&quot;)`)"
-            >
-              <Icon icon="mdi:file-replace-outline" class="text-lg" />
-            </button>
-          </div>
-
-          <div class="tooltip tooltip-bottom" data-tip="插入全局 JS 函数 (fn:)">
-            <button
-              class="btn btn-sm btn-ghost btn-square"
-              type="button"
-              @click="insertJsGlobalSnippet"
-            >
-              <Icon icon="mdi:code-braces" class="text-lg" />
-            </button>
-          </div>
-
-          <div class="tooltip tooltip-bottom" data-tip="调用 JS 函数 (call:)">
-            <button
-              class="btn btn-sm btn-ghost btn-square"
-              type="button"
-              @click="insertCallSnippet"
-            >
-              <Icon icon="mdi:play-circle-outline" class="text-lg" />
-            </button>
-          </div>
-
-          <div
-            class="tooltip tooltip-bottom"
-            data-tip="插入 CSS 样式块 <style>"
-          >
-            <button
-              class="btn btn-sm btn-ghost btn-square"
-              type="button"
-              @click="
-                insertSnippet(
-                  `<style>\n.demo-callout { padding: 0.5rem; }\n</style>`,
-                )
-              "
-            >
-              <Icon icon="mdi:language-css3" class="text-lg" />
-            </button>
-          </div>
-          <div class="tooltip tooltip-bottom" data-tip="显示语法说明书">
-            <button
-              class="btn btn-sm btn-ghost btn-square"
-              type="button"
-              @click="showManual = true"
-            >
-              <Icon icon="mdi:book-open-variant" class="text-lg" />
-            </button>
-          </div>
-          <div class="divider divider-horizontal my-1 mx-0.5"></div>
-          <div class="tooltip tooltip-bottom" data-tip="初始化语法示例">
-            <button
-              class="btn btn-sm btn-ghost btn-square"
-              type="button"
-              @click="initDefaultStory"
-            >
-              <Icon icon="mdi:play-circle-outline" class="text-lg" />
-            </button>
-          </div>
-        </div>
+        
 
         <div class="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-          <div class="rounded-xl border border-base-300 bg-base-200/50 p-3">
-            <div class="mb-2 flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <label class="text-sm font-bold flex items-center gap-1">
-                  <Icon
-                    icon="mdi:square-edit-outline"
-                    class="text-base text-primary"
-                  />
-                  <span>段落编辑</span>
-                </label>
-                <span class="badge badge-neutral badge-sm font-mono">{{
-                  selectedPassage
-                }}</span>
-              </div>
-              <div class="flex items-center gap-1">
-                <div class="tooltip tooltip-bottom" data-tip="重命名当前段落">
-                  <button
-                    v-if="!props.readOnly"
-                    class="btn btn-xs btn-ghost btn-square"
-                    type="button"
-                    @click="renamePassage"
-                  >
-                    <Icon icon="mdi:pencil-outline" class="text-base" />
-                  </button>
-                </div>
-                <div class="tooltip tooltip-bottom" data-tip="删除当前段落">
-                  <button
-                    v-if="!props.readOnly"
-                    class="btn btn-xs btn-ghost btn-square text-error"
-                    type="button"
-                    @click="deletePassage"
-                  >
-                    <Icon icon="mdi:trash-can-outline" class="text-base" />
-                  </button>
-                </div>
-              </div>
-            </div>
-            <textarea
-              ref="storyCmTextarea"
-              data-cm="story"
-              :readonly="props.readOnly"
-              class="h-105 w-full resize-none rounded-xl border border-base-300 bg-base-100 p-0 font-mono text-sm outline-none transition"
-              spellcheck="false"
-            />
-            <div class="mt-3 flex items-center gap-2">
-              <label
-                class="text-xs text-base-content/70 flex items-center gap-1"
-              >
-                <Icon icon="mdi:tag-multiple-outline" class="text-sm" />
-                <span>Tags：</span>
-              </label>
-              <input
-                v-model="tagEditValue"
-                :readonly="props.readOnly"
-                class="input input-sm flex-1 input-bordered"
-                placeholder="逗号分隔段落标签"
-              />
-              <button
-                v-if="!props.readOnly"
-                class="btn btn-xs btn-primary gap-1"
-                type="button"
-                @click="saveTags"
-              >
-                <Icon icon="mdi:check" class="text-sm" />
-                <span>保存标签</span>
-              </button>
-            </div>
-          </div>
+          <StoryEditorPanel
+            ref="editorPanel"
+            :readOnly="props.readOnly"
+            :story="story"
+            :selectedPassage="selectedPassage"
+            :content="selectedPassageContent"
+            :tagEditValue="tagEditValue"
+            :variables="variables"
+            @update:content="(v) => (selectedPassageContent = v)"
+            @save-tags="saveTags"
+            @rename-passage="renamePassage"
+            @delete-passage="deletePassage"
+            @show-manual="() => (showManual = true)"
+            @init-default="initDefaultStory"
+          />
 
           <div
             class="space-y-4 rounded-xl border border-base-300 bg-base-200/50 md:p-3"
@@ -565,6 +351,7 @@
 
             <div v-if="activeRightTab === 'preview'">
               <StoryPlayView
+                v-if="previewPassage"
                 :external="true"
                 :storyProp="story"
                 :currentPassageProp="previewPassage"
@@ -725,6 +512,7 @@ import {
   IStory,
 } from "@/api/stories";
 import StoryPlayView from "@/views/StoryPlayView.vue";
+import StoryEditorPanel from "@/components/StoryEditor/StoryEditorPanel.vue";
 import {
   createDefaultStory,
   createEmptyStory,
@@ -737,6 +525,7 @@ import {
 import {} from "@/lib/storyEngine";
 
 // CodeMirror v5 for JSON editing
+// CodeMirror v5 for JSON editing (used for modals/paste editor)
 import CodeMirror from "codemirror";
 import "codemirror/lib/codemirror.css";
 import "codemirror/theme/dracula.css";
@@ -754,6 +543,7 @@ const props = defineProps<{ readOnly?: boolean; initialStory?: any }>();
 
 const appStore = useAppStore();
 const isDark = computed(() => appStore.getTheme === "dark");
+const isMobile = computed(() => appStore.isMobile);
 
 const router = useRouter();
 const passageRef = ref<HTMLDialogElement | null>(null);
@@ -761,8 +551,8 @@ const previewRef = ref<HTMLDialogElement | null>(null);
 const jsonEditorRef = ref<HTMLDivElement | null>(null);
 let cmInstance: any = null;
 // CodeMirror instance for story editor
-const storyCmTextarea = ref<HTMLTextAreaElement | null>(null);
-let storyCmInstance: any = null;
+// story editor instance moved to StoryEditorPanel component
+const editorPanel = ref<any | null>(null);
 // CodeMirror instance for paste-import dialog
 const pasteEditorRef = ref<HTMLDivElement | null>(null);
 let cmPasteInstance: any = null;
@@ -825,82 +615,26 @@ const displayVar = (v: unknown) => {
   return String(v);
 };
 
-function insertSnippet(snippet: string) {
-  if (props.readOnly) return;
-  if (storyCmInstance) {
-    const cm = storyCmInstance;
-    const doc = cm.getDoc();
-    const sel = doc.getSelection();
-    doc.replaceSelection(snippet);
-    cm.focus();
-    return;
-  }
-  const textarea = document.querySelector(
-    "textarea",
-  ) as HTMLTextAreaElement | null;
-  if (!textarea) return;
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const content = textarea.value;
-  textarea.value = `${content.slice(0, start)}${snippet}${content.slice(end)}`;
-  textarea.selectionStart = textarea.selectionEnd = start + snippet.length;
-  textarea.focus();
-}
 
-function wrapSelection(before: string, after?: string) {
-  const a = after ?? before;
-  if (props.readOnly) return;
-  if (storyCmInstance) {
-    const cm = storyCmInstance;
-    const doc = cm.getDoc();
-    const sel = doc.getSelection();
-    if (sel && sel.length > 0) {
-      doc.replaceSelection(before + sel + a);
-      cm.focus();
-    } else {
-      doc.replaceSelection(before + a);
-      const cursor = doc.getCursor();
-      doc.setCursor({ line: cursor.line, ch: cursor.ch - a.length });
-      cm.focus();
-    }
-    return;
-  }
-  const textarea = document.querySelector(
-    "textarea",
-  ) as HTMLTextAreaElement | null;
-  if (!textarea) {
-    insertSnippet(before + a);
-    return;
-  }
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const content = textarea.value;
-  if (start !== end) {
-    const selected = content.slice(start, end);
-    const replaced = before + selected + a;
-    textarea.value = content.slice(0, start) + replaced + content.slice(end);
-    textarea.selectionStart = start;
-    textarea.selectionEnd = start + replaced.length;
-    textarea.focus();
-  } else {
-    const inserted = before + a;
-    textarea.value = `${content.slice(0, start)}${inserted}${content.slice(end)}`;
-    const cursorPos = start + before.length;
-    textarea.selectionStart = textarea.selectionEnd = cursorPos;
-    textarea.focus();
-  }
-}
 
 function insertJsGlobalSnippet() {
-  insertSnippet(`(fn:\"myFunc\")[console.log(\"hello\"); return 123]`);
+  if (props.readOnly) return;
+  if (editorPanel.value && typeof editorPanel.value.insertSnippet === 'function') {
+    editorPanel.value.insertSnippet(`(fn:\"myFunc\")[console.log(\"hello\"); return 123]`);
+  }
 }
 
 function insertCallSnippet() {
-  insertSnippet(`(call:\"myFunc\")`);
+  if (props.readOnly) return;
+  if (editorPanel.value && typeof editorPanel.value.insertSnippet === 'function') {
+    editorPanel.value.insertSnippet(`(call:\"myFunc\")`);
+  }
 }
 
 const insertVariableToEditor = (key: string) => {
-  insertSnippet(`$${key}`);
+  if (editorPanel.value && typeof editorPanel.value.insertSnippet === 'function') {
+    editorPanel.value.insertSnippet(`$${key}`);
+  }
 };
 
 const openEditVar = async (key: string) => {
@@ -960,10 +694,11 @@ const closeJsonEditor = () => {
   if (dlg) dlg.close();
 };
 
-const refreshPreview = () => {
-  // preview is controlled by StoryPlayView via props; updating refs will re-render automatically
-  // keep a tiny tick to allow reactive updates
-  previewPassage.value = previewPassage.value;
+const refreshPreview = async () => {
+  const current = previewPassage.value;
+  previewPassage.value = "";
+  await nextTick();
+  previewPassage.value = current;
 };
 
 const resetPreviewVars = () => {
@@ -972,7 +707,9 @@ const resetPreviewVars = () => {
 
 const insertSelectedVar = () => {
   if (!selectedInsertVar.value) return;
-  insertSnippet(`$${selectedInsertVar.value}`);
+  if (editorPanel.value && typeof editorPanel.value.insertSnippet === 'function') {
+    editorPanel.value.insertSnippet(`$${selectedInsertVar.value}`);
+  }
 };
 
 onBeforeUnmount(() => {
@@ -981,12 +718,6 @@ onBeforeUnmount(() => {
       cmInstance.toTextArea();
     } catch {}
     cmInstance = null;
-  }
-  if (storyCmInstance) {
-    try {
-      storyCmInstance.toTextArea();
-    } catch {}
-    storyCmInstance = null;
   }
   if (cmPasteInstance) {
     try {
@@ -1281,7 +1012,7 @@ watch(
   { immediate: true },
 );
 
-const renamePassage = () => {
+const renamePassage = async () => {
   const current = story.value.passages.find(
     (passage) => passage.name === selectedPassage.value,
   );
@@ -1289,7 +1020,7 @@ const renamePassage = () => {
     return;
   }
   const oldName = current.name;
-  const nextName = window.prompt("新段落名：", current.name);
+  const nextName = await msgbox.prompt("新段落名：", "重命名", { inputValue: current.name });
   if (!nextName || !nextName.trim()) {
     return;
   }
@@ -1417,75 +1148,9 @@ function init() {
   }
 }
 
-watch(
-  [previewPassage, () => story.value, variables],
-  () => {
-    refreshPreview();
-  },
-  { deep: true },
-);
-
 // Define a simple custom mode for our story syntax using simple mode
 // tokens: header (:: name), macro ( (set:) (if:) (print:) etc), link [[...]], jsfn (fn: call:), style tag, strings
-(CodeMirror as any).defineSimpleMode &&
-  (CodeMirror as any).defineSimpleMode("haideStory", {
-    start: [
-      { regex: /::\s*[^\n]+/, token: "header" },
-      {
-        regex: /\(set:|\(if:|\(print:|\(display:|\(call:|\(fn:|\(link:/,
-        token: "keyword",
-      },
-      { regex: /\[\[[^\]]+\]\]/, token: "link" },
-      { regex: /<style>[\s\S]*?<\/style>/, token: "style-tag" },
-      { regex: /"(?:[^"\\]|\\.)*"/, token: "string" },
-      { regex: /'(?:[^'\\]|\\.)*'/, token: "string" },
-      { regex: /\$[A-Za-z0-9_]+/, token: "variable-2" },
-      { regex: /\/\/.*$/, token: "comment" },
-      { regex: /\/.+?\//, token: "string" },
-    ],
-    meta: {
-      dontIndentStates: ["comment"],
-      lineComment: "//",
-    },
-  });
-
-// Initialize CodeMirror story editor when mounted and whenever theme/selected passage changes
-watch([() => props.readOnly, isDark, selectedPassage], async () => {
-  await nextTick();
-  const textarea =
-    storyCmTextarea.value ||
-    (document.querySelector(
-      'textarea[data-cm="story"]',
-    ) as HTMLTextAreaElement | null);
-  if (!textarea) return;
-  const theme = isDark.value ? "dracula" : "default";
-  if (!storyCmInstance) {
-    textarea.value = selectedPassageContent.value || "";
-    storyCmInstance = CodeMirror.fromTextArea(textarea, {
-      mode: "haideStory",
-      theme,
-      lineNumbers: true,
-      lineWrapping: true,
-      tabSize: 2,
-      extraKeys: { Tab: (cm: any) => cm.replaceSelection("  ", "end") },
-      readOnly: props.readOnly ? "nocursor" : false,
-    });
-    storyCmInstance.setSize("100%", "420px");
-    storyCmInstance.on("change", (cm: any) => {
-      const v = cm.getValue();
-      selectedPassageContent.value = v;
-    });
-    storyCmInstance.setOption("readOnly", props.readOnly ? "nocursor" : false);
-  } else {
-    storyCmInstance.setOption("theme", theme);
-    // update content when passage changes externally
-    const cur = storyCmInstance.getValue();
-    const expected = selectedPassageContent.value || "";
-    if (cur !== expected) storyCmInstance.setValue(expected);
-    // set readonly
-    storyCmInstance.setOption("readOnly", props.readOnly ? "nocursor" : false);
-  }
-});
+// Story editor is initialized inside StoryEditorPanel component.
 
 async function initDefaultStory() {
   if (await msgbox.confirm("是否初始化默认故事？将会覆盖当前所有内容！")) {

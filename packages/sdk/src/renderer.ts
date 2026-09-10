@@ -2,6 +2,24 @@ import type { StoryData, VariableMap } from "./types";
 import { readBalancedBlock, extractAndRegisterFunctions } from "./scanner";
 import { escapeHtml, sanitizeAllowedHtml } from "./sanitizer";
 
+/** A rendered achievement/ending marker. */
+export interface StorySpecialMarker {
+  /** Visible label text. */
+  name: string;
+  /** Optional tooltip text. */
+  description?: string;
+}
+
+/** Render-time detection result for achievements/endings in one render pass. */
+export interface StoryRenderSpecials {
+  /** Achievements that would be shown at the top. */
+  points: StorySpecialMarker[];
+  /** Ending marker shown at the bottom, when valid. */
+  ending?: StorySpecialMarker;
+}
+
+const POINT_QUEUE_KEY = "__story_point_queue";
+
 /**
  * Platform-specific hooks the shared renderer needs from its host:
  * - `evaluate`/`callFunction` let the browser use `eval`/`Function` while a
@@ -324,6 +342,15 @@ export function applyStoryAction(
     executeCall(callOnlyMatch[1], callOnlyMatch[2]);
     return;
   }
+
+  const pointMatch = cleaned.match(/^point:\s*([\s\S]+)$/i);
+  if (pointMatch) {
+    const marker = parseSpecialMarker(pointMatch[1]);
+    if (marker) {
+      queuePointMarker(variables, marker);
+    }
+    return;
+  }
 }
 
 /**
@@ -335,7 +362,7 @@ export function applyStoryAction(
  * @param input - Raw passage content.
  * @returns `[start, end)` index pairs covering each link action's source text.
  */
-function findLinkActionRanges(input: string): Array<[number, number]> {
+export function findLinkActionRanges(input: string): Array<[number, number]> {
   const ranges: Array<[number, number]> = [];
 
   const linkOpenPattern = /\(link:\s*(?:["'][^"']*["']|[^)]*?)\)\s*\[/g;
@@ -352,10 +379,13 @@ function findLinkActionRanges(input: string): Array<[number, number]> {
   const linkClosePattern = /\[\[[^\]]*\]\]/g;
   let closeMatch: RegExpExecArray | null;
   while ((closeMatch = linkClosePattern.exec(input))) {
-    const afterIndex = closeMatch.index + closeMatch[0].length;
+    let afterIndex = closeMatch.index + closeMatch[0].length;
+    while (afterIndex < input.length && /\s/.test(input[afterIndex])) {
+      afterIndex += 1;
+    }
     if (input[afterIndex] === "(") {
       const block = readBalancedBlock(input, afterIndex, "(", ")");
-      if (block && /^\s*(?:set|call):/i.test(block.content)) {
+      if (block && /^\s*(?:(?:set|call|point):)/i.test(block.content)) {
         ranges.push([afterIndex, block.endIndex]);
       }
     }
@@ -369,7 +399,7 @@ function findLinkActionRanges(input: string): Array<[number, number]> {
  * @param ranges - `[start, end)` ranges as produced by `findLinkActionRanges`.
  * @returns Whether `index` falls inside any of `ranges`.
  */
-function isWithinRanges(
+export function isWithinRanges(
   index: number,
   ranges: Array<[number, number]>,
 ): boolean {
@@ -478,6 +508,189 @@ export function stripSetMacros(input: string): string {
   return result;
 }
 
+export function parseSpecialMarker(raw: string): StorySpecialMarker | null {
+  const normalized = raw.trim();
+  if (!normalized) return null;
+  const divider = normalized.indexOf("|");
+  if (divider < 0) {
+    return { name: normalized };
+  }
+  const name = normalized.slice(0, divider).trim();
+  const description = normalized.slice(divider + 1).trim();
+  if (!name) return null;
+  return {
+    name,
+    description: description || undefined,
+  };
+}
+
+export function readPointQueue(variables: VariableMap): StorySpecialMarker[] {
+  const value = variables[POINT_QUEUE_KEY];
+  if (!Array.isArray(value)) return [];
+  const markers: StorySpecialMarker[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const name = String((item as { name?: unknown }).name ?? "").trim();
+    if (!name) continue;
+    const descriptionValue = (item as { description?: unknown }).description;
+    const description =
+      descriptionValue === undefined || descriptionValue === null
+        ? undefined
+        : String(descriptionValue);
+    markers.push({ name, description: description || undefined });
+  }
+  return markers;
+}
+
+export function writePointQueue(
+  variables: VariableMap,
+  markers: StorySpecialMarker[],
+): void {
+  variables[POINT_QUEUE_KEY] = markers;
+}
+
+export function queuePointMarker(
+  variables: VariableMap,
+  marker: StorySpecialMarker,
+): void {
+  const queue = readPointQueue(variables);
+  queue.push(marker);
+  writePointQueue(variables, queue);
+}
+
+export function consumePointMarkers(
+  variables: VariableMap,
+): StorySpecialMarker[] {
+  const queue = readPointQueue(variables);
+  writePointQueue(variables, []);
+  return queue;
+}
+
+export function peekPointMarkers(variables: VariableMap): StorySpecialMarker[] {
+  return readPointQueue(variables);
+}
+
+export function findStandaloneSpecialBlocks(
+  input: string,
+  macroName: "point" | "end",
+): Array<{ start: number; end: number; marker: StorySpecialMarker }> {
+  const ranges = findLinkActionRanges(input);
+  const blocks: Array<{
+    start: number;
+    end: number;
+    marker: StorySpecialMarker;
+  }> = [];
+  const needle = `(${macroName}:`;
+  let searchFrom = 0;
+  while (searchFrom < input.length) {
+    const start = input.indexOf(needle, searchFrom);
+    if (start < 0) break;
+    if (isWithinRanges(start, ranges)) {
+      searchFrom = start + needle.length;
+      continue;
+    }
+    const parsed = readBalancedBlock(input, start, "(", ")");
+    if (!parsed) {
+      searchFrom = start + needle.length;
+      continue;
+    }
+    const content = parsed.content.trim();
+    const body = content.match(
+      new RegExp(`^${macroName}:\s*([\\s\\S]+)$`, "i"),
+    );
+    if (body) {
+      const marker = parseSpecialMarker(body[1]);
+      if (marker) {
+        blocks.push({ start, end: parsed.endIndex, marker });
+      }
+    }
+    searchFrom = parsed.endIndex;
+  }
+  return blocks;
+}
+
+export function stripStandaloneSpecialBlocks(
+  input: string,
+  blocks: Array<{ start: number; end: number }>,
+): string {
+  if (!blocks.length) return input;
+  let result = "";
+  let cursor = 0;
+  for (const block of blocks) {
+    result += input.slice(cursor, block.start);
+    cursor = block.end;
+  }
+  result += input.slice(cursor);
+  return result;
+}
+
+export function resolveIfMacrosForEffects(
+  input: string,
+  variables: VariableMap,
+  ctx: StoryEngineContext,
+): string {
+  let result = "";
+  let cursor = 0;
+  let searchFrom = 0;
+
+  while (searchFrom < input.length) {
+    const ifStart = input.indexOf("(if:", searchFrom);
+    if (ifStart === -1) break;
+
+    const parsed = consumeIfMacro(input, ifStart);
+    if (!parsed) {
+      searchFrom = ifStart + 4;
+      continue;
+    }
+
+    result += input.slice(cursor, ifStart);
+
+    let selected = "";
+    for (const branch of parsed.branches) {
+      if (branch.condition === null) {
+        selected = branch.branch;
+        break;
+      }
+      if (evaluateCondition(branch.condition, variables, ctx)) {
+        selected = branch.branch;
+        break;
+      }
+    }
+
+    result += resolveIfMacrosForEffects(selected, variables, ctx);
+    cursor = parsed.fullEndIndex;
+    searchFrom = parsed.fullEndIndex;
+  }
+
+  result += input.slice(cursor);
+  return result;
+}
+
+export function applyPointMacros(
+  input: string,
+  variables: VariableMap,
+): string {
+  const blocks = findStandaloneSpecialBlocks(input, "point");
+  for (const block of blocks) {
+    queuePointMarker(variables, block.marker);
+  }
+  return input;
+}
+
+export function renderPointMarker(marker: StorySpecialMarker): string {
+  const title = marker.description
+    ? ` title="${escapeHtml(marker.description)}"`
+    : "";
+  return `<span class="story-point"${title}>${escapeHtml(marker.name)}</span>`;
+}
+
+export function renderEndingMarker(marker: StorySpecialMarker): string {
+  const title = marker.description
+    ? ` title="${escapeHtml(marker.description)}"`
+    : "";
+  return `<span class="story-end"${title}>${escapeHtml(marker.name)}</span>`;
+}
+
 /**
  * Runs a passage's `(set: ...)` side effects when it is entered, ignoring the returned text.
  *
@@ -490,7 +703,9 @@ export function applyPassageEntryEffects(
   variables: VariableMap,
   ctx: StoryEngineContext,
 ): void {
-  applySetMacros(content, variables, ctx);
+  const effectSource = resolveIfMacrosForEffects(content, variables, ctx);
+  applySetMacros(effectSource, variables, ctx);
+  applyPointMacros(effectSource, variables);
 }
 
 /** Tags treated as raw HTML block wrappers by the markdown renderer. */
@@ -877,7 +1092,9 @@ export function replaceIfMacros(
       }
     }
 
-    result += renderStoryText(selected, variables, story, ctx);
+    result += renderStoryTextInternal(selected, variables, story, ctx, {
+      consumePointQueue: false,
+    });
 
     cursor = parsed.fullEndIndex;
     searchFrom = parsed.fullEndIndex;
@@ -943,7 +1160,17 @@ export function replaceTextWithHtml(
   variables: VariableMap,
   story: StoryData,
   ctx: StoryEngineContext,
+  options?: {
+    consumePointQueue?: boolean;
+    captureSpecials?: StoryRenderSpecials;
+  },
 ): string {
+  const consumePointQueue = options?.consumePointQueue ?? false;
+  const captureSpecials = options?.captureSpecials;
+  const queuedPoints = consumePointQueue
+    ? consumePointMarkers(variables)
+    : peekPointMarkers(variables);
+
   const styleBlocks: string[] = [];
   const htmlFragments: string[] = [];
   let working = raw.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, (match) => {
@@ -954,6 +1181,12 @@ export function replaceTextWithHtml(
 
   working = extractAndRegisterFunctions(working, ctx.functions);
   working = stripSetMacros(working);
+
+  const pointBlocks = findStandaloneSpecialBlocks(working, "point");
+  working = stripStandaloneSpecialBlocks(working, pointBlocks);
+
+  const endBlocks = findStandaloneSpecialBlocks(working, "end");
+  working = stripStandaloneSpecialBlocks(working, endBlocks);
 
   const linkPattern =
     /\(link:\s*(?:["']([^"']*)["']|([^)]*?))\)\s*\[((?:.|\n)*?)\]/g;
@@ -968,7 +1201,7 @@ export function replaceTextWithHtml(
       const label = literalLabel || rawLabel || "继续";
       const target = extractGotoTarget(actionBlock);
       const actionMatch = (actionBlock || "").match(
-        /(?:set:\s*[^)\]]+|call:\s*[^)\]]+)/i,
+        /(?:set:\s*[^)\]]+|call:\s*[^)\]]+|point:\s*[^)\]]+)/i,
       );
       const displayMatch = (actionBlock || "").match(
         /display:\s*["']([^"']+)["']/i,
@@ -978,12 +1211,14 @@ export function replaceTextWithHtml(
           (passage) => passage.name === displayMatch[1],
         );
         return displayed
-          ? renderStoryText(displayed.content, variables, story, ctx)
+          ? renderStoryTextInternal(displayed.content, variables, story, ctx, {
+              consumePointQueue: false,
+            })
           : "";
       }
       return buildStoryLink(
         label,
-        displayMatch?.[1] ? undefined : target || label,
+        displayMatch?.[1] ? undefined : target,
         actionMatch ? actionMatch[0] : undefined,
         ctx,
         displayMatch?.[1],
@@ -992,7 +1227,7 @@ export function replaceTextWithHtml(
   );
 
   working = working.replace(
-    /\[\[([^\]|]+)(?:\|([^\]]+))?\]\](?:\(((?:set:\s*[^)]+|call:\s*[^)]+))\))?/g,
+    /\[\[([^\]|]+)(?:\|([^\]]+))?\]\](?:\(((?:set:\s*[^)]+|call:\s*[^)]+|point:\s*[^)]+))\))?/g,
     (_all, label: string, target?: string, action?: string) => {
       const passageName = label.trim();
       const actualTarget = (target ?? label).trim();
@@ -1019,7 +1254,11 @@ export function replaceTextWithHtml(
     );
     if (!target) return "";
     const placeholder = `$HTML_FRAGMENT$${htmlFragments.length}$`;
-    htmlFragments.push(renderStoryText(target.content, variables, story, ctx));
+    htmlFragments.push(
+      renderStoryTextInternal(target.content, variables, story, ctx, {
+        consumePointQueue: false,
+      }),
+    );
     return placeholder;
   });
 
@@ -1049,7 +1288,74 @@ export function replaceTextWithHtml(
   for (const [index, fragment] of htmlFragments.entries()) {
     working = working.replace(`$HTML_FRAGMENT$${index}$`, fragment);
   }
+
+  const renderedPoints = [...queuedPoints];
+  const hasLinkSyntax =
+    /\[\[[^\]]+\]\]|\(link:\s*(?:["'][^"']*["']|[^)]*?)\)\s*\[(?:.|\n)*?\]|\(goto:\s*["'][^"']+["']\s*\)/i.test(
+      raw,
+    );
+  const ending =
+    endBlocks.length === 1 && !hasLinkSyntax ? endBlocks[0].marker : undefined;
+
+  if (captureSpecials) {
+    captureSpecials.points.push(...renderedPoints);
+    if (ending) {
+      captureSpecials.ending = ending;
+    }
+  }
+
+  const top = renderedPoints.length
+    ? `<div class="story-point-banner">${renderedPoints
+        .map((marker) => renderPointMarker(marker))
+        .join(" ")}</div>`
+    : "";
+  const bottom = ending
+    ? `<div class="story-end-banner">${renderEndingMarker(ending)}</div>`
+    : "";
+
+  working = `${top}${working}${bottom}`;
   return working;
+}
+
+export function renderStoryTextInternal(
+  input: string,
+  variables: VariableMap,
+  story: StoryData,
+  ctx: StoryEngineContext,
+  options?: {
+    consumePointQueue?: boolean;
+    captureSpecials?: StoryRenderSpecials;
+  },
+): string {
+  return replaceTextWithHtml(input, variables, story, ctx, options);
+}
+
+/**
+ * Detects whether one render pass would include achievement markers and/or an ending marker.
+ *
+ * @param input - Raw passage content to render.
+ * @param variables - Current variable map.
+ * @param story - The full story.
+ * @param ctx - The active engine context.
+ * @returns Marker payload when present; otherwise `undefined`.
+ */
+export function detectRenderSpecials(
+  input: string,
+  variables: VariableMap,
+  story: StoryData,
+  ctx: StoryEngineContext,
+): StoryRenderSpecials | undefined {
+  const probeVariables: VariableMap = { ...variables };
+  applyPassageEntryEffects(input, probeVariables, ctx);
+  const specials: StoryRenderSpecials = { points: [] };
+  renderStoryTextInternal(input, probeVariables, story, ctx, {
+    consumePointQueue: false,
+    captureSpecials: specials,
+  });
+  if (!specials.points.length && !specials.ending) {
+    return undefined;
+  }
+  return specials;
 }
 
 /**
@@ -1067,7 +1373,9 @@ export function renderStoryText(
   story: StoryData,
   ctx: StoryEngineContext,
 ): string {
-  return replaceTextWithHtml(input, variables, story, ctx);
+  return renderStoryTextInternal(input, variables, story, ctx, {
+    consumePointQueue: true,
+  });
 }
 
 /**

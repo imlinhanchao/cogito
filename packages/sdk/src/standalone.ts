@@ -26,6 +26,20 @@ import {
   replaceCallExpressions,
   evaluateExpression,
   evaluateCondition,
+  parseSpecialMarker,
+  readPointQueue,
+  writePointQueue,
+  queuePointMarker,
+  consumePointMarkers,
+  peekPointMarkers,
+  findLinkActionRanges,
+  findStandaloneSpecialBlocks,
+  stripStandaloneSpecialBlocks,
+  resolveIfMacrosForEffects,
+  applyPointMacros,
+  renderPointMarker,
+  renderEndingMarker,
+  detectRenderSpecials,
   applyStoryAction,
   applySetMacros,
   stripSetMacros,
@@ -38,6 +52,8 @@ import {
   buildStoryLink,
   replaceTextWithHtml,
   renderStoryText,
+  isWithinRanges,
+  renderStoryTextInternal,
 } from "./renderer";
 import { buildInitialVariables } from "./parser";
 
@@ -67,12 +83,28 @@ const HELPER_ORDER = [
   "replaceCallExpressions",
   "evaluateExpression",
   "evaluateCondition",
+  "parseSpecialMarker",
+  "readPointQueue",
+  "writePointQueue",
+  "queuePointMarker",
+  "consumePointMarkers",
+  "peekPointMarkers",
+  "findLinkActionRanges",
+  "findStandaloneSpecialBlocks",
+  "stripStandaloneSpecialBlocks",
+  "resolveIfMacrosForEffects",
+  "applyPointMacros",
+  "renderPointMarker",
+  "renderEndingMarker",
+  "detectRenderSpecials",
   "applyStoryAction",
   "applySetMacros",
   "stripSetMacros",
+  "isWithinRanges",
   "applyPassageEntryEffects",
   "renderMarkdownInline",
   "renderMarkdownBlocks",
+  "renderStoryTextInternal",
   "consumeIfMacro",
   "replaceIfMacros",
   "extractGotoTarget",
@@ -104,12 +136,28 @@ const HELPER_MAP: Record<(typeof HELPER_ORDER)[number], unknown> = {
   replaceCallExpressions,
   evaluateExpression,
   evaluateCondition,
+  parseSpecialMarker,
+  isWithinRanges,
+  readPointQueue,
+  writePointQueue,
+  queuePointMarker,
+  consumePointMarkers,
+  peekPointMarkers,
+  findLinkActionRanges,
+  findStandaloneSpecialBlocks,
+  stripStandaloneSpecialBlocks,
+  resolveIfMacrosForEffects,
+  applyPointMacros,
+  renderPointMarker,
+  renderEndingMarker,
+  detectRenderSpecials,
   applyStoryAction,
   applySetMacros,
   stripSetMacros,
   applyPassageEntryEffects,
   renderMarkdownInline,
   renderMarkdownBlocks,
+  renderStoryTextInternal,
   consumeIfMacro,
   replaceIfMacros,
   extractGotoTarget,
@@ -170,6 +218,8 @@ export function buildStandaloneExport(
       .story-content { line-height: 1.9; font-size: 1.05rem; }
       .story-link { background: #4f46e5; color: white; border: none; border-radius: 2px; padding: 2px 4px; cursor: pointer; margin: 2px; }
       .story-link:hover { background: #4338ca; }
+      .story-point { background: #eef2ff; color: #3730a3; border-radius: 12px; padding: 0.5rem 1rem; margin: 1rem 0; }
+      .story-end { background: #fef3c7; color: #78350f; border-radius: 12px; padding: 0.5rem 1rem; margin: 1rem 0; }
       .meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
       .badge { background: #eef2ff; color: #3730a3; border-radius: 999px; padding: 0.35rem 0.6rem; font-size: 0.75rem; }
       .sidebar { margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 12px; }
@@ -221,37 +271,71 @@ export function buildStandaloneExport(
         const variables = ${safeVariables};
         const currentPassageName = ${safeCurrent};
         const GLOBAL_JS_FUNCTIONS = {};
+        const POINT_QUEUE_KEY = "__story_point_queue";
 
   ${helpersSrc}
 
         const engineCtx = createDefaultEvaluator(GLOBAL_JS_FUNCTIONS);
 
         function renderPassage(passageName) {
-          const passage = story.passages.find((p) => p.name === passageName) || story.passages[0]
-          variables.passage = passage.name
-          variables.storyTitle = story.title
+          const passage = story.passages.find((p) => p.name === passageName) || story.passages[0];
+          variables.passage = passage.name;
+          variables.storyTitle = story.title;
 
-          const passageContentForEffects = extractAndRegisterFunctions(passage.content, GLOBAL_JS_FUNCTIONS)
-          applyPassageEntryEffects(passageContentForEffects, variables, engineCtx)
-          document.getElementById('story-root').innerHTML = renderStoryText(passageContentForEffects, variables, story, engineCtx)
+          const passageContentForEffects = extractAndRegisterFunctions(passage.content, GLOBAL_JS_FUNCTIONS);
+          applyPassageEntryEffects(passageContentForEffects, variables, engineCtx);
+          engineCtx.displayPassages = engineCtx.displayPassages || {};
 
-          const varRoot = document.getElementById('variables-root')
-          const entries = Object.entries(variables).filter(([key]) => key !== 'passage' && key !== 'storyTitle')
-          varRoot.innerHTML = entries.length
-            ? entries.map(([key, value]) => \`<div class="var-item"><span>\${escapeHtml(key)}</span><strong>\${escapeHtml(String(value))}</strong></div>\`).join('')
-            : '<p>暂无变量</p>'
+          const root = document.getElementById('story-root');
+          const varRoot = document.getElementById('variables-root');
 
-          const nodes = document.querySelectorAll('[data-story-target]')
-          nodes.forEach((node) => {
-            node.addEventListener('click', () => {
-              const action = node.getAttribute('data-story-action')
-              if (action) {
-                applyStoryAction(action, variables, engineCtx)
-              }
-              const target = node.getAttribute('data-story-target')
-              if (target) renderPassage(target)
-            })
-          })
+          function updateVars() {
+            const entries = Object.entries(variables).filter(([key]) => key !== 'passage' && key !== 'storyTitle');
+            varRoot.innerHTML = entries.length
+              ? entries.map(([key, value]) => \`<div class="var-item"><span>\${escapeHtml(key)}</span><strong>\${escapeHtml(String(value))}</strong></div>\`).join('')
+              : '<p>暂无变量</p>';
+          }
+
+          function attachListeners() {
+            const nodes = root.querySelectorAll('[data-story-target], [data-story-action], [data-story-display]');
+            nodes.forEach((node) => {
+              node.addEventListener('click', () => {
+                const display = node.getAttribute('data-story-display');
+                if (display) {
+                  engineCtx.displayPassages = engineCtx.displayPassages || {};
+                  engineCtx.displayPassages[display] = true;
+                  // Re-render only (do not re-run entry effects)
+                  const contentForRender = extractAndRegisterFunctions(passage.content, GLOBAL_JS_FUNCTIONS);
+                  root.innerHTML = renderStoryText(contentForRender, variables, story, engineCtx);
+                  updateVars();
+                  attachListeners();
+                  return;
+                }
+
+                const action = node.getAttribute('data-story-action');
+                if (action) {
+                  applyStoryAction(action, variables, engineCtx);
+                }
+                const target = node.getAttribute('data-story-target');
+                if (target) {
+                  renderPassage(target);
+                  return;
+                }
+
+                // re-render the current passage so queued points/endings appear.
+                if (action) {
+                  const contentForRender = extractAndRegisterFunctions(passage.content, GLOBAL_JS_FUNCTIONS);
+                  root.innerHTML = renderStoryText(contentForRender, variables, story, engineCtx);
+                  updateVars();
+                  attachListeners();
+                }
+              });
+            });
+          }
+
+          root.innerHTML = renderStoryText(passageContentForEffects, variables, story, engineCtx);
+          updateVars();
+          attachListeners();
         }
 
         renderPassage(currentPassageName);

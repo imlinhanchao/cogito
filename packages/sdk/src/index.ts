@@ -5,8 +5,11 @@ export {
 } from "./parser";
 export {
   type StoryEngineContext,
+  type StoryRenderSpecials,
+  type StorySpecialMarker,
   applyPassageEntryEffects,
   applyStoryAction,
+  detectRenderSpecials,
   renderStoryText,
   createDefaultEvaluator,
 } from "./renderer";
