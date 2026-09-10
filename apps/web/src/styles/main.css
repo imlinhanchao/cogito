@@ -152,3 +152,7 @@ div.CodeMirror {
     Liberation Mono,
     monospace;
 }
+
+.modal {
+  max-width: 100vw;
+}

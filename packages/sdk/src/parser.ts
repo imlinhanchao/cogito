@@ -171,3 +171,57 @@ export function buildInitialVariables(story: StoryData): VariableMap {
   variables.prevPassage = "";
   return variables;
 }
+
+/**
+ * Scan a StoryData and extract all defined `point` (achievement) and `end`
+ * (ending) macros. Names are deduplicated by exact trimmed string match.
+ *
+ * Returns an object with `points` and `endings` arrays containing
+ * { name, description } entries.
+ * @param story - The story to scan for special macros.
+ * @returns An object containing `points` and `endings` arrays with deduplicated entries.
+ */
+export function extractStorySpecials(story: StoryData): {
+  points: { name: string; description: string }[];
+  endings: { name: string; description: string }[];
+} {
+  const pointsMap = new Map<string, { name: string; description: string }>();
+  const endingsMap = new Map<string, { name: string; description: string }>();
+
+  if (!story || !Array.isArray(story.passages)) {
+    return { points: [], endings: [] };
+  }
+
+  const pointRe = /\(point:\s*([^|\)\]]+?)(?:\|\s*([^)]+?))?\)/gi;
+  const endRe = /\(end:\s*([^|\)\]]+?)(?:\|\s*([^)]+?))?\)/gi;
+
+  for (const passage of story.passages) {
+    const text = passage.content || "";
+
+    let m: RegExpExecArray | null;
+    pointRe.lastIndex = 0;
+    while ((m = pointRe.exec(text))) {
+      const rawName = (m[1] || "").trim();
+      const desc = (m[2] || "").trim();
+      if (!rawName) continue;
+      if (!pointsMap.has(rawName)) {
+        pointsMap.set(rawName, { name: rawName, description: desc });
+      }
+    }
+
+    endRe.lastIndex = 0;
+    while ((m = endRe.exec(text))) {
+      const rawName = (m[1] || "").trim();
+      const desc = (m[2] || "").trim();
+      if (!rawName) continue;
+      if (!endingsMap.has(rawName)) {
+        endingsMap.set(rawName, { name: rawName, description: desc });
+      }
+    }
+  }
+
+  return {
+    points: Array.from(pointsMap.values()),
+    endings: Array.from(endingsMap.values()),
+  };
+}

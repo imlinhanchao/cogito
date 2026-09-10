@@ -282,169 +282,41 @@
             @init-default="initDefaultStory"
           />
 
-          <div
-            class="space-y-4 rounded-xl border border-base-300 bg-base-200/50 md:p-3"
-          >
-            <div class="flex items-center justify-between mb-2">
-              <div class="tabs tabs-boxed bg-base-200 p-0.5">
-                <a
-                  :class="[
-                    'tab tab-xs font-semibold',
-                    activeRightTab === 'preview' ? 'tab-active' : '',
-                  ]"
-                  @click.prevent="activeRightTab = 'preview'"
-                >
-                  <Icon
-                    icon="mdi:play-circle-outline"
-                    class="mr-1 text-sm"
-                  />预览
-                </a>
-                <a
-                  :class="[
-                    'tab tab-xs font-semibold',
-                    activeRightTab === 'vars' ? 'tab-active' : '',
-                  ]"
-                  @click.prevent="activeRightTab = 'vars'"
-                >
-                  <Icon icon="mdi:variable" class="mr-1 text-sm" />变量
-                </a>
-              </div>
-              <div class="flex items-center gap-1">
-                <select
-                  v-if="activeRightTab === 'preview'"
-                  v-model="previewPassage"
-                  class="select select-xs select-bordered"
-                >
-                  <option
-                    v-for="p in story.passages"
-                    :key="p.name"
-                    :value="p.name"
-                  >
-                    {{ p.name }}
-                  </option>
-                </select>
-                <div
-                  v-if="activeRightTab === 'preview'"
-                  class="tooltip tooltip-bottom"
-                  data-tip="刷新预览"
-                >
-                  <button
-                    class="btn btn-ghost btn-xs"
-                    type="button"
-                    @click="refreshPreview"
-                  >
-                    <Icon icon="mdi:refresh" size="16px" />
-                  </button>
-                </div>
-                <div
-                  class="tooltip tooltip-bottom tooltip-end"
-                  data-tip="重置变量到初始状态"
-                >
-                  <button
-                    class="btn btn-ghost btn-xs"
-                    type="button"
-                    @click="resetPreviewVars"
-                  >
-                    <Icon
-                      icon="material-symbols-light:reset-settings"
-                      size="16px"
-                    />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="activeRightTab === 'preview'">
-              <StoryPlayView
-                v-if="previewPassage"
-                :external="true"
-                :storyProp="story"
-                :currentPassageProp="previewPassage"
-                :variablesProp="variables"
-                @update:variables="handleUpdateVariables($event)"
-                @update:currentPassage="handleUpdateCurrentPassage($event)"
-              />
-            </div>
-
-            <div v-else>
-              <div class="mb-2">
-                <input
-                  v-model="varFilter"
-                  placeholder="筛选变量"
-                  class="input input-sm w-full"
-                />
-              </div>
-
-              <div class="space-y-2 text-sm">
-                <div
-                  v-if="filteredVariableEntries.length === 0"
-                  class="text-base-content/60"
-                >
-                  暂无变量
-                </div>
-                <div
-                  v-for="[key, value] in filteredVariableEntries"
-                  :key="key"
-                  class="flex items-center justify-between gap-2 rounded-lg bg-base-200 px-2 py-1"
-                >
-                  <div class="flex-1">
-                    <div class="text-xs text-base-content/70">{{ key }}</div>
-                    <div class="truncate">{{ displayVar(value) }}</div>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <button
-                      class="btn btn-xs btn-ghost tooltip"
-                      data-tip="插入变量"
-                      type="button"
-                      @click="insertVariableToEditor(key)"
-                    >
-                      <Icon icon="dashicons:insert" />
-                    </button>
-                    <div v-if="!builtinVariableNames.has(key)">
-                      <button
-                        class="btn btn-xs btn-ghost tooltip"
-                        data-tip="编辑变量"
-                        type="button"
-                        @click="openEditVar(key)"
-                      >
-                        <Icon icon="dashicons:edit" />
-                      </button>
-                    </div>
-                    <div
-                      v-else
-                      class="tooltip"
-                      :data-tip="key + ' 为内置变量，不能编辑'"
-                    >
-                      <button
-                        class="btn btn-xs btn-ghost btn-square"
-                        type="button"
-                        disabled
-                      >
-                        <Icon icon="mdi:lock" class="text-sm" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <StoryRightPanel
+            v-if="!isMobile"
+            :story="story"
+            :variables="variables"
+            :previewPassage="previewPassage"
+            :activeRightTab="activeRightTab"
+            @update:previewPassage="previewPassage = $event"
+            @update:activeRightTab="activeRightTab = $event"
+            @update:variables="handleUpdateVariables($event)"
+            @update:currentPassage="handleUpdateCurrentPassage($event)"
+            @refresh-preview="refreshPreview"
+            @reset-preview-vars="resetPreviewVars"
+            @insert-variable="insertVariableToEditor"
+            @edit-variable="openEditVar"
+          />
         </div>
       </main>
     </div>
-    <dialog ref="previewRef" class="modal modal-bottom sm:modal-middle p-0">
+    <dialog v-if="isMobile" ref="previewRef" class="modal modal-bottom sm:modal-middle p-0">
       <div class="modal-box h-[80vh] flex flex-col relative p-5!">
-        <h3 class="font-bold text-lg mb-4">预览</h3>
-        <div class="overflow-y-auto flex-1">
-          <StoryPlayView
-            :external="true"
-            :storyProp="story"
-            :currentPassageProp="previewPassage"
-            :variablesProp="variables"
-            @update:variables="handleUpdateVariables($event)"
-            @update:currentPassage="handleUpdateCurrentPassage($event)"
-          />
-        </div>
-        <div class="modal-action bottom-5 right-10 absolute">
+        <StoryRightPanel
+          :story="story"
+          :variables="variables"
+          :previewPassage="previewPassage"
+          :activeRightTab="activeRightTab"
+          @update:previewPassage="previewPassage = $event"
+          @update:activeRightTab="activeRightTab = $event"
+          @update:variables="handleUpdateVariables($event)"
+          @update:currentPassage="handleUpdateCurrentPassage($event)"
+          @refresh-preview="refreshPreview"
+          @reset-preview-vars="resetPreviewVars"
+          @insert-variable="insertVariableToEditor"
+          @edit-variable="openEditVar"
+        />
+        <div class="modal-action bottom-5 right-5 absolute">
           <form method="dialog">
             <button class="btn btn-circle btn-error btn-soft">
               <Icon icon="mdi:close" class="text-lg" />
@@ -518,6 +390,7 @@ import {
 } from "@/api/stories";
 import StoryPlayView from "@/views/StoryPlayView.vue";
 import StoryEditorPanel from "@/components/StoryEditor/StoryEditorPanel.vue";
+import StoryRightPanel from "@/components/StoryEditor/StoryRightPanel.vue";
 import {
   createDefaultStory,
   createEmptyStory,
@@ -584,15 +457,9 @@ const storyTagsStr = computed({
       .filter(Boolean);
   },
 });
-const activeRightTab = ref<"preview" | "vars">("preview");
-const varFilter = ref("");
-const filteredVariableEntries = computed(() => {
-  const q = (varFilter.value || "").toLowerCase();
-  return Object.entries(variables.value).filter(([k]) =>
-    k.toLowerCase().includes(q),
-  );
-});
-const builtinVariableNames = new Set<string>(["passage", "storyTitle"]);
+const activeRightTab = ref<"preview" | "vars" | "points" | "endings">(
+  "preview",
+);
 
 const selectedPassageContent = computed({
   get: () => {
@@ -613,12 +480,6 @@ const selectedPassageContent = computed({
     current.content = value;
   },
 });
-
-const displayVar = (v: unknown) => {
-  if (v === null || v === undefined) return String(v);
-  if (typeof v === "object") return JSON.stringify(v);
-  return String(v);
-};
 
 
 

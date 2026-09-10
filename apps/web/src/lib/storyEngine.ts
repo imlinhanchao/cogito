@@ -181,6 +181,7 @@ export {
   parseStorySource,
   serializeStory,
   buildInitialVariables,
+  extractStorySpecials,
 } from "tellory";
 
 export function createDefaultStory(): StoryData {

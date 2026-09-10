@@ -125,13 +125,15 @@ interface StoryEngineContext {
 - **浏览器端**：用 `createDefaultEvaluator` 提供的默认求值器即可，故事作者与玩家互相信任。
 - **服务端**：`evaluate`/`callFunction` 换成 `isolated-vm` 等沙箱执行，避免不可信的存档/表达式影响主进程；同时用 `encodeAttribute`/`decodeAttribute` 对链接携带的动作做加解密，防止玩家在客户端篡改跳转目标或变量赋值。
 
-## 🛠 API
+## 🔨 API
 
 | 函数 | 说明 |
 | --- | --- |
 | `parseStorySource(source: string): StoryData` | 将纯文本故事源码解析为结构化的 `StoryData`（标题 + 段落列表）。 |
 | `serializeStory(story: StoryData): string` | 将 `StoryData` 序列化回 `parseStorySource` 可识别的源码格式。 |
 | `buildInitialVariables(story: StoryData): Record<string, unknown>` | 构建初始变量表。 |
+| `extractStorySpecials(story: StoryData)` | 从解析后的故事中提取并去重所有 `(point:)`（成就）和 `(end:)`（结局）宏，返回 `{ points: [{name,description}], endings: [{name,description}] }`。 |
+| `detectRenderSpecials(input, variables, story, ctx, options?)` | 检测段落渲染时会产生的特殊标记（例如 queued `point` 或 `end`），可传入 `options`（如 `{ action?: string, includeLinkActions?: boolean }`）来模拟链接动作。 |
 | `createDefaultEvaluator(functions)` | 基于 `eval`/`Function` 的默认求值器，仅供浏览器等信任环境使用。 |
 | `applyPassageEntryEffects(content, variables, ctx): void` | 段落进入时执行其中的 `(set:)` 副作用（不返回渲染结果）。 |
 | `applyStoryAction(action, variables, ctx): void` | 执行一次 `goto:`/`set:`/`call:` 动作（通常来自链接点击）。 |
@@ -144,6 +146,9 @@ interface StoryEngineContext {
 - `StoryPassage` — 单个段落：`name`、可选 `tags`、`content`（未渲染的原始源码）。
 - `VariableMap` — 故事运行时变量表，`Record<string, unknown>`。
 - `StoryEngineContext` — 宿主注入的求值/函数调用/属性编解码/路由钩子接口（见上文）。
+ - `extractStorySpecials(story: StoryData)` — 辅助函数：从解析后的故事中抽取所有 `(point:)` 与 `(end:)` 宏并按名称去重。
+ - `detectRenderSpecials(...)` — 运行时检测函数，检查段落内容并（可选）在给定 action 情况下返回将被渲染的成就/结局标记。
+ - `StoryRenderSpecials` / `StorySpecialMarker` — `detectRenderSpecials` 返回值的类型描述。
 
 ## 📝 License
 

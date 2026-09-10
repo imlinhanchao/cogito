@@ -125,13 +125,15 @@ This lets the same rendering logic be safely reused across hosts, for example:
 - **Browser**: use the default evaluator provided by `createDefaultEvaluator`, since the story author and player trust each other.
 - **Server**: swap `evaluate`/`callFunction` for a sandbox (e.g. `isolated-vm`) to keep untrusted save data/expressions out of the main process, and use `encodeAttribute`/`decodeAttribute` to encrypt/decrypt the actions carried by links, preventing players from tampering with navigation targets or variable assignments on the client.
 
-## 🛠 API
+## 🔨 API
 
 | Function | Description |
 | --- | --- |
 | `parseStorySource(source: string): StoryData` | Parses plain-text story source into a structured `StoryData` (title + passage list). |
 | `serializeStory(story: StoryData): string` | Serializes `StoryData` back into the source format understood by `parseStorySource`. |
 | `buildInitialVariables(story: StoryData): Record<string, unknown>` | Builds the initial variable map. |
+| `extractStorySpecials(story: StoryData)` | Scans a parsed story and returns deduplicated lists of defined `point` (achievements) and `end` (endings) macros as `{ points: [{name,description}], endings: [{name,description}] }`. |
+| `detectRenderSpecials(input, variables, story, ctx, options?)` | Detects render-time specials (queued `point` markers or `end` markers) from a passage's raw content. Accepts optional `options` (eg. `{ action?: string, includeLinkActions?: boolean }`) to simulate link actions. |
 | `createDefaultEvaluator(functions)` | The default `eval`/`Function`-based evaluator, intended for trusted environments like the browser only. |
 | `applyPassageEntryEffects(content, variables, ctx): void` | Runs a passage's `(set:)` side effects when it is entered (does not return rendered output). |
 | `applyStoryAction(action, variables, ctx): void` | Runs a single `goto:`/`set:`/`call:` action (typically from a link click). |
@@ -144,6 +146,9 @@ This lets the same rendering logic be safely reused across hosts, for example:
 - `StoryPassage` — A single passage: `name`, optional `tags`, `content` (raw, unrendered source).
 - `VariableMap` — The story's runtime variable table, `Record<string, unknown>`.
 - `StoryEngineContext` — The host-supplied evaluation/function-call/attribute-codec/routing hook interface (see above).
+ - `extractStorySpecials(story: StoryData)` — Helper to extract all `(point:)` and `(end:)` macros from a parsed story (deduplicated by name).
+ - `detectRenderSpecials(...)` — Runtime helper that inspects a passage's raw content (and optional simulated action) to report any `point` or `ending` markers that would be produced by rendering.
+ - `StoryRenderSpecials` / `StorySpecialMarker` — Types describing the shape of detected render specials returned by `detectRenderSpecials`.
 
 ## 📝 License
 

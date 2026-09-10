@@ -2,6 +2,7 @@ export {
   serializeStory,
   parseStorySource,
   buildInitialVariables,
+  extractStorySpecials,
 } from "./parser";
 export {
   type StoryEngineContext,
