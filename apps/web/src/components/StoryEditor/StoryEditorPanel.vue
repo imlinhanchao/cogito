@@ -8,19 +8,19 @@
       </div>
 
       <div class="md:tooltip tooltip-bottom" data-tip="插入条件分支 (if:)">
-        <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('(if: $var > 0)[文本](else:)[文本]')">
+        <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('(if: $var > 0)[ 文本1 ](else:)[ 文本2 ]')">
           <Icon icon="mdi:source-branch" class="text-lg" />
         </button>
       </div>
 
       <div class="md:tooltip tooltip-bottom" data-tip="变量赋值 (set:)">
-        <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('(set: $score to $score + 1)')">
+        <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('(set: $var to 1)')">
           <Icon icon="mdi:plus-box-outline" class="text-lg" />
         </button>
       </div>
 
       <div class="md:tooltip tooltip-bottom" data-tip="打印变量 (print:)">
-        <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('(print: $score)')">
+        <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('(print: $var)')">
           <Icon icon="mdi:code-json" class="text-lg" />
         </button>
       </div>
@@ -72,13 +72,13 @@
       <div class="divider divider-horizontal my-1 mx-0.5"></div>
 
       <div class="md:tooltip tooltip-bottom" data-tip="嵌入段落 (display:)">
-        <button class="btn btn-sm btn-ghost btn-square" type="button" @click="$emit('insert-display')">
+        <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('(display: &quot;段落名&quot;)')">
           <Icon icon="mdi:file-replace-outline" class="text-lg" />
         </button>
       </div>
 
       <div class="md:tooltip tooltip-bottom" data-tip="插入全局 JS 函数 (fn:)">
-        <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet(`(fn:&quot;myFunc&quot;)[\n\tconsole.log(&quot;hello&quot;);\n\treturn 123\n]\n`)">
+        <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet(`(fn:&quot;myFunc&quot;)[\n\t$var += 1;\n\treturn 123\n]\n`)">
           <Icon icon="mdi:code-braces" class="text-lg" />
         </button>
       </div>
@@ -90,7 +90,7 @@
       </div>
 
       <div class="md:tooltip tooltip-bottom" data-tip="插入 CSS 样式块 <style>">
-        <button class="btn btn-sm btn-ghost btn-square" type="button" @click="$emit('insert-style')">
+        <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('<style>\n\t\n</style>')">
           <Icon icon="mdi:language-css3" class="text-lg" />
         </button>
       </div>
