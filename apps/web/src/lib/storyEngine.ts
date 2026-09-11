@@ -182,7 +182,10 @@ export {
   serializeStory,
   buildInitialVariables,
   extractStorySpecials,
+  checkStorySyntax,
 } from "tellory";
+
+export type { StorySyntaxIssue, StorySyntaxIssueType } from "tellory";
 
 export function createDefaultStory(): StoryData {
   return parseStorySource(DEFAULT_STORY_SOURCE);

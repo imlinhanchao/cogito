@@ -139,6 +139,7 @@ This lets the same rendering logic be safely reused across hosts, for example:
 | `applyStoryAction(action, variables, ctx): void` | Runs a single `goto:`/`set:`/`call:` action (typically from a link click). |
 | `renderStoryText(input, variables, story, ctx): string` | Renders a passage's raw content into sanitized HTML, expanding all supported macros. |
 | `buildStandaloneExport(story, variables, currentPassage): string` | Generates a self-contained HTML document (embedding the story data and rendering engine) that can be opened offline. |
+| `checkStorySyntax(story: StoryData): StorySyntaxIssue[]` | Staticaly checks a parsed `StoryData` for common syntax/structure problems and returns an array of issues (`StorySyntaxIssue`). |
 
 ### 🧾 Types
 
@@ -149,6 +150,54 @@ This lets the same rendering logic be safely reused across hosts, for example:
  - `extractStorySpecials(story: StoryData)` — Helper to extract all `(point:)` and `(end:)` macros from a parsed story (deduplicated by name).
  - `detectRenderSpecials(...)` — Runtime helper that inspects a passage's raw content (and optional simulated action) to report any `point` or `ending` markers that would be produced by rendering.
  - `StoryRenderSpecials` / `StorySpecialMarker` — Types describing the shape of detected render specials returned by `detectRenderSpecials`.
+
+## New Runtime APIs & Examples
+
+These helpers were added to make host integrations (editor, server, or standalone exports) easier to implement.
+
+- `renderStoryText(input, variables, story, ctx, options?)` — accepts an optional `options` object. Useful options include:
+  - `applyEntryEffects?: boolean` (default: true) — whether to run `(set:)` entry effects before rendering. Hosts that manage entry effects themselves can disable this and pass a `renderVariables` snapshot instead.
+  - `renderVariables?: Record<string, unknown>` — a variables snapshot to use for rendering (renderer will not mutate this object). Use this to render a preview without applying entry effects to the live variable table.
+
+Example: render a passage using a snapshot so `(if:)` is evaluated against pre-entry state while entry `(set:)` effects are not applied to the live variables.
+
+```ts
+const renderVars = { ...variables }; // shallow snapshot containing queued point/end arrays
+const html = renderStoryText(passage.content, variables, story, ctx, {
+  applyEntryEffects: false,
+  renderVariables: renderVars,
+});
+```
+
+- `detectRenderSpecials(input, variables, story, ctx, options?)` — inspects content (and optional simulated `action`) and returns `StoryRenderSpecials` describing any `point` or `end` markers that would be produced by the render. Call this before rendering when you need to show point/end notifications without consuming the queued markers.
+
+Example: detect special markers produced by clicking a link that carries an action string.
+
+```ts
+const specials = detectRenderSpecials(passage.content, variables, story, ctx, {
+  action: 'goto:"Left"',
+  includeLinkActions: true,
+});
+// specials.points / specials.endings
+```
+
+- `checkStorySyntax(story: StoryData): StorySyntaxIssue[]` — parser-level syntax checker. Returns an array of issues describing possible problems (dead links, orphan passages, duplicate passages, invalid endings, leftover macros, etc.). Use this in editors or pre-save flows to warn authors.
+
+Example: run on save and show results in an editor modal.
+
+```ts
+const issues = checkStorySyntax(story);
+if (issues.length) showIssuesModal(issues);
+```
+
+Macro note: canonical `point`/`end` macros follow the syntax:
+
+```text
+(point: name|description)
+(end: name|description)
+```
+
+They queue named points/endings during entry effects; use `detectRenderSpecials` with a render snapshot to discover which will be produced by a given render action.
 
 ## 📝 License
 

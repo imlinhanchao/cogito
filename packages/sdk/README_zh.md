@@ -139,6 +139,7 @@ interface StoryEngineContext {
 | `applyStoryAction(action, variables, ctx): void` | 执行一次 `goto:`/`set:`/`call:` 动作（通常来自链接点击）。 |
 | `renderStoryText(input, variables, story, ctx): string` | 将段落原始内容渲染为经过净化的 HTML，展开全部宏语法。 |
 | `buildStandaloneExport(story, variables, currentPassage): string` | 生成可离线双击打开的自包含 HTML 文档（内嵌故事数据与渲染引擎）。 |
+| `checkStorySyntax(story: StoryData): StorySyntaxIssue[]` | 对解析后的 `StoryData` 做静态语法/结构检查，返回一个问题数组（`StorySyntaxIssue`）。 |
 
 ### 🧾 类型
 
@@ -149,6 +150,54 @@ interface StoryEngineContext {
  - `extractStorySpecials(story: StoryData)` — 辅助函数：从解析后的故事中抽取所有 `(point:)` 与 `(end:)` 宏并按名称去重。
  - `detectRenderSpecials(...)` — 运行时检测函数，检查段落内容并（可选）在给定 action 情况下返回将被渲染的成就/结局标记。
  - `StoryRenderSpecials` / `StorySpecialMarker` — `detectRenderSpecials` 返回值的类型描述。
+
+## 运行时 API 与示例
+
+宿主（编辑器、服务端或单文件导出）集成渲染流程：
+
+- `renderStoryText(input, variables, story, ctx, options?)` — 可传入可选 `options` 对象。常用选项：
+  - `applyEntryEffects?: boolean`（默认：true）— 是否在渲染前执行 `(set:)` 入口副作用。若宿主已负责管理入口副作用，可禁用此项并传入 `renderVariables` 快照。
+  - `renderVariables?: Record<string, unknown>` — 用于渲染的变量快照（渲染器不会修改该对象）。用于在不影响 live 变量表的情况下做预览渲染。
+
+示例：使用快照渲染，使 `(if:)` 基于渲染前状态求值，而入口 `(set:)` 副作用不影响真实变量表。
+
+```ts
+const renderVars = { ...variables };
+const html = renderStoryText(passage.content, variables, story, ctx, {
+  applyEntryEffects: false,
+  renderVariables: renderVars,
+});
+```
+
+- `detectRenderSpecials(input, variables, story, ctx, options?)` — 检查内容（可选模拟 `action`）并返回 `StoryRenderSpecials`，描述将被渲染的 `point` 或 `end` 标记。若要在不消费队列的情况下显示成就/结局通知，应在渲染前调用此函数。
+
+示例：检测点击携带某 action 的链接将产生哪些特殊标记。
+
+```ts
+const specials = detectRenderSpecials(passage.content, variables, story, ctx, {
+  action: 'goto:"Left"',
+  includeLinkActions: true,
+});
+// specials.points / specials.endings
+```
+
+- `checkStorySyntax(story: StoryData): StorySyntaxIssue[]` — 解析器层的语法检查器，返回可能的问题（死链、孤立段落、重复段落、无效结局、残留宏等）。编辑器可在保存时调用并给作者预警。
+
+示例：保存前运行并在模态框显示问题。
+
+```ts
+const issues = checkStorySyntax(story);
+if (issues.length) showIssuesModal(issues);
+```
+
+宏说明：标准的 `point`/`end` 宏语法为：
+
+```text
+(point: name|description)
+(end: name|description)
+```
+
+这些宏在入口副作用阶段将指定的命名成就/结局入队；若要发现某次渲染会触发哪些标记，请在渲染前使用 `detectRenderSpecials` 对渲染快照进行检测。
 
 ## 📝 License
 

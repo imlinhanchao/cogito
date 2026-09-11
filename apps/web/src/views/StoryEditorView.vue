@@ -190,6 +190,7 @@
                   <button
                     class="btn btn-sm btn-primary btn-ghost btn-circle"
                     type="button"
+                    :disabled="syntaxChecking || saveInProgress"
                     @click="saveToServer"
                   >
                     <Icon icon="mdi:content-save-outline" size="16px" />
@@ -367,6 +368,60 @@
         <button type="submit">close</button>
       </form>
     </dialog>
+    <dialog ref="syntaxDialogRef" class="modal" @cancel="onSyntaxDialogCancel">
+      <div class="modal-box max-w-2xl">
+        <h3 class="flex items-center gap-2 text-lg font-bold">
+          <Icon icon="mdi:check-decagram-outline" class="text-xl text-primary" />
+          语法检查
+        </h3>
+
+        <div v-if="syntaxChecking" class="flex flex-col items-center gap-3 py-10">
+          <span class="loading loading-spinner loading-lg text-primary"></span>
+          <p class="text-sm text-base-content/70">正在检查语法…</p>
+        </div>
+
+        <template v-else>
+          <div class="space-y-3 py-4">
+            <div role="alert" class="alert alert-warning alert-soft">
+              <Icon icon="mdi:alert-circle-outline" class="text-lg" />
+              <span
+                >发现 {{ syntaxIssues.length }} 个语法问题，是否仍要继续保存？</span
+              >
+            </div>
+            <ul class="max-h-80 space-y-2 overflow-y-auto pr-1">
+              <li
+                v-for="(issue, index) in syntaxIssues"
+                :key="index"
+                class="rounded-box border border-base-300 bg-base-200/50 p-3 text-sm"
+              >
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="badge badge-warning badge-sm">{{
+                    syntaxIssueLabel(issue.type)
+                  }}</span>
+                  <span class="font-medium">段落「{{ issue.passage }}」</span>
+                  <span v-if="issue.line" class="text-base-content/60"
+                    >第 {{ issue.line }} 行</span
+                  >
+                </div>
+                <p class="mt-1 text-base-content/70">{{ issue.message }}</p>
+              </li>
+            </ul>
+          </div>
+          <div class="modal-action">
+            <button class="btn" type="button" @click="cancelSyntaxSave">
+              取消
+            </button>
+            <button
+              class="btn btn-warning"
+              type="button"
+              @click="confirmSyntaxSave"
+            >
+              继续保存
+            </button>
+          </div>
+        </template>
+      </div>
+    </dialog>
     <SyntaxManual v-if="showManual" @close="showManual = false" />
   </div>
 
@@ -397,7 +452,9 @@ import {
   parseStorySource,
   serializeStory,
   buildInitialVariables,
+  checkStorySyntax,
   type StoryData,
+  type StorySyntaxIssue,
   buildStandaloneExport,
 } from "@/lib/storyEngine";
 import {} from "@/lib/storyEngine";
@@ -413,7 +470,6 @@ import "codemirror/addon/mode/simple";
 import msg from "@/components/msg";
 import { useAppStore } from "@/stores/modules/app";
 import { omit } from "lodash-es";
-import SyntaxManual from "@/components/SyntaxManual.vue";
 import msgbox from "@/components/msgbox";
 import Icon from "@/components/Icon/src/Icon.vue";
 
@@ -437,6 +493,26 @@ let cmPasteInstance: any = null;
 const jsonEditorValue = ref("");
 const editingVarName = ref("");
 const showManual = ref(false);
+
+// 保存前的语法检查对话框状态
+const syntaxDialogRef = ref<HTMLDialogElement | null>(null);
+const syntaxChecking = ref(false);
+const syntaxIssues = ref<StorySyntaxIssue[]>([]);
+const saveInProgress = ref(false);
+
+/** 语法问题类型 -> 中文标签 */
+const SYNTAX_ISSUE_LABELS: Record<StorySyntaxIssue["type"], string> = {
+  "dead-link": "死链",
+  "orphan-passage": "孤立段落",
+  "invalid-ending": "结局标记",
+  "leftover-macro": "残留宏",
+  "duplicate-passage": "重复段落名",
+  "inconsistent-point-description": "成就描述不一致",
+  "inconsistent-ending-description": "结局描述不一致",
+};
+
+const syntaxIssueLabel = (type: StorySyntaxIssue["type"]): string =>
+  SYNTAX_ISSUE_LABELS[type] ?? type;
 
 const story = ref<IStory>(createEmptyStory());
 const storyAny = computed(() => story.value as any);
@@ -812,7 +888,80 @@ const saveDraft = () => {
   localStorage.setItem("haide-story-draft", JSON.stringify(story.value));
 };
 
+/**
+ * 保存前先做一次语法检查：弹出对话框显示 loading，检查完成后
+ * - 无问题：关闭对话框并直接保存；
+ * - 有问题：列出问题，等待用户选择「继续保存」或「取消」。
+ */
 const saveToServer = async () => {
+  if (syntaxChecking.value || saveInProgress.value) {
+    return;
+  }
+  syntaxIssues.value = [];
+  syntaxChecking.value = true;
+  const dialog = syntaxDialogRef.value;
+  if (dialog && !dialog.open) {
+    dialog.showModal();
+  }
+
+  // 先让 loading 状态渲染一帧，再执行（同步的）语法检查
+  await nextTick();
+  await new Promise((resolve) => {
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => resolve(null));
+    } else {
+      setTimeout(resolve, 0);
+    }
+  });
+
+  let issues: StorySyntaxIssue[] = [];
+  try {
+    issues = checkStorySyntax(story.value as unknown as StoryData);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("[StoryEditor] syntax check failed", e);
+  }
+  syntaxIssues.value = issues;
+  syntaxChecking.value = false;
+
+  if (!issues.length) {
+    closeSyntaxDialog();
+    await performSave();
+  }
+};
+
+const closeSyntaxDialog = () => {
+  const dialog = syntaxDialogRef.value;
+  if (dialog?.open) {
+    dialog.close();
+  }
+};
+
+/** 检查进行中禁止关闭；检查完成后按 ESC 等同于「取消」。 */
+const onSyntaxDialogCancel = (event: Event) => {
+  if (syntaxChecking.value) {
+    event.preventDefault();
+    return;
+  }
+  syntaxIssues.value = [];
+};
+
+const cancelSyntaxSave = () => {
+  syntaxIssues.value = [];
+  closeSyntaxDialog();
+};
+
+const confirmSyntaxSave = async () => {
+  closeSyntaxDialog();
+  await performSave();
+};
+
+/** 真正执行服务端保存，失败时回退到本地草稿。 */
+const performSave = async () => {
+  if (saveInProgress.value) {
+    return;
+  }
+  saveInProgress.value = true;
   // Create payload compatible with server CreateStoryDto: title + content
   const payload = {
     ...omit(story.value, ["passages", "author"]),
@@ -838,6 +987,8 @@ const saveToServer = async () => {
     // fallback to local save
     saveDraft();
     msg.error("保存到服务器失败，已保存到本地草稿");
+  } finally {
+    saveInProgress.value = false;
   }
 };
 

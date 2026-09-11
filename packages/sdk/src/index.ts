@@ -3,6 +3,9 @@ export {
   parseStorySource,
   buildInitialVariables,
   extractStorySpecials,
+  checkStorySyntax,
+  type StorySyntaxIssue,
+  type StorySyntaxIssueType,
 } from "./parser";
 export {
   type StoryEngineContext,
