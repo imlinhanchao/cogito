@@ -223,12 +223,22 @@ export function renderStoryText(
   story: StoryData,
   routeTo: (target: string) => void,
   displayPassages: Record<string, boolean> = {},
+  options?: {
+    applyEntryEffects?: boolean;
+    renderVariables?: VariableMap;
+  },
 ): string {
-  return sdkRenderStoryText(input, variables, story, {
-    ...engineCtx,
-    routeTo,
-    displayPassages,
-  });
+  return sdkRenderStoryText(
+    input,
+    variables,
+    story,
+    {
+      ...engineCtx,
+      routeTo,
+      displayPassages,
+    },
+    options,
+  );
 }
 
 export function buildStandaloneExport(

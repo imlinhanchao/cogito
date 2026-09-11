@@ -16,7 +16,6 @@ import {
   type StoryData,
   type StoryPassage,
   parseStorySource,
-  applyPassageEntryEffects,
   applyStoryAction,
   renderStoryText,
   buildInitialVariables,
@@ -47,7 +46,6 @@ export interface RuntimeResponse {
   specials?: StoryRenderSpecials;
 }
 
-const DATASET_TTL_MS = 60 * 60 * 1000;
 const FUNCTION_TIMEOUT_MS = 50;
 const EXPRESSION_TIMEOUT_MS = 25;
 
@@ -110,23 +108,34 @@ export class StoryRuntimeService {
     state.displayedPassages ??= [];
     const passage = this.getPassage(state, state.currentPassage);
     const ctx = this.buildContext(state);
-    if (applyEntryEffects) {
-      applyPassageEntryEffects(passage.content, state.variables, ctx);
-    }
+    const storyData = this.toStoryData(state);
+
+    // Render/detect with a pre-entry snapshot so `(if:)` conditions see the
+    // values from before entry-time `(set:)` effects ran. `renderStoryText`
+    // applies those effects to the persistent state when applyEntryEffects is
+    // true.
+    const renderVariables: Variables = JSON.parse(
+      JSON.stringify(state.variables),
+    );
+
+    // Detect specials first: renderStoryText consumes the point queue.
+    const specials = detectRenderSpecials(
+      passage.content,
+      renderVariables,
+      storyData,
+      ctx,
+      {
+        applyEntryEffects,
+        ...(action ? { action } : {}),
+      },
+    );
+
     const html = renderStoryText(
       passage.content,
       state.variables,
-      this.toStoryData(state),
+      storyData,
       ctx,
-    );
-
-    // Detect any render-time specials (points / ending)
-    const specials = detectRenderSpecials(
-      passage.content,
-      state.variables,
-      this.toStoryData(state),
-      ctx,
-      action ? { action } : undefined,
+      { applyEntryEffects, renderVariables },
     );
 
     return {

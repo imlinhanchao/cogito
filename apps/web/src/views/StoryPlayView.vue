@@ -103,7 +103,6 @@ import { useRouter } from "vue-router";
 import { Icon } from "@iconify/vue";
 import msg from "@/components/msg";
 import {
-  applyPassageEntryEffects,
   applyStoryAction,
   renderStoryText,
   type StoryData,
@@ -135,8 +134,8 @@ const router = useRouter();
 
 const storyContentRef = ref<HTMLElement | null>(null);
 const renderedPassage = ref("");
-const POINT_QUEUE_KEY = "__story_point_queue";
 const displayedPassages = ref<Record<string, boolean>>({});
+const entryRenderVariables = ref<VariableMap | null>(null);
 const story = ref<StoryData>({
   title: "互动故事",
   startPassage: "Start",
@@ -176,7 +175,7 @@ const hashStory = (storyValue: StoryData): string => {
 
 const getStorySignature = () => hashStory(story.value);
 
-const renderCurrentPassage = () => {
+const renderCurrentPassage = (runEntryEffects = true, useEntrySnapshot = false) => {
   const current =
     story.value.passages.find(
       (passage) => passage.name === currentPassageName.value,
@@ -188,17 +187,29 @@ const renderCurrentPassage = () => {
 
   variables.value.passage = current.name;
   variables.value.storyTitle = story.value.title;
-  applyPassageEntryEffects(current.content, variables.value);
 
-  const previewVariables = { ...variables.value };
+  if (runEntryEffects) {
+    entryRenderVariables.value = { ...variables.value };
+  }
+
+  // Display re-renders keep the entry snapshot so `(if:)` branches stay
+  // consistent; action-only re-renders read the freshly mutated variables.
+  const renderVars =
+    !runEntryEffects && useEntrySnapshot && entryRenderVariables.value
+      ? { ...entryRenderVariables.value }
+      : undefined;
+
   renderedPassage.value = renderStoryText(
     current.content,
-    previewVariables,
+    variables.value,
     story.value,
     (target) => goto(target),
     displayedPassages.value,
+    {
+      applyEntryEffects: runEntryEffects,
+      ...(renderVars ? { renderVariables: renderVars } : {}),
+    },
   );
-  variables.value[POINT_QUEUE_KEY] = [];
 };
 
 const handleStoryClick = (event: MouseEvent) => {
@@ -230,14 +241,14 @@ const handleStoryClick = (event: MouseEvent) => {
       ...displayedPassages.value,
       [display]: true,
     };
-    renderCurrentPassage();
+    renderCurrentPassage(false, true);
     return;
   }
   if (target) {
     goto(target);
     return;
   }
-  renderCurrentPassage();
+  renderCurrentPassage(false);
 };
 
 const goto = (target: string) => {
@@ -250,7 +261,7 @@ const goto = (target: string) => {
 
   currentPassageName.value = nextPassage.name;
   history.value = [...history.value, nextPassage.name];
-  renderCurrentPassage();
+  renderCurrentPassage(true);
   if (props.external) {
     emits("update:currentPassage", currentPassageName.value);
   }
@@ -263,7 +274,7 @@ const undo = () => {
   history.value.pop();
   currentPassageName.value =
     history.value[history.value.length - 1] ?? story.value.startPassage;
-  renderCurrentPassage();
+  renderCurrentPassage(false);
   if (props.external) {
     emits("update:currentPassage", currentPassageName.value);
   }
@@ -299,11 +310,11 @@ onMounted(() => {
       story.value.passages[0]?.name ||
       "Start";
     variables.value = props.variablesProp || buildInitialVariables(story.value);
-    renderCurrentPassage();
+    renderCurrentPassage(true);
     return;
   }
 
-  renderCurrentPassage();
+  renderCurrentPassage(true);
 });
 
 // Watch external props to update internal state
@@ -312,16 +323,16 @@ watch(
   (v) => {
     if (props.external && v) {
       story.value = v;
-      renderCurrentPassage();
+      renderCurrentPassage(false);
     }
   },
 );
 watch(
   () => props.currentPassageProp,
   (v) => {
-    if (props.external && v) {
-      currentPassageName.value = v || currentPassageName.value;
-      renderCurrentPassage();
+    if (props.external && v && v !== currentPassageName.value) {
+      currentPassageName.value = v;
+      renderCurrentPassage(true);
     }
   },
 );
@@ -330,7 +341,7 @@ watch(
   (v) => {
     if (props.external && v) {
       variables.value = v || variables.value;
-      renderCurrentPassage();
+      renderCurrentPassage(false);
     }
   },
 );

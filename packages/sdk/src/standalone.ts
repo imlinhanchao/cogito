@@ -32,6 +32,8 @@ import {
   queuePointMarker,
   consumePointMarkers,
   peekPointMarkers,
+  cloneRenderVariables,
+  transferPointQueueToRenderVariables,
   findLinkActionRanges,
   findStandaloneSpecialBlocks,
   stripStandaloneSpecialBlocks,
@@ -89,6 +91,8 @@ const HELPER_ORDER = [
   "queuePointMarker",
   "consumePointMarkers",
   "peekPointMarkers",
+  "cloneRenderVariables",
+  "transferPointQueueToRenderVariables",
   "findLinkActionRanges",
   "findStandaloneSpecialBlocks",
   "stripStandaloneSpecialBlocks",
@@ -143,6 +147,8 @@ const HELPER_MAP: Record<(typeof HELPER_ORDER)[number], unknown> = {
   queuePointMarker,
   consumePointMarkers,
   peekPointMarkers,
+  cloneRenderVariables,
+  transferPointQueueToRenderVariables,
   findLinkActionRanges,
   findStandaloneSpecialBlocks,
   stripStandaloneSpecialBlocks,
@@ -281,19 +287,36 @@ export function buildStandaloneExport(
           const passage = story.passages.find((p) => p.name === passageName) || story.passages[0];
           variables.passage = passage.name;
           variables.storyTitle = story.title;
-
-          const passageContentForEffects = extractAndRegisterFunctions(passage.content, GLOBAL_JS_FUNCTIONS);
-          applyPassageEntryEffects(passageContentForEffects, variables, engineCtx);
           engineCtx.displayPassages = engineCtx.displayPassages || {};
 
           const root = document.getElementById('story-root');
           const varRoot = document.getElementById('variables-root');
+          let entryRenderVariables = null;
 
           function updateVars() {
             const entries = Object.entries(variables).filter(([key]) => key !== 'passage' && key !== 'storyTitle');
             varRoot.innerHTML = entries.length
               ? entries.map(([key, value]) => \`<div class="var-item"><span>\${escapeHtml(key)}</span><strong>\${escapeHtml(String(value))}</strong></div>\`).join('')
               : '<p>暂无变量</p>';
+          }
+
+          function doRender(runEntryEffects, useEntrySnapshot) {
+            let renderVars;
+            if (runEntryEffects) {
+              entryRenderVariables = { ...variables };
+              renderVars = undefined;
+            } else if (useEntrySnapshot && entryRenderVariables) {
+              renderVars = { ...entryRenderVariables };
+            } else {
+              renderVars = undefined;
+            }
+            const contentForRender = extractAndRegisterFunctions(passage.content, GLOBAL_JS_FUNCTIONS);
+            root.innerHTML = renderStoryText(contentForRender, variables, story, engineCtx, {
+              applyEntryEffects: runEntryEffects,
+              ...(renderVars ? { renderVariables: renderVars } : {}),
+            });
+            updateVars();
+            attachListeners();
           }
 
           function attachListeners() {
@@ -304,11 +327,9 @@ export function buildStandaloneExport(
                 if (display) {
                   engineCtx.displayPassages = engineCtx.displayPassages || {};
                   engineCtx.displayPassages[display] = true;
-                  // Re-render only (do not re-run entry effects)
-                  const contentForRender = extractAndRegisterFunctions(passage.content, GLOBAL_JS_FUNCTIONS);
-                  root.innerHTML = renderStoryText(contentForRender, variables, story, engineCtx);
-                  updateVars();
-                  attachListeners();
+                  // Re-render only (do not re-run entry effects), keeping the
+                  // entry snapshot so (if:) branches stay consistent.
+                  doRender(false, true);
                   return;
                 }
 
@@ -321,21 +342,12 @@ export function buildStandaloneExport(
                   renderPassage(target);
                   return;
                 }
-
-                // re-render the current passage so queued points/endings appear.
-                if (action) {
-                  const contentForRender = extractAndRegisterFunctions(passage.content, GLOBAL_JS_FUNCTIONS);
-                  root.innerHTML = renderStoryText(contentForRender, variables, story, engineCtx);
-                  updateVars();
-                  attachListeners();
-                }
+                doRender(false, false);
               });
             });
           }
 
-          root.innerHTML = renderStoryText(passageContentForEffects, variables, story, engineCtx);
-          updateVars();
-          attachListeners();
+          doRender(true, false);
         }
 
         renderPassage(currentPassageName);

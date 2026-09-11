@@ -570,6 +570,40 @@ export function peekPointMarkers(variables: VariableMap): StorySpecialMarker[] {
   return readPointQueue(variables);
 }
 
+/**
+ * Deep-copies a variable map, falling back to a shallow copy when the value
+ * cannot be JSON-serialized (e.g. it contains functions or cycles).
+ *
+ * @param value - The variable map to clone.
+ * @returns A fresh, JSON-safe copy.
+ */
+export function cloneRenderVariables(value: VariableMap): VariableMap {
+  try {
+    return JSON.parse(JSON.stringify(value)) as VariableMap;
+  } catch {
+    return { ...value };
+  }
+}
+
+/**
+ * Moves any queued `(point:)` markers from `source` into `target`, then clears
+ * the source queue. Used so that entry-time side effects mutate the persistent
+ * variables while the current render pass reads a pre-entry snapshot.
+ *
+ * @param source - The persistent variable map holding the point queue.
+ * @param target - The render snapshot that should receive the markers.
+ */
+export function transferPointQueueToRenderVariables(
+  source: VariableMap,
+  target: VariableMap,
+): void {
+  const markers = readPointQueue(source);
+  if (markers.length > 0) {
+    target[POINT_QUEUE_KEY] = markers;
+  }
+  source[POINT_QUEUE_KEY] = [];
+}
+
 export function findStandaloneSpecialBlocks(
   input: string,
   macroName: "point" | "end",
@@ -1344,13 +1378,26 @@ export function detectRenderSpecials(
   variables: VariableMap,
   story: StoryData,
   ctx: StoryEngineContext,
-  options?: { action?: string; includeLinkActions?: boolean },
+  options?: {
+    action?: string;
+    includeLinkActions?: boolean;
+    applyEntryEffects?: boolean;
+  },
 ): StoryRenderSpecials | undefined {
   try {
-    const probeVariables: VariableMap = JSON.parse(JSON.stringify(variables));
-    applyPassageEntryEffects(input, probeVariables, ctx);
+    const renderVariables = cloneRenderVariables(variables);
+    const shouldApplyEntryEffects = options?.applyEntryEffects ?? true;
+    if (shouldApplyEntryEffects) {
+      const effectVariables = cloneRenderVariables(variables);
+      applyPassageEntryEffects(input, effectVariables, ctx);
+      const queuedPoints = readPointQueue(effectVariables);
+      if (queuedPoints.length) {
+        writePointQueue(renderVariables, queuedPoints);
+      }
+    }
+
     const specials: StoryRenderSpecials = { points: [] };
-    renderStoryTextInternal(input, probeVariables, story, ctx, {
+    renderStoryTextInternal(input, renderVariables, story, ctx, {
       consumePointQueue: false,
       captureSpecials: specials,
     });
@@ -1424,10 +1471,20 @@ export function detectRenderSpecials(
 /**
  * Renders a passage's raw content into sanitized HTML, expanding all supported macros.
  *
+ * The render pass always reads a pre-entry snapshot of `variables` so that
+ * `(if: ...)` conditions see the values from before any `(set: ...)` entry
+ * effects ran. When `applyEntryEffects` is `true` (the default), entry-time
+ * side effects are applied to the persistent `variables` map first, and any
+ * `(point:)` markers they queue are moved into the render snapshot before
+ * rendering. Callers that already ran entry effects can pass
+ * `applyEntryEffects: false`; pass `renderVariables` to re-render with a
+ * specific snapshot (e.g. for display expansion).
+ *
  * @param input - Raw passage content.
- * @param variables - Current variable map.
+ * @param variables - Current variable map (mutated by entry effects when enabled).
  * @param story - The full story.
  * @param ctx - The active engine context.
+ * @param options - Render options (applyEntryEffects, renderVariables).
  * @returns Sanitized, ready-to-embed HTML.
  */
 export function renderStoryText(
@@ -1435,8 +1492,24 @@ export function renderStoryText(
   variables: VariableMap,
   story: StoryData,
   ctx: StoryEngineContext,
+  options?: {
+    /** Whether to run entry-time `(set:)`/`(point:)` side effects. Default true. */
+    applyEntryEffects?: boolean;
+    /** Optional variable snapshot to render with (e.g. pre-entry state). */
+    renderVariables?: VariableMap;
+  },
 ): string {
-  return renderStoryTextInternal(input, variables, story, ctx, {
+  const applyEntry = options?.applyEntryEffects ?? true;
+  const renderVariables = cloneRenderVariables(
+    options?.renderVariables ?? variables,
+  );
+
+  if (applyEntry) {
+    applyPassageEntryEffects(input, variables, ctx);
+  }
+  transferPointQueueToRenderVariables(variables, renderVariables);
+
+  return renderStoryTextInternal(input, renderVariables, story, ctx, {
     consumePointQueue: true,
   });
 }
