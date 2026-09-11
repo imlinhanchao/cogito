@@ -139,20 +139,31 @@ export function createDefaultEvaluator(
     functions,
     evaluate(expression: string, variables: VariableMap): unknown {
       const compiled = compileExpressionSource(expression);
-      const vars = variables;
-      return (function runInScope() {
-        const __contains__ = function (a: any, b: any) {
-          try {
-            if (a == null) return false;
-            if (typeof a === "string") return String(a).includes(b);
-            if (Array.isArray(a)) return a.includes(b);
-            return false;
-          } catch {
-            return false;
-          }
-        };
-        return eval(compiled);
-      })();
+
+      const __contains__ = function (a: any, b: any) {
+        try {
+          if (a == null) return false;
+          if (typeof a === "string") return String(a).includes(b);
+          if (Array.isArray(a)) return a.includes(b);
+          return false;
+        } catch {
+          return false;
+        }
+      };
+
+      try {
+        // 把 vars 和 __contains__ 作为 new Function 的参数传入，
+        // eval 在这个函数体内运行时能看到它们。
+        const runner = new Function(
+          "vars",
+          "__contains__",
+          "compiled",
+          "return eval(compiled);",
+        );
+        return runner(variables, __contains__, compiled);
+      } catch {
+        return undefined;
+      }
     },
     callFunction(
       name: string,
