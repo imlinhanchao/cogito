@@ -162,7 +162,11 @@ export function createDefaultEvaluator(
       const code = functions[name];
       if (!code) return undefined;
       try {
-        const fn = new Function("vars", "args", code);
+        const compiledCode = code.replace(
+          /\$([A-Za-z_][A-Za-z0-9_]*)/g,
+          (_all, varName: string) => `vars[${JSON.stringify(varName)}]`,
+        );
+        const fn = new Function("vars", "args", compiledCode);
         return fn(variables, args);
       } catch {
         return undefined;
@@ -738,8 +742,14 @@ export function applyPassageEntryEffects(
   ctx: StoryEngineContext,
 ): void {
   const effectSource = resolveIfMacrosForEffects(content, variables, ctx);
-  applySetMacros(effectSource, variables, ctx);
-  applyPointMacros(effectSource, variables);
+  // Register (fn:) definitions first so later (set: ... (call:"name"))
+  // in the same passage can execute correctly during entry effects.
+  const sourceWithoutFunctions = extractAndRegisterFunctions(
+    effectSource,
+    ctx.functions,
+  );
+  applySetMacros(sourceWithoutFunctions, variables, ctx);
+  applyPointMacros(sourceWithoutFunctions, variables);
 }
 
 /** Tags treated as raw HTML block wrappers by the markdown renderer. */
@@ -1097,7 +1107,11 @@ export function replaceIfMacros(
   variables: VariableMap,
   story: StoryData,
   ctx: StoryEngineContext,
+  options?: {
+    conditionVariables?: VariableMap;
+  },
 ): string {
+  const conditionVariables = options?.conditionVariables ?? variables;
   let result = "";
   let cursor = 0;
   let searchFrom = 0;
@@ -1120,7 +1134,7 @@ export function replaceIfMacros(
         selected = b.branch;
         break;
       }
-      if (evaluateCondition(b.condition, variables, ctx)) {
+      if (evaluateCondition(b.condition, conditionVariables, ctx)) {
         selected = b.branch;
         break;
       }
@@ -1128,6 +1142,7 @@ export function replaceIfMacros(
 
     result += renderStoryTextInternal(selected, variables, story, ctx, {
       consumePointQueue: false,
+      conditionVariables,
     });
 
     cursor = parsed.fullEndIndex;
@@ -1197,6 +1212,7 @@ export function replaceTextWithHtml(
   options?: {
     consumePointQueue?: boolean;
     captureSpecials?: StoryRenderSpecials;
+    conditionVariables?: VariableMap;
   },
 ): string {
   const consumePointQueue = options?.consumePointQueue ?? false;
@@ -1279,7 +1295,9 @@ export function replaceTextWithHtml(
     },
   );
 
-  working = replaceIfMacros(working, variables, story, ctx);
+  working = replaceIfMacros(working, variables, story, ctx, {
+    conditionVariables: options?.conditionVariables,
+  });
 
   const displayPattern = /\(display:\s*["']([^"']+)["']\s*\)/g;
   working = working.replace(displayPattern, (_all, targetName: string) => {
@@ -1359,6 +1377,7 @@ export function renderStoryTextInternal(
   options?: {
     consumePointQueue?: boolean;
     captureSpecials?: StoryRenderSpecials;
+    conditionVariables?: VariableMap;
   },
 ): string {
   return replaceTextWithHtml(input, variables, story, ctx, options);
@@ -1500,17 +1519,25 @@ export function renderStoryText(
   },
 ): string {
   const applyEntry = options?.applyEntryEffects ?? true;
+  const conditionVariables = cloneRenderVariables(
+    options?.renderVariables ?? variables,
+  );
+  const hasExplicitRenderVariables = options?.renderVariables !== undefined;
   const renderVariables = cloneRenderVariables(
     options?.renderVariables ?? variables,
   );
 
   if (applyEntry) {
     applyPassageEntryEffects(input, variables, ctx);
+    if (!hasExplicitRenderVariables) {
+      Object.assign(renderVariables, cloneRenderVariables(variables));
+    }
   }
   transferPointQueueToRenderVariables(variables, renderVariables);
 
   return renderStoryTextInternal(input, renderVariables, story, ctx, {
     consumePointQueue: true,
+    conditionVariables,
   });
 }
 

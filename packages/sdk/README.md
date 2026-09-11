@@ -151,7 +151,7 @@ This lets the same rendering logic be safely reused across hosts, for example:
  - `detectRenderSpecials(...)` — Runtime helper that inspects a passage's raw content (and optional simulated action) to report any `point` or `ending` markers that would be produced by rendering.
  - `StoryRenderSpecials` / `StorySpecialMarker` — Types describing the shape of detected render specials returned by `detectRenderSpecials`.
 
-## New Runtime APIs & Examples
+## Runtime APIs & Examples
 
 These helpers were added to make host integrations (editor, server, or standalone exports) easier to implement.
 

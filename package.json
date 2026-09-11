@@ -23,6 +23,6 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "tellory": "^0.0.7"
+    "tellory": "^0.0.8"
   }
 }
