@@ -132,9 +132,13 @@ function positionPanel() {
 
   if (props.appendToBody) {
     const top = showBelow ? rect.bottom : Math.max(8, rect.top - panelHeight)
+    let left = rect.left;
+    if (rect.left + rect.width > window.innerWidth) {
+      left = Math.max(8, window.innerWidth - rect.width)
+    }
     panelStyle.value = {
       top: `${top}px`,
-      left: `${rect.left}px`,
+      left: `${left}px`,
       width: `${rect.width}px`,
     }
   } else {

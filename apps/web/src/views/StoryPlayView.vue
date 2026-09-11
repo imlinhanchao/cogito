@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full md:max-w-4xl md:mx-auto md:p-2 space-y-4">
+  <div class="w-full md:max-w-4xl md:mx-auto md:p-2 space-y-4 overflow-auto">
     <!-- 顶部导航与控制栏 -->
     <header
       class="navbar bg-base-100 rounded-2xl border border-base-200/80 shadow-xs px-4 py-2 flex flex-wrap items-center justify-between gap-3"
@@ -50,7 +50,7 @@
 
     <!-- 故事正文主体区 -->
     <main
-      class="card bg-base-100 border border-base-200/80 shadow-sm rounded-2xl overflow-hidden transition-all"
+      class="card bg-base-100 border border-base-200/80 shadow-sm rounded-2xl transition-all"
     >
       <div class="card-body p-5 sm:p-8 lg:p-10">
         <article

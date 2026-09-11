@@ -42,9 +42,6 @@
             >
               <span class="truncate font-medium">{{ passage.name }}</span>
               <span class="space-x-2">
-                <span class="badge badge-ghost badge-sm">{{
-                  passage.tags?.length || 0
-                }}</span>
                 <Icon
                   icon="mdi:content-copy"
                   data-tip="复制段落名"
@@ -127,7 +124,7 @@
                   class="btn btn-sm btn-square btn-ghost"
                   @click="passageRef?.showModal()"
                 >
-                  <Icon icon="mdi:menu" class="text-lg" />
+                  <Icon icon="mdi:menu" size="16px" />
                 </button>
               </div>
               <input
@@ -144,7 +141,7 @@
                     (previewRef as any)?.showModal();
                   "
                 >
-                  <Icon icon="mdi:play-circle-outline" class="text-lg" />
+                  <Icon icon="at-icons:play" size="16px" />
                 </button>
               </div>
             </div>
@@ -152,43 +149,41 @@
               class="flex items-center gap-1 md:shrink-0"
               :class="{ 'py-2 justify-around': isMobile }"
             >
-              <template v-if="!props.readOnly">
-                <div class="tooltip tooltip-bottom" data-tip="从剪贴板粘贴导入">
-                  <button
-                    class="btn btn-sm btn-ghost btn-square"
-                    type="button"
-                    @click="pasteImport"
-                  >
-                    <Icon icon="mdi:content-paste" size="16px" />
-                  </button>
-                </div>
-                <div
-                  class="tooltip tooltip-bottom"
-                  data-tip="复制文本源码"
+              <div v-if="!props.readOnly" class="tooltip tooltip-bottom" data-tip="从剪贴板粘贴导入">
+                <button
+                  class="btn btn-sm btn-ghost btn-square"
+                  type="button"
+                  @click="pasteImport"
                 >
-                  <button
-                    class="btn btn-sm btn-ghost btn-square"
-                    type="button"
-                    @click="copyStory"
-                  >
-                    <Icon icon="mdi:content-copy" size="16px" />
-                  </button>
-                </div>
-                <div
-                  class="tooltip tooltip-bottom"
-                  data-tip="编译导出 HTML 文件"
+                  <Icon icon="mdi:content-paste" size="16px" />
+                </button>
+              </div>
+              <div
+                class="tooltip tooltip-bottom"
+                data-tip="复制文本源码"
+              >
+                <button
+                  class="btn btn-sm btn-ghost btn-square"
+                  type="button"
+                  @click="copyStory"
                 >
-                  <button
-                    class="btn btn-sm btn-ghost btn-square"
-                    type="button"
-                    @click="buildStory"
-                  >
-                    <Icon icon="mdi:hammer" size="16px" />
-                  </button>
-                </div>
-              </template>
+                  <Icon icon="mdi:content-copy" size="16px" />
+                </button>
+              </div>
+              <div
+                class="tooltip tooltip-bottom"
+                data-tip="编译导出 HTML 文件"
+              >
+                <button
+                  class="btn btn-sm btn-ghost btn-square"
+                  type="button"
+                  @click="buildStory"
+                >
+                  <Icon icon="mdi:hammer" size="16px" />
+                </button>
+              </div>
               <template v-if="!props.readOnly">
-                <div class="tooltip tooltip-bottom" data-tip="试玩故事">
+                <div v-if="currentStoryId" class="tooltip tooltip-bottom" data-tip="试玩故事">
                   <button
                     class="btn btn-sm btn-ghost btn-secondary btn-circle"
                     type="button"
@@ -210,14 +205,14 @@
                 <div
                   class="tooltip tooltip-bottom"
                   data-tip="提交审核"
-                  v-if="currentStoryId"
+                  v-if="currentStoryId && story.status === 'draft'"
                 >
                   <button
                     class="btn btn-sm btn-ghost btn-accent btn-circle"
                     type="button"
                     @click="submitForReview"
                   >
-                    <Icon icon="mdi:send" size="16px" />
+                    <Icon icon="fa:paper-plane" size="16px" />
                   </button>
                 </div>
               </template>
@@ -313,9 +308,9 @@
     <dialog
       v-if="isMobile"
       ref="previewRef"
-      class="modal modal-bottom sm:modal-middle p-0"
+      class="modal md:modal-middle modal-bottom p-0"
     >
-      <div class="modal-box h-[80vh] flex flex-col relative p-5!">
+      <div class="modal-box h-full flex flex-col relative bg-base-200 p-2!">
         <StoryRightPanel
           :story="story"
           :variables="variables"
@@ -330,13 +325,11 @@
           @insert-variable="insertVariableToEditor"
           @edit-variable="openEditVar"
         />
-        <div class="modal-action bottom-5 right-5 absolute">
-          <form method="dialog">
-            <button class="btn btn-circle btn-error btn-soft">
-              <Icon icon="mdi:close" class="text-lg" />
-            </button>
-          </form>
-        </div>
+        <form class="modal-action bottom-5 right-5 fixed" method="dialog">
+          <button class="btn btn-circle btn-error btn-soft">
+            <Icon icon="mdi:close" class="text-lg" />
+          </button>
+        </form>
       </div>
     </dialog>
     <dialog id="json-editor-dialog" class="modal">
@@ -524,7 +517,7 @@ let cmPasteInstance: any = null;
 const jsonEditorValue = ref("");
 const editingVarName = ref("");
 const showManual = ref(false);
-const appendMode = ref(false);
+const appendMode = ref(true);
 const showAppendToggle = ref(false);
 
 // 保存前的语法检查对话框状态
@@ -746,39 +739,6 @@ const addPassage = () => {
   ensurePassage(baseName);
 };
 
-const importStory = () => {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = ".txt";
-  input.onchange = async () => {
-    const file = input.files?.[0];
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const parsed = parseStorySource(text);
-      if (!parsed || !parsed.passages || parsed.passages.length === 0) {
-        window.alert("未检测到可导入的段落内容。");
-        return;
-      }
-      story.value = parsed as StoryData;
-      variables.value = buildInitialVariables(story.value);
-      selectedPassage.value =
-        story.value.startPassage ||
-        story.value.passages[0]?.name ||
-        selectedPassage.value;
-      previewPassage.value = selectedPassage.value;
-      refreshPreview();
-      window.alert("导入成功");
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error(e);
-      window.alert("导入失败");
-    }
-  };
-  // trigger file picker
-  input.click();
-};
-
 const generateUniquePassageName = (base: string) => {
   let name = base.trim() || "Untitled";
   let i = 1;
@@ -873,7 +833,7 @@ const confirmPasteImport = () => {
       return;
     }
     let added = 0;
-    if (!appendMode.value) {
+    if (!appendMode.value || !showAppendToggle.value) {
       // overwrite metadata and passages
       story.value.title = parsed.title || story.value.title;
       story.value.startPassage = parsed.startPassage || story.value.startPassage;
@@ -1036,9 +996,11 @@ const performSave = async () => {
     ...omit(story.value, ["passages", "author"]),
     content: serializeStory(story.value),
     passageSize: story.value.passages.length,
+    status: 'draft'
   };
   try {
     if (currentStoryId.value) {
+      story.value.status = 'draft';
       await updateStory(currentStoryId.value, payload);
       msg.success("已保存");
     } else {
@@ -1049,6 +1011,7 @@ const performSave = async () => {
         // navigate to editor with id
         router.replace({ name: "story-editor", params: { storyId: newId } });
       }
+      story.value.status = 'draft';
       msg.success("已保存");
     }
     localStorage.removeItem("haide-story-draft");
@@ -1068,6 +1031,7 @@ const submitForReview = async () => {
   }
   try {
     await publishStory(currentStoryId.value);
+    story.value.status = 'pending';
     msg.success("已提交审核");
   } catch (e) {
     msg.error("提交审核失败");
@@ -1200,18 +1164,17 @@ function init() {
     try {
       story.value = JSON.parse(draft) as StoryData;
       selectedPassage.value = story.value.passages[0]?.name ?? "Start";
-    } catch {
-      story.value = createEmptyStory();
-    }
+    } catch {}
   }
+  story.value = createEmptyStory();
 
   variables.value = buildInitialVariables(story.value);
   previewPassage.value =
     selectedPassage.value || story.value.passages[0]?.name || "Start";
   // load story if id provided
   const sid = (route.params.storyId as string) || null;
+  currentStoryId.value = sid;
   if (sid) {
-    currentStoryId.value = sid;
     getStory(sid)
       .then((data) => {
         if (data) {
@@ -1235,6 +1198,10 @@ function init() {
       story.value.startPassage || story.value.passages[0]?.name || "Start";
   }
 }
+
+watch(() => route.params.storyId, (newStoryId) => {
+  init();
+});
 
 // Define a simple custom mode for our story syntax using simple mode
 // tokens: header (:: name), macro ( (set:) (if:) (print:) etc), link [[...]], jsfn (fn: call:), style tag, strings

@@ -1,7 +1,7 @@
 <template>
-  <div class="space-y-4 rounded-xl border border-base-300 bg-base-200/50 md:p-3">
-    <div class="mb-2 flex items-center justify-between">
-      <div class="tabs tabs-boxed bg-base-200 p-0.5">
+  <div class="space-y-4 rounded-xl border border-base-300 bg-base-200/50 md:p-3 h-full flex flex-col flex-1">
+    <div class="mb-2 flex items-center justify-between bg-base-200 flex-none">
+      <div class="tabs tabs-boxed p-0.5">
         <a
           :class="[
             'tab tab-xs font-semibold',
@@ -9,7 +9,8 @@
           ]"
           @click.prevent="activeTabModel = 'preview'"
         >
-          <Icon icon="mdi:play-circle-outline" class="mr-1 text-sm" />预览
+          <Icon icon="mdi:play-circle-outline" class="mr-1 text-sm" />
+          <span v-if="!isMobile">预览</span>
         </a>
         <a
           :class="[
@@ -18,7 +19,8 @@
           ]"
           @click.prevent="activeTabModel = 'vars'"
         >
-          <Icon icon="mdi:variable" class="mr-1 text-sm" />变量
+          <Icon icon="mdi:variable" class="mr-1 text-sm" />
+          <span v-if="!isMobile">变量</span>
         </a>
         <a
           :class="[
@@ -27,7 +29,8 @@
           ]"
           @click.prevent="activeTabModel = 'points'"
         >
-          <Icon icon="mdi:star-circle-outline" class="mr-1 text-sm" />成就
+          <Icon icon="mdi:star-circle-outline" class="mr-1 text-sm" />
+          <span v-if="!isMobile">成就</span>
         </a>
         <a
           :class="[
@@ -36,23 +39,11 @@
           ]"
           @click.prevent="activeTabModel = 'endings'"
         >
-          <Icon icon="mdi:flag-checkered" class="mr-1 text-sm" />结局
+          <Icon icon="mdi:flag-checkered" class="mr-1 text-sm" />
+          <span v-if="!isMobile">结局</span>
         </a>
       </div>
       <div class="flex items-center gap-1">
-        <select
-          v-if="activeTabModel === 'preview'"
-          v-model="previewPassageModel"
-          class="select select-xs select-bordered"
-        >
-          <option
-            v-for="p in story.passages"
-            :key="p.name"
-            :value="p.name"
-          >
-            {{ p.name }}
-          </option>
-        </select>
         <div
           v-if="activeTabModel === 'preview'"
           class="tooltip tooltip-bottom"
@@ -84,9 +75,16 @@
       </div>
     </div>
 
-    <div v-if="activeTabModel === 'preview'">
+    <div v-if="activeTabModel === 'preview'" class="h-full flex flex-col flex-1 overflow-hidden">
+      <SearchableSelect
+        class="mb-2"
+        v-model="previewPassageModel"
+        :options="story.passages"
+      />
+
       <StoryPlayView
         v-if="previewPassageModel"
+        class="flex-1 overflow-auto"
         :external="true"
         :storyProp="story"
         :currentPassageProp="previewPassageModel"
@@ -96,7 +94,7 @@
       />
     </div>
 
-    <div v-else-if="activeTabModel === 'vars'">
+    <div v-else-if="activeTabModel === 'vars'" class="h-full flex flex-col flex-1 overflow-hidden md:overflow-unset">
       <div class="mb-2">
         <input
           v-model="varFilter"
@@ -105,12 +103,13 @@
         />
       </div>
 
-      <div class="space-y-2 text-sm">
+      <div class="space-y-2 text-sm flex-1 overflow-auto md:overflow-visible h-full">
         <div
           v-if="filteredVariableEntries.length === 0"
-          class="text-base-content/60"
+          class="text-base-content/60 h-full w-full flex flex-col items-center justify-center"
         >
-          暂无变量
+          <Icon icon="fluent:border-none-20-regular" size="50px" />
+          <span>暂无变量</span>
         </div>
         <div
           v-for="[key, value] in filteredVariableEntries"
@@ -123,7 +122,7 @@
           </div>
           <div class="flex items-center gap-2">
             <button
-              class="btn btn-xs btn-ghost tooltip"
+              class="btn btn-xs btn-ghost md:tooltip tooltip-end"
               data-tip="插入变量"
               type="button"
               @click="emits('insert-variable', key)"
@@ -132,7 +131,7 @@
             </button>
             <div v-if="!builtinVariableNames.has(key)">
               <button
-                class="btn btn-xs btn-ghost tooltip"
+                class="btn btn-xs btn-ghost md:tooltip tooltip-end"
                 data-tip="编辑变量"
                 type="button"
                 @click="emits('edit-variable', key)"
@@ -142,7 +141,7 @@
             </div>
             <div
               v-else
-              class="tooltip"
+              class="md:tooltip tooltip-end"
               :data-tip="key + ' 为内置变量，不能编辑'"
             >
               <button
@@ -158,38 +157,44 @@
       </div>
     </div>
 
-    <div v-else-if="activeTabModel === 'points'" class="space-y-2 text-sm">
-      <div
-        v-if="pointEntries.length === 0"
-        class="text-base-content/60"
-      >
-        暂无成就
-      </div>
-      <div
-        v-for="item in pointEntries"
-        :key="`point-${item.name}`"
-        class="rounded-lg bg-base-300 p-2"
-      >
-        <div class="text-xs text-base-content/70">{{ item.name }}</div>
-        <div class="truncate">{{ item.description || '无描述' }}</div>
-      </div>
+    <div v-else-if="activeTabModel === 'points'" class="space-y-2 text-sm h-full flex flex-col overflow-auto flex-1">
+      <section class="flex-1 overflow-auto">
+        <div
+          v-if="pointEntries.length === 0"
+          class="text-base-content/60 h-full w-full flex flex-col items-center justify-center"
+        >
+          <Icon icon="fluent:border-none-20-regular" size="50px" />
+          <span>暂无成就</span>
+        </div>
+        <div
+          v-for="item in pointEntries"
+          :key="`point-${item.name}`"
+          class="rounded-lg bg-base-300 p-2"
+        >
+          <div class="text-xs text-base-content/70">{{ item.name }}</div>
+          <div class="truncate">{{ item.description || '无描述' }}</div>
+        </div>
+      </section>
     </div>
 
-    <div v-else class="space-y-2 text-sm">
-      <div
-        v-if="endingEntries.length === 0"
-        class="text-base-content/60"
-      >
-        暂无结局
-      </div>
-      <div
-        v-for="item in endingEntries"
-        :key="`ending-${item.name}`"
-        class="rounded-lg bg-base-300 p-2"
-      >
-        <div class="text-xs text-base-content/70">{{ item.name }}</div>
-        <div class="truncate">{{ item.description || '无描述' }}</div>
-      </div>
+    <div v-else class="space-y-2 text-sm h-full flex flex-col overflow-hidden flex-1">
+      <section class="flex-1 overflow-auto space-y-2">
+        <div
+          v-if="endingEntries.length === 0"
+          class="text-base-content/60 h-full w-full flex flex-col items-center justify-center"
+        >
+          <Icon icon="fluent:border-none-20-regular" size="50px" />
+          <span>暂无结局</span>
+        </div>
+        <div
+          v-for="item in endingEntries"
+          :key="`ending-${item.name}`"
+          class="rounded-lg bg-base-300 p-2"
+        >
+          <div class="text-xs text-base-content/70">{{ item.name }}</div>
+          <div class="truncate">{{ item.description || '无描述' }}</div>
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -199,6 +204,7 @@ import { computed, ref } from "vue";
 import Icon from "@/components/Icon/src/Icon.vue";
 import { extractStorySpecials } from "@/lib/storyEngine";
 import StoryPlayView from "@/views/StoryPlayView.vue";
+import { useAppStore } from "@/stores/modules/app";
 
 type RightTab = "preview" | "vars" | "points" | "endings";
 
@@ -249,4 +255,6 @@ const displayVar = (value: unknown) => {
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
 };
+
+const isMobile = computed(() => useAppStore().isMobile);
 </script>

@@ -1,37 +1,37 @@
 <template>
   <div class="rounded-xl border border-base-300 bg-base-200/50">
     <div class="tools px-3 pt-3 z-100 sticky top-17.5 mb-4 flex flex-wrap items-center bg-base-200 rounded-xl border border-base-200">
-      <div class="tooltip tooltip-bottom" data-tip="插入链接 [[段落|显示]]">
+      <div class="md:tooltip tooltip-bottom" data-tip="插入链接 [[段落|显示]]">
         <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('[[' + selectedPassage + '|]]')">
           <Icon icon="mdi:link-variant" class="text-lg" />
         </button>
       </div>
 
-      <div class="tooltip tooltip-bottom" data-tip="插入条件分支 (if:)">
+      <div class="md:tooltip tooltip-bottom" data-tip="插入条件分支 (if:)">
         <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('(if: $var > 0)[文本](else:)[文本]')">
           <Icon icon="mdi:source-branch" class="text-lg" />
         </button>
       </div>
 
-      <div class="tooltip tooltip-bottom" data-tip="变量赋值 (set:)">
+      <div class="md:tooltip tooltip-bottom" data-tip="变量赋值 (set:)">
         <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('(set: $score to $score + 1)')">
           <Icon icon="mdi:plus-box-outline" class="text-lg" />
         </button>
       </div>
 
-      <div class="tooltip tooltip-bottom" data-tip="打印变量 (print:)">
+      <div class="md:tooltip tooltip-bottom" data-tip="打印变量 (print:)">
         <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('(print: $score)')">
           <Icon icon="mdi:code-json" class="text-lg" />
         </button>
       </div>
 
-      <div class="tooltip tooltip-bottom" data-tip="插入成就 (point: 名称|描述)">
+      <div class="md:tooltip tooltip-bottom" data-tip="插入成就 (point: 名称|描述)">
         <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('(point: Achievement|描述)')">
           <Icon icon="mdi:star-circle" class="text-lg" />
         </button>
       </div>
 
-      <div class="tooltip tooltip-bottom" data-tip="插入结局 (end: 名称|描述)">
+      <div class="md:tooltip tooltip-bottom" data-tip="插入结局 (end: 名称|描述)">
         <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet('(end: Ending|描述)')">
           <Icon icon="mdi:flag-checkered" class="text-lg" />
         </button>
@@ -39,31 +39,31 @@
 
       <div class="divider divider-horizontal my-1 mx-0.5"></div>
 
-      <div class="tooltip tooltip-bottom" data-tip="粗体 ''文字''">
+      <div class="md:tooltip tooltip-bottom" data-tip="粗体 ''文字''">
         <button class="btn btn-sm btn-ghost btn-square" type="button" @click="wrapSelection(`''`, `''`)">
           <Icon icon="mdi:format-bold" class="text-lg" />
         </button>
       </div>
 
-      <div class="tooltip tooltip-bottom" data-tip="斜体 //文字//">
+      <div class="md:tooltip tooltip-bottom" data-tip="斜体 //文字//">
         <button class="btn btn-sm btn-ghost btn-square" type="button" @click="wrapSelection(`//`, `//`)">
           <Icon icon="mdi:format-italic" class="text-lg" />
         </button>
       </div>
 
-      <div class="tooltip tooltip-bottom" data-tip="删除线 ~~文字~~">
+      <div class="md:tooltip tooltip-bottom" data-tip="删除线 ~~文字~~">
         <button class="btn btn-sm btn-ghost btn-square" type="button" @click="wrapSelection(`~~`, `~~`)">
           <Icon icon="mdi:format-strikethrough" class="text-lg" />
         </button>
       </div>
 
-      <div class="tooltip tooltip-bottom" data-tip="上标 ^^文字^^">
+      <div class="md:tooltip tooltip-bottom" data-tip="上标 ^^文字^^">
         <button class="btn btn-sm btn-ghost btn-square" type="button" @click="wrapSelection(`^^`, `^^`)">
           <Icon icon="mdi:format-superscript" class="text-lg" />
         </button>
       </div>
 
-      <div class="tooltip tooltip-bottom" data-tip="下标 ,,文字,,">
+      <div class="md:tooltip tooltip-bottom" data-tip="下标 ,,文字,,">
         <button class="btn btn-sm btn-ghost btn-square" type="button" @click="wrapSelection(',,', ',,')">
           <Icon icon="mdi:format-subscript" class="text-lg" />
         </button>
@@ -71,36 +71,36 @@
 
       <div class="divider divider-horizontal my-1 mx-0.5"></div>
 
-      <div class="tooltip tooltip-bottom" data-tip="嵌入段落 (display:)">
+      <div class="md:tooltip tooltip-bottom" data-tip="嵌入段落 (display:)">
         <button class="btn btn-sm btn-ghost btn-square" type="button" @click="$emit('insert-display')">
           <Icon icon="mdi:file-replace-outline" class="text-lg" />
         </button>
       </div>
 
-      <div class="tooltip tooltip-bottom" data-tip="插入全局 JS 函数 (fn:)">
+      <div class="md:tooltip tooltip-bottom" data-tip="插入全局 JS 函数 (fn:)">
         <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet(`(fn:&quot;myFunc&quot;)[\n\tconsole.log(&quot;hello&quot;);\n\treturn 123\n]\n`)">
           <Icon icon="mdi:code-braces" class="text-lg" />
         </button>
       </div>
 
-      <div class="tooltip tooltip-bottom" data-tip="调用 JS 函数 (call:)">
+      <div class="md:tooltip tooltip-bottom" data-tip="调用 JS 函数 (call:)">
         <button class="btn btn-sm btn-ghost btn-square" type="button" @click="insertSnippet(`(call:&quot;myFunc&quot;)`)">
           <Icon icon="mdi:play-circle-outline" class="text-lg" />
         </button>
       </div>
 
-      <div class="tooltip tooltip-bottom" data-tip="插入 CSS 样式块 <style>">
+      <div class="md:tooltip tooltip-bottom" data-tip="插入 CSS 样式块 <style>">
         <button class="btn btn-sm btn-ghost btn-square" type="button" @click="$emit('insert-style')">
           <Icon icon="mdi:language-css3" class="text-lg" />
         </button>
       </div>
-      <div class="tooltip tooltip-bottom" data-tip="显示语法说明书">
+      <div class="md:tooltip tooltip-bottom" data-tip="显示语法说明书">
         <button class="btn btn-sm btn-ghost btn-square" type="button" @click="$emit('show-manual')">
           <Icon icon="mdi:book-open-variant" class="text-lg" />
         </button>
       </div>
       <div class="divider divider-horizontal my-1 mx-0.5"></div>
-      <div class="tooltip tooltip-bottom" data-tip="初始化语法示例">
+      <div class="md:tooltip tooltip-bottom" data-tip="初始化语法示例">
         <button class="btn btn-sm btn-ghost btn-square" type="button" @click="$emit('init-default')">
           <Icon icon="mdi:play-circle-outline" class="text-lg" />
         </button>
@@ -116,7 +116,7 @@
         <span class="badge badge-neutral badge-sm font-mono">{{ selectedPassage }}</span>
       </div>
       <div class="flex items-center gap-1">
-        <div class="tooltip tooltip-bottom" data-tip="重命名当前段落">
+        <div class="md:tooltip tooltip-bottom" data-tip="重命名当前段落">
           <button
             v-if="!readOnly"
             class="btn btn-xs btn-ghost btn-square"
@@ -126,7 +126,7 @@
             <Icon icon="mdi:pencil-outline" class="text-base" />
           </button>
         </div>
-        <div class="tooltip tooltip-bottom" data-tip="删除当前段落">
+        <div class="md:tooltip tooltip-bottom" data-tip="删除当前段落">
           <button
             v-if="!readOnly"
             class="btn btn-xs btn-ghost btn-square text-error"
