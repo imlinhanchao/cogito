@@ -41,29 +41,33 @@
               @click="selectPassage(passage.name)"
             >
               <span class="truncate font-medium">{{ passage.name }}</span>
-              <span class="badge badge-ghost badge-sm">{{
-                passage.tags?.length || 0
-              }}</span>
+              <span class="space-x-2">
+                <span class="badge badge-ghost badge-sm">{{
+                  passage.tags?.length || 0
+                }}</span>
+                <Icon
+                  icon="mdi:content-copy"
+                  data-tip="复制段落名"
+                  class="tooltip tooltip-left cursor-pointer"
+                  size="12px"
+                  @click.stop="copyPassageName(passage.name)"
+                />
+              </span>
             </button>
-            <div class="flex items-center gap-1">
-              <button
-                class="btn btn-xs btn-ghost btn-square tooltip tooltip-left"
-                data-tip="复制段落名"
-                type="button"
-                @click.stop="copyPassageName(passage.name)"
-              >
-                <Icon icon="mdi:content-copy" class="text-sm" />
-              </button>
-            </div>
           </div>
         </div>
       </aside>
 
       <!-- 移动端段落抽屉 -->
       <div class="lg:hidden">
-        <dialog ref="passageRef" class="modal modal-bottom sm:modal-middle w-screen">
+        <dialog
+          ref="passageRef"
+          class="modal modal-bottom sm:modal-middle w-screen"
+        >
           <div class="modal-box h-[80vh] flex flex-col relative">
-            <h3 class="font-bold text-lg pb-3">段落列表 ({{ filteredPassages.length }})</h3>
+            <h3 class="font-bold text-lg pb-3">
+              段落列表 ({{ filteredPassages.length }})
+            </h3>
             <div class="mb-4">
               <input
                 v-model="searchFilter"
@@ -76,8 +80,15 @@
                 v-for="passage in filteredPassages"
                 :key="passage.name"
                 class="w-full text-left p-3 rounded-lg border"
-                :class="selectedPassage === passage.name ? 'bg-primary/10 border-primary' : 'bg-base-200'"
-                @click="selectPassage(passage.name); passageRef?.close()"
+                :class="
+                  selectedPassage === passage.name
+                    ? 'bg-primary/10 border-primary'
+                    : 'bg-base-200'
+                "
+                @click="
+                  selectPassage(passage.name);
+                  passageRef?.close();
+                "
               >
                 {{ passage.name }}
               </button>
@@ -106,7 +117,10 @@
             <strong class="mr-2">已拒绝</strong>
             <span>{{ storyAny.reviewReason || "未填写拒绝理由" }}</span>
           </div>
-          <div class="flex-wrap items-center justify-between gap-3" :class="{ 'flex': !isMobile }">
+          <div
+            class="flex-wrap items-center justify-between gap-3"
+            :class="{ flex: !isMobile }"
+          >
             <div class="flex items-center gap-2 flex-1 min-w-60">
               <div class="lg:hidden">
                 <button
@@ -125,13 +139,19 @@
               <div class="lg:hidden">
                 <button
                   class="btn btn-sm btn-square btn-ghost"
-                  @click="activeRightTab = 'preview'; (previewRef as any)?.showModal()"
+                  @click="
+                    activeRightTab = 'preview';
+                    (previewRef as any)?.showModal();
+                  "
                 >
                   <Icon icon="mdi:play-circle-outline" class="text-lg" />
                 </button>
               </div>
             </div>
-            <div class="flex items-center gap-1 md:shrink-0" :class="{ 'py-2 justify-around': isMobile }">
+            <div
+              class="flex items-center gap-1 md:shrink-0"
+              :class="{ 'py-2 justify-around': isMobile }"
+            >
               <template v-if="!props.readOnly">
                 <div class="tooltip tooltip-bottom" data-tip="从剪贴板粘贴导入">
                   <button
@@ -142,25 +162,16 @@
                     <Icon icon="mdi:content-paste" size="16px" />
                   </button>
                 </div>
-                <div class="tooltip tooltip-bottom" data-tip="导入文件 (.txt)">
-                  <button
-                    class="btn btn-sm btn-ghost btn-square"
-                    type="button"
-                    @click="importStory"
-                  >
-                    <Icon icon="basil:upload-solid" size="16px" />
-                  </button>
-                </div>
                 <div
                   class="tooltip tooltip-bottom"
-                  data-tip="导出文本源码 (.txt)"
+                  data-tip="复制文本源码"
                 >
                   <button
                     class="btn btn-sm btn-ghost btn-square"
                     type="button"
-                    @click="exportStory"
+                    @click="copyStory"
                   >
-                    <Icon icon="basil:download-solid" size="16px" />
+                    <Icon icon="mdi:content-copy" size="16px" />
                   </button>
                 </div>
                 <div
@@ -264,8 +275,6 @@
           </div>
         </div>
 
-        
-
         <div class="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
           <StoryEditorPanel
             ref="editorPanel"
@@ -301,7 +310,11 @@
         </div>
       </main>
     </div>
-    <dialog v-if="isMobile" ref="previewRef" class="modal modal-bottom sm:modal-middle p-0">
+    <dialog
+      v-if="isMobile"
+      ref="previewRef"
+      class="modal modal-bottom sm:modal-middle p-0"
+    >
       <div class="modal-box h-[80vh] flex flex-col relative p-5!">
         <StoryRightPanel
           :story="story"
@@ -351,6 +364,18 @@
         <div class="py-4" ref="pasteEditorRef">
           <textarea style="width: 100%; height: 400px"></textarea>
         </div>
+            <div class="py-2" v-if="showAppendToggle">
+              <div class="flex items-center gap-2">
+                <span class="text-sm">覆盖</span>
+                <input
+                  type="checkbox"
+                  class="toggle toggle-primary"
+                  v-model="appendMode"
+                  aria-label="追加或覆盖"
+                />
+                <span class="text-sm">追加</span>
+              </div>
+            </div>
         <div class="modal-action">
           <button class="btn btn-ghost" type="button" @click="closePasteDialog">
             取消
@@ -371,11 +396,17 @@
     <dialog ref="syntaxDialogRef" class="modal" @cancel="onSyntaxDialogCancel">
       <div class="modal-box max-w-2xl">
         <h3 class="flex items-center gap-2 text-lg font-bold">
-          <Icon icon="mdi:check-decagram-outline" class="text-xl text-primary" />
+          <Icon
+            icon="mdi:check-decagram-outline"
+            class="text-xl text-primary"
+          />
           语法检查
         </h3>
 
-        <div v-if="syntaxChecking" class="flex flex-col items-center gap-3 py-10">
+        <div
+          v-if="syntaxChecking"
+          class="flex flex-col items-center gap-3 py-10"
+        >
           <span class="loading loading-spinner loading-lg text-primary"></span>
           <p class="text-sm text-base-content/70">正在检查语法…</p>
         </div>
@@ -385,7 +416,8 @@
             <div role="alert" class="alert alert-warning alert-soft">
               <Icon icon="mdi:alert-circle-outline" class="text-lg" />
               <span
-                >发现 {{ syntaxIssues.length }} 个语法问题，是否仍要继续保存？</span
+                >发现
+                {{ syntaxIssues.length }} 个语法问题，是否仍要继续保存？</span
               >
             </div>
             <ul class="max-h-80 space-y-2 overflow-y-auto pr-1">
@@ -424,7 +456,6 @@
     </dialog>
     <SyntaxManual v-if="showManual" @close="showManual = false" />
   </div>
-
 </template>
 <script setup lang="ts">
 import {
@@ -493,6 +524,8 @@ let cmPasteInstance: any = null;
 const jsonEditorValue = ref("");
 const editingVarName = ref("");
 const showManual = ref(false);
+const appendMode = ref(false);
+const showAppendToggle = ref(false);
 
 // 保存前的语法检查对话框状态
 const syntaxDialogRef = ref<HTMLDialogElement | null>(null);
@@ -557,24 +590,33 @@ const selectedPassageContent = computed({
   },
 });
 
-
-
 function insertJsGlobalSnippet() {
   if (props.readOnly) return;
-  if (editorPanel.value && typeof editorPanel.value.insertSnippet === 'function') {
-    editorPanel.value.insertSnippet(`(fn:\"myFunc\")[console.log(\"hello\"); return 123]`);
+  if (
+    editorPanel.value &&
+    typeof editorPanel.value.insertSnippet === "function"
+  ) {
+    editorPanel.value.insertSnippet(
+      `(fn:\"myFunc\")[console.log(\"hello\"); return 123]`,
+    );
   }
 }
 
 function insertCallSnippet() {
   if (props.readOnly) return;
-  if (editorPanel.value && typeof editorPanel.value.insertSnippet === 'function') {
+  if (
+    editorPanel.value &&
+    typeof editorPanel.value.insertSnippet === "function"
+  ) {
     editorPanel.value.insertSnippet(`(call:\"myFunc\")`);
   }
 }
 
 const insertVariableToEditor = (key: string) => {
-  if (editorPanel.value && typeof editorPanel.value.insertSnippet === 'function') {
+  if (
+    editorPanel.value &&
+    typeof editorPanel.value.insertSnippet === "function"
+  ) {
     editorPanel.value.insertSnippet(`$${key}`);
   }
 };
@@ -649,7 +691,10 @@ const resetPreviewVars = () => {
 
 const insertSelectedVar = () => {
   if (!selectedInsertVar.value) return;
-  if (editorPanel.value && typeof editorPanel.value.insertSnippet === 'function') {
+  if (
+    editorPanel.value &&
+    typeof editorPanel.value.insertSnippet === "function"
+  ) {
     editorPanel.value.insertSnippet(`$${selectedInsertVar.value}`);
   }
 };
@@ -773,10 +818,22 @@ const pasteImport = async () => {
         tabSize: 2,
       });
       cmPasteInstance.setSize("100%", 400);
+      // show append toggle if content looks like a full story (:: header)
+      showAppendToggle.value = (clipboard || "").trim().startsWith("::");
+      cmPasteInstance.on &&
+        cmPasteInstance.on("change", () => {
+          try {
+            const v = cmPasteInstance.getValue();
+            showAppendToggle.value = (v || "").trim().startsWith("::");
+          } catch (e) {
+            // ignore
+          }
+        });
     }
   } else if (cmPasteInstance) {
     cmPasteInstance.setOption("theme", currentTheme);
     if (clipboard) cmPasteInstance.setValue(clipboard);
+    showAppendToggle.value = (clipboard || "").trim().startsWith("::");
   }
 };
 
@@ -791,6 +848,9 @@ const closePasteDialog = () => {
     } catch {}
     cmPasteInstance = null;
   }
+  // reset append toggle state
+  appendMode.value = false;
+  showAppendToggle.value = false;
 };
 
 const confirmPasteImport = () => {
@@ -812,19 +872,28 @@ const confirmPasteImport = () => {
       msg.error("未检测到可导入的段落内容。");
       return;
     }
-
-    story.value.title = parsed.title || story.value.title;
-    story.value.startPassage = parsed.startPassage || story.value.startPassage;
-    story.value.tags = parsed.tags || story.value.tags;
-    story.value.description = parsed.description || story.value.description;
-    story.value.passages = [];
     let added = 0;
-    for (const p of parsed.passages) {
-      const exists = story.value.passages.some((q) => q.name === p.name);
-      const toAdd = { ...p };
-      if (exists) toAdd.name = generateUniquePassageName(p.name);
-      story.value.passages.push(toAdd);
-      added += 1;
+    if (!appendMode.value) {
+      // overwrite metadata and passages
+      story.value.title = parsed.title || story.value.title;
+      story.value.startPassage = parsed.startPassage || story.value.startPassage;
+      story.value.tags = parsed.tags || story.value.tags;
+      story.value.description = parsed.description || story.value.description;
+      story.value.passages = [];
+      for (const p of parsed.passages) {
+        const toAdd = { ...p };
+        story.value.passages.push(toAdd);
+        added += 1;
+      }
+    } else {
+      // append: keep existing metadata, add new passages, avoid name conflicts
+      for (const p of parsed.passages) {
+        const exists = story.value.passages.some((q) => q.name === p.name);
+        const toAdd = { ...p };
+        if (exists) toAdd.name = generateUniquePassageName(p.name);
+        story.value.passages.push(toAdd);
+        added += 1;
+      }
     }
     story.value.passages = normalizePassageTags(story.value.passages);
     const newVars = buildInitialVariables(story.value);
@@ -858,15 +927,15 @@ function normalizePassageTags(passages: any[]) {
   return passages;
 }
 
-const exportStory = () => {
+const copyStory = () => {
   const source = serializeStory(story.value);
-  const blob = new Blob([source], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `${(story.value.title || "story").replace(/\s+/g, "-")}.txt`;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  try {
+    navigator.clipboard.writeText(source);
+    msg.success("已复制文本源码到剪贴板。");
+  } catch (e) {
+    console.error(e);
+    msg.error("复制失败，请手动复制。");
+  }
 };
 
 const buildStory = () => {
@@ -1037,7 +1106,9 @@ const renamePassage = async () => {
     return;
   }
   const oldName = current.name;
-  const nextName = await msgbox.prompt("新段落名：", "重命名", { inputValue: current.name });
+  const nextName = await msgbox.prompt("新段落名：", "重命名", {
+    inputValue: current.name,
+  });
   if (!nextName || !nextName.trim()) {
     return;
   }
