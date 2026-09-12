@@ -33,6 +33,12 @@ export class PlayController {
     );
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('reader/:storyId')
+  async getReader(@Param('storyId') storyId: string, @Request() req) {
+    return this.playService.getReaders(storyId, req.user?.userId);
+  }
+
   @Get('story/:id')
   @UseGuards(JwtAuthGuard)
   async getApprovedStory(@Param('id') id: string, @Request() req) {

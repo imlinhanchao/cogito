@@ -9,13 +9,11 @@ export function verify(query: any) {
   for (const key of signeds) {
     openVerify.append(`openid.${key}`, query[`openid.${key}`] as string);
   }
-  return fetch(
-    `${ConfigService.get('steam')?.steamMirror || 'https://steamcommunity.com'}/openid/login`,
-    {
-      method: 'POST',
-      body: openVerify,
-    },
-  )
+  const url = `${ConfigService.get('steam')?.mirror || 'https://steamcommunity.com'}/openid/login`;
+  return fetch(url, {
+    method: 'POST',
+    body: openVerify,
+  })
     .then((res) => res.text())
     .then((text) => {
       if (text.includes('is_valid:true')) {
@@ -38,9 +36,8 @@ export interface ISteamUser {
 
 export function getUserInfo(steamid: string) {
   const steamCfg = ConfigService.get('steam');
-  return fetch(
-    `${steamCfg?.steamMirror || 'https://api.steampowered.com'}/ISteamUser/GetPlayerSummaries/v2/?key=${steamCfg?.steamApiKey}&steamids=${steamid}`,
-  )
+  const url = `${steamCfg?.mirror || 'https://api.steampowered.com'}/ISteamUser/GetPlayerSummaries/v2/?key=${steamCfg?.apiKey}&steamids=${steamid}`;
+  return fetch(url)
     .then((res) => res.json())
     .then((data) => {
       return data.response.players[0] as ISteamUser;

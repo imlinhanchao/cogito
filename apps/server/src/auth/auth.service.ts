@@ -40,7 +40,7 @@ export class AuthService {
         password: body.password,
         email: body.email,
         nickname: body.nickname,
-        from: 'fishpi',
+        from: '',
       }),
     );
   }
@@ -60,6 +60,7 @@ export class AuthService {
       user: {
         id: user.id,
         username: user.username,
+        from: user.from,
         isAdmin,
       },
     };
@@ -85,18 +86,20 @@ export class AuthService {
     if (accessToken) {
       const userInfo = await this.usersService.getGitHubUser(accessToken);
       if (!userInfo) throw new Error('获取 GitHub 用户信息失败');
-      await this.usersService.save(userInfo);
+      const account = await this.usersService.save(userInfo);
       const isAdmin = userInfo?.isAdmin;
       const payload = {
-        username: userInfo.username,
-        sub: userInfo.sourceId,
+        username: account.username,
+        from: account.from,
+        sub: account.id,
         isAdmin,
       };
       return {
         access_token: this.jwtService.sign(payload),
         user: {
-          id: userInfo.sourceId,
-          username: userInfo.username,
+          id: account.id,
+          username: account.username,
+          from: account.from,
           isAdmin,
         },
       };
@@ -108,18 +111,20 @@ export class AuthService {
   async loginSteam(steamid: string) {
     const userInfo = await this.usersService.getSteamUser(steamid);
     if (!userInfo) throw new Error('获取 Steam 用户信息失败');
-    await this.usersService.save(userInfo);
+    const account = await this.usersService.save(userInfo);
     const isAdmin = userInfo?.isAdmin;
     const payload = {
-      username: userInfo.username,
-      sub: userInfo.sourceId,
+      username: account.username,
+      sub: account.id,
+      from: account.from,
       isAdmin,
     };
     return {
       access_token: this.jwtService.sign(payload),
       user: {
-        id: userInfo.sourceId,
-        username: userInfo.username,
+        id: account.id,
+        username: account.username,
+        from: account.from,
         isAdmin,
       },
     };

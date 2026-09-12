@@ -21,6 +21,7 @@ jobs:
         npm ci --ignore-scripts
         npm run build
         cd release
+        npm i tellory
         npm i --omit=dev
         cd ..
 

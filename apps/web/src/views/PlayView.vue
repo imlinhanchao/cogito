@@ -65,6 +65,27 @@
             ></span>
             当前章节: {{ play?.passage || play?.currentPassage || "序幕" }}
           </span>
+          <div class="flex items-center gap-2 flex-wrap">
+            <div class="text-xs text-base-content/50">正在阅读</div>
+            <div class="avatar-group -space-x-6">
+              <router-link
+                class="avatar"
+                v-for="reader in readers.slice(0, 5)"
+                :key="reader.id"
+                :to="reader.from ? `/${reader.from}/${reader.username}` : `/${reader.username}`"
+              >
+                <InlineTooltip class="w-5" :text="reader.nickname || reader.username">
+                  <img :src="reader.avatar" />
+                </InlineTooltip>
+              </router-link>
+            </div>
+            <span
+              v-if="readers.length > 5"
+              class="text-xs text-base-content/40"
+            >
+              等 {{ readers.length }} 人
+            </span>
+          </div>
         </footer>
       </article>
     </main>
@@ -92,13 +113,41 @@
         <p class="text-xs text-base-content/60 mb-6 flex items-center gap-1.5">
           <span>作者：{{ authorName }}</span>
         </p>
-
         <div
           class="bg-base-200/50 rounded-xl p-4 mb-6 border border-base-200 text-sm text-base-content/80 leading-relaxed font-serif max-h-48 overflow-y-auto"
         >
           <div
             v-html="story?.description || '探索属于你的剧情分支与故事世界。'"
           ></div>
+        </div>
+
+        <div v-if="readers.length > 0" >
+          <div class="flex items-center gap-2 flex-wrap">
+            <div class="text-xs text-base-content/50">正在阅读</div>
+            <div class="avatar-group -space-x-2">
+              <router-link
+                class="avatar border"
+                v-for="reader in readers.slice(0, 5)"
+                :key="reader.id"
+                :to="reader.from ? `/${reader.from}/${reader.username}` : `/${reader.username}`"
+              >
+                <InlineTooltip
+                  class="w-5"
+                  :text="reader.nickname || reader.username"
+                >
+                  <img
+                    :src="reader.avatar"
+                  />
+                </InlineTooltip>
+              </router-link>
+            </div>
+            <span
+              v-if="readers.length > 5"
+              class="text-xs text-base-content/40"
+            >
+              等 {{ readers.length }} 人
+            </span>
+          </div>
         </div>
 
         <div class="modal-action flex items-center justify-end gap-3 pt-2">
@@ -170,8 +219,16 @@
 import { ref, onMounted, onUnmounted, watch, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { getStory } from "@/api/stories";
-import { createPlay, getPlay, updatePlay, getReleaseStory, resetPlay } from "@/api/play";
+import {
+  createPlay,
+  getPlay,
+  updatePlay,
+  getReleaseStory,
+  resetPlay,
+  getReaders,
+} from "@/api/play";
 import { useAppStore } from "@/stores/modules/app";
+import { User } from "@/api/auth";
 
 const route = useRoute();
 const router = useRouter();
@@ -211,6 +268,16 @@ async function loadStory() {
   if (story.value?.title) {
     appStore.setCustomHeaderTitle(story.value.title);
     document.title = story.value.title + " | 织言 - Tellory";
+  }
+}
+
+const readers = ref<User[]>([]);
+async function loadReaders() {
+  try {
+    const res = await getReaders(storyId);
+    readers.value = res;
+  } catch (err) {
+    console.error("[PlayView] loadReaders failed", err);
   }
 }
 
@@ -254,6 +321,7 @@ function closeModal() {
 const contentRef = ref<HTMLElement>();
 onMounted(async () => {
   await loadStory();
+  await loadReaders();
   const started = await loadExistingPlay();
   if (started) {
     showModal.value = false;

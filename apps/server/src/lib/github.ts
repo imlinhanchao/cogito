@@ -5,7 +5,7 @@ export function verify(query: any, domain: string) {
     client_id: ConfigService.get('github')?.clientId,
     client_secret: ConfigService.get('github')?.clientSecret,
     code: query['code'],
-    redirect_uri: `https://${domain}/api/login/github`,
+    redirect_uri: `https://${domain}/#/login/github`,
   };
   return fetch('https://github.com/login/oauth/access_token', {
     method: 'POST',

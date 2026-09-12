@@ -66,13 +66,13 @@ const router = createRouter({
           path: "/:from/:username",
           name: "user-profile-from",
           component: () => import("@/views/UserProfileView.vue"),
-          meta: { title: "个人主页", loginRequired: true },
+          meta: { title: "个人主页" },
         },
         {
           path: "/:username",
           name: "user-profile",
           component: () => import("@/views/UserProfileView.vue"),
-          meta: { title: "个人主页", loginRequired: true },
+          meta: { title: "个人主页" },
         },
       ],
     },
@@ -113,6 +113,7 @@ router.beforeEach((to) => {
   document.title = pageTitle;
   const authStore = useAuthStore();
   if (to.meta.loginRequired && !authStore.isAuthenticated) {
+    localStorage.setItem('redirect', location.href);
     return { path: "/login" };
   }
   if (to.meta.adminRequired && !authStore.isAdmin) {

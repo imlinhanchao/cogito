@@ -6,6 +6,8 @@ import { omit } from 'src/utils';
 import { PlayUnlock } from './play.unlock.entity';
 import { PlayStoryDto } from './play.dto';
 import { StoriesService } from '../stories/stories.service';
+import { User } from 'src/users/user.entity';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class PlayService {
@@ -14,6 +16,7 @@ export class PlayService {
     @InjectRepository(PlayUnlock)
     private playUnlockRepo: Repository<PlayUnlock>,
     private readonly storiesService: StoriesService,
+    private readonly usersService: UsersService,
   ) {}
 
   async create(payload: Partial<Play>): Promise<Play> {
@@ -91,6 +94,17 @@ export class PlayService {
         entry.end.push({ name: r.name, description: r.description });
       map.set(r.storyId, entry);
     }
+    const plays = await this.playRepo
+      .createQueryBuilder('play')
+      .select('play.storyId', 'storyId')
+      .distinct(true)
+      .where('play.userId = :userId', { userId })
+      .getRawMany();
+    for (const play of plays) {
+      if (map.has(play.storyId)) continue;
+      const entry = map.get(play.storyId) || { points: [], end: [] };
+      map.set(play.storyId, entry);
+    }
     const out: PlayStoryDto[] = [];
     const storyIds = Array.from(map.keys());
     const storys = includePrivate
@@ -127,5 +141,17 @@ export class PlayService {
       });
     }
     return out;
+  }
+
+  async getReaders(storyId: string, userId: string): Promise<Partial<User>[]> {
+    const p: { userId: string }[] = await this.playRepo
+      .createQueryBuilder('play')
+      .select('play.userId', 'userId')
+      .distinct(true)
+      .where('play.storyId = :storyId', { storyId })
+      .getRawMany();
+    const userIds = p.filter((p) => p.userId !== userId).map((p) => p.userId);
+    const readers = await this.usersService.getUsers(userIds);
+    return readers.map((r) => omit(r, User.unsafeKey));
   }
 }

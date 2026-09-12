@@ -1,4 +1,5 @@
 import request from "@/utils/http";
+import { User } from "./auth";
 
 export async function getReleaseStory(storyId: string) {
   return request.get({ url: `/play/story/${storyId}` });
@@ -39,4 +40,10 @@ export interface IUserStoryProgress {
 
 export const getUserUnlocks = (userId: string) => {
   return request.get<IUserStoryProgress[]>({ url: `/play/unlocks/${userId}` });
+};
+
+export const getReaders = (storyId: string) => {
+  return request.get<User[]>({
+    url: `/play/reader/${storyId}`,
+  });
 };

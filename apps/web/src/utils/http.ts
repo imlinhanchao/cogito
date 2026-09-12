@@ -147,7 +147,7 @@ class Http {
           return res;
         }
         if (res.code == 401) {
-          localStorage.addItem('redirect', location.href);
+          localStorage.setItem('redirect', location.href);
           location.href = "./#/login"; // Redirect to login page on 401 Unauthorized
           throw new Error("请先登录");
         }

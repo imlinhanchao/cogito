@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { User } from 'src/users/user.entity';
 
 /**
  * OptionalAuthGuard 尝试验证 JWT；当没有或不合法时不会阻止请求。
@@ -13,6 +14,7 @@ export class OptionalAuthGuard extends AuthGuard('jwt') {
     if (err) {
       return null;
     }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return user || null;
   }
 }

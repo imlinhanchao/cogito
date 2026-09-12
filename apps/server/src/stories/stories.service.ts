@@ -54,11 +54,13 @@ export class StoriesService {
 
   private buildWhereForApproved(
     createdAt: number,
+    authorId?: string,
     search?: string,
     isAdmin = false,
   ): any {
     const createdCond = { approvedAt: LessThanOrEqual(createdAt) };
     const where: any = { ...createdCond };
+    if (authorId) where.authorId = authorId;
     if (!isAdmin) {
       where.isUnpublished = false;
     }
@@ -106,7 +108,12 @@ export class StoriesService {
     isAdmin = false,
   ) {
     if (isPublicRequest) {
-      const where = this.buildWhereForApproved(createdAt, search, isAdmin);
+      const where = this.buildWhereForApproved(
+        createdAt,
+        authorId,
+        search,
+        isAdmin,
+      );
       const [rows, total] = await this.approvedRepo.findAndCount({
         where,
         order: { approvedAt: 'DESC' },

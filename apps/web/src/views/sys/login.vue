@@ -9,6 +9,8 @@ import {
 } from "@/api/auth";
 import { useAuthStore } from "@/stores/modules/auth";
 import HeaderLogo from "@/layouts/components/HeaderLogo.vue";
+import { getObjOfUrl } from "@/utils";
+
 
 const router = useRouter();
 const route = useRoute();
@@ -41,13 +43,13 @@ const registerForm = ref({
 
 if (route.params.source) {
   loading.value = true;
-  login(route.params.source as string, route.query)
+  login(route.params.source as string, getObjOfUrl())
     .then((res) => {
       if (res?.access_token) {
         authStore.setAuth(res);
       }
       emit("success");
-      router.push("/");
+      location.href = "./";
     })
     .catch((err) => {
       error.value =
